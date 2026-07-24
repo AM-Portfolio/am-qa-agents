@@ -14,8 +14,8 @@ htmlcov/
 .env.*
 !.env.example
 
-# Runtime
-**/data/
+# Runtime (api-load JSON store — not Dart feature data/ folders)
+qa-backend/**/data/
 **/artifacts/
 *.log
 **/vendor/bin/
