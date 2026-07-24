@@ -1,4 +1,4 @@
-name: AM QA Agent Publish
+name: Publish — release-gate
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
         run: pytest -q
 
   publish:
-    name: Publish AM QA Agent
+    name: Publish release-gate (am-qa-agent)
     needs: test
     if: github.event_name != 'pull_request'
     permissions:

@@ -39,7 +39,7 @@ cd qa-backend\release-gate
 
 ## CI
 
-GitHub Actions live in [`.github/workflows/`](.github/workflows/). See [docs/GITHUB_PIPELINES.md](docs/GITHUB_PIPELINES.md).
+GitHub Actions live in [`.github/workflows/`](.github/workflows/) — names match packages (`api-load`, `ui-evidence`, `release-gate`). See [docs/GITHUB_PIPELINES.md](docs/GITHUB_PIPELINES.md).
 
 ## Docs
 

@@ -1,4 +1,4 @@
-name: AM UI Test Agent Publish
+name: Publish — ui-evidence
 
 on:
   push:
@@ -65,7 +65,7 @@ jobs:
           fi
 
   publish:
-    name: Publish AM UI Test Agent
+    name: Publish ui-evidence (am-ui-test-agent)
     needs: ensure-base
     permissions:
       contents: read

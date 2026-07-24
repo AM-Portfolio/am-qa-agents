@@ -1,4 +1,4 @@
-name: Manual Deploy (AM QA Agent)
+name: Deploy — release-gate
 
 on:
   workflow_dispatch:
@@ -21,7 +21,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy am-qa-agent → ${{ github.event.inputs.namespace }}
+    name: Deploy release-gate → ${{ github.event.inputs.namespace }}
     runs-on: self-hosted
     environment: preprod-am-qa-agent
     steps:

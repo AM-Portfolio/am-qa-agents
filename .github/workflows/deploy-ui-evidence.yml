@@ -1,4 +1,4 @@
-name: Manual Deploy (AM UI Test Agent)
+name: Deploy — ui-evidence
 
 on:
   workflow_dispatch:
@@ -27,7 +27,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy AM UI Test Agent to ${{ github.event.inputs.environment }}
+    name: Deploy ui-evidence → ${{ github.event.inputs.environment }}
     uses: AM-Portfolio/am-pipelines/.github/workflows/central-deploy.yml@main
     with:
       service_name: "am-ui-test-agent"

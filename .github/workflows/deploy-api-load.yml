@@ -1,4 +1,4 @@
-name: Manual Deploy (AM SPT POC)
+name: Deploy — api-load
 
 on:
   workflow_dispatch:
@@ -27,7 +27,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy AM SPT POC to ${{ github.event.inputs.environment }}
+    name: Deploy api-load → ${{ github.event.inputs.environment }}
     uses: AM-Portfolio/am-pipelines/.github/workflows/central-deploy.yml@main
     with:
       service_name: "am-spt-poc"

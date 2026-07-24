@@ -1,4 +1,4 @@
-name: AM SPT POC Publish
+name: Publish — api-load (+ qa-portal-ui)
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
       - run: python -c "from app.main import app; print(app.title)"
 
   publish:
-    name: Publish AM SPT POC
+    name: Publish api-load (am-spt-poc)
     needs: test
     if: github.event_name != 'pull_request'
     permissions:
@@ -40,7 +40,6 @@ jobs:
       language: python
       working_directory: qa-backend/api-load
       image_name: am-spt-poc
-      # Dockerfile COPYs from monorepo root (portal + api-load)
       build_context: ../..
       preprod_namespace: load-testing
       deploy_dev: false
