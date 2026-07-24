@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     trace_max_calls: int = 500
     default_run_profile: str = "load"
 
+    # Portal UI: when True and Flutter build/web exists, serve SPA at /ui
+    spt_portal_flutter: bool = False
+
     # Schema-first payload agent — LLM is HTTP fallback only (off by default)
     spt_payload_llm_fallback: bool = False
     spt_fin_api_testing_url: str | None = None

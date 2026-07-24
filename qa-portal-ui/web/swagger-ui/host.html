@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SPT Swagger</title>
+  <link rel="stylesheet" href="./swagger-ui.css" />
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #f7f7f8;
+      overflow: auto;
+    }
+    #swagger-ui { min-height: calc(100% - 44px); }
+    .swagger-ui .topbar { display: none; }
+    .spt-bar {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      padding: 8px 12px; background: #fff; border-bottom: 1px solid #ddd;
+      color: #222; font: 13px system-ui, sans-serif;
+      position: sticky; top: 0; z-index: 5;
+    }
+    .spt-bar button {
+      background: #6d28d9; color: #fff; border: 0; border-radius: 6px;
+      padding: 6px 12px; cursor: pointer; font-weight: 600;
+    }
+    .spt-bar button.secondary { background: #444; }
+    .spt-bar .hint { opacity: 0.7; font-size: 12px; }
+    .spt-empty {
+      padding: 24px; color: #666; font: 14px system-ui, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div class="spt-bar">
+    <strong>Swagger UI</strong>
+    <span class="hint">via SPT proxy · Try-it-out uses catalog try</span>
+    <button type="button" id="btn-use-test">Use in Test</button>
+    <button type="button" class="secondary" id="btn-refresh">Refresh</button>
+  </div>
+  <div id="swagger-ui"><div class="spt-empty">Waiting for OpenAPI document…</div></div>
+  <script src="./swagger-ui-bundle.min.js"></script>
+  <script src="./swagger-ui-standalone-preset.min.js"></script>
+  <script>
+    let ui = null;
+    let lastMount = null;
+    let lastSpecKey = "";
+
+    function findOpenOpblock() {
+      return document.querySelector("#swagger-ui .opblock.is-open");
+    }
+
+    function readOpenOp() {
+      const op = findOpenOpblock();
+      if (!op) return null;
+      const method = ((op.querySelector(".opblock-summary-method") || {}).textContent || "").trim().toUpperCase();
+      const path = ((op.querySelector(".opblock-summary-path") || {}).textContent || "").trim();
+      let body = "";
+      const ta = op.querySelector("textarea.body-param__text, .body-param textarea, .opblock-body textarea");
+      if (ta) body = ta.value || "";
+      const pathParams = {};
+      const queryParams = {};
+      op.querySelectorAll("table.parameters tr").forEach((tr) => {
+        const nameEl = tr.querySelector(".parameter__name");
+        const inEl = tr.querySelector(".parameter__in");
+        const input = tr.querySelector("input, textarea, select");
+        if (!nameEl || !input) return;
+        const name = (nameEl.textContent || "").trim().replace(/\*$/, "").trim();
+        const loc = ((inEl && inEl.textContent) || "").trim().toLowerCase();
+        const val = input.value || "";
+        if (!name) return;
+        if (loc.indexOf("path") >= 0) pathParams[name] = val;
+        else if (loc.indexOf("query") >= 0) queryParams[name] = val;
+      });
+      return { method, path, body, pathParams, queryParams };
+    }
+
+    function postToParent(msg) {
+      try { parent.postMessage(Object.assign({ source: "spt-swagger" }, msg), "*"); } catch (_) {}
+    }
+
+    function specKey(spec) {
+      try {
+        const paths = (spec && spec.paths) ? Object.keys(spec.paths).length : 0;
+        const ver = ((spec && spec.info) || {}).version || "";
+        const title = ((spec && spec.info) || {}).title || "";
+        return title + "|" + ver + "|" + paths;
+      } catch (_) { return String(Date.now()); }
+    }
+
+    function mountSwagger(payload) {
+      const spec = payload.spec || {};
+      const key = specKey(spec);
+      if (ui && lastSpecKey === key && lastMount &&
+          lastMount.service === payload.service &&
+          lastMount.environment === payload.environment &&
+          lastMount.token === payload.token) {
+        return; // avoid remount loop
+      }
+      lastMount = payload;
+      lastSpecKey = key;
+      const host = document.getElementById("swagger-ui");
+      host.innerHTML = "";
+      if (!spec.paths) {
+        host.innerHTML = '<div class="spt-empty">OpenAPI document has no paths.</div>';
+        postToParent({ type: "error", message: "no paths" });
+        return;
+      }
+      const el = document.createElement("div");
+      el.id = "swagger-ui-root";
+      host.appendChild(el);
+      const token = payload.token || "";
+      const tryBase = (payload.tryBase || "").replace(/\/$/, "");
+      const presets = [SwaggerUIBundle.presets.apis];
+      if (window.SwaggerUIStandalonePreset) presets.push(SwaggerUIStandalonePreset);
+      try {
+        ui = SwaggerUIBundle({
+          spec: spec,
+          dom_id: "#swagger-ui-root",
+          deepLinking: false,
+          docExpansion: "list",
+          defaultModelsExpandDepth: -1,
+          tryItOutEnabled: true,
+          filter: true,
+          displayRequestDuration: true,
+          persistAuthorization: false,
+          presets: presets,
+          plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+          layout: "BaseLayout",
+          requestInterceptor: (req) => {
+            if (!req) return req;
+            req.headers = req.headers || {};
+            if (token && !req.headers.Authorization && !req.headers.authorization) {
+              req.headers.Authorization = "Bearer " + token;
+            }
+            if (tryBase && req.url) {
+              try {
+                const u = new URL(req.url, window.location.origin);
+                if (u.pathname.indexOf("/api/catalog/") === -1 && payload.service && payload.environment) {
+                  const pathOnly = u.pathname.replace(/^\//, "") + (u.search || "");
+                  req.url = tryBase + "/api/catalog/" + payload.service + "/try/" + payload.environment + "/" + pathOnly;
+                }
+              } catch (_) {}
+            }
+            return req;
+          },
+          onComplete: () => {
+            if (token && ui) {
+              try {
+                const schemes = ((spec.components || {}).securitySchemes) || {};
+                Object.keys(schemes).forEach((name) => {
+                  try { ui.preauthorizeApiKey(name, token); } catch (_) {}
+                });
+              } catch (_) {}
+            }
+            postToParent({ type: "ready" });
+          }
+        });
+      } catch (err) {
+        host.innerHTML = '<div class="spt-empty">Swagger failed: ' + (err && err.message ? err.message : err) + '</div>';
+        postToParent({ type: "error", message: String(err) });
+      }
+    }
+
+    window.addEventListener("message", (ev) => {
+      const data = ev.data || {};
+      if (data.source !== "spt-flutter") return;
+      if (data.type === "mount") mountSwagger(data);
+      if (data.type === "ping") postToParent({ type: "pong" });
+    });
+
+    document.getElementById("btn-use-test").onclick = () => {
+      const op = readOpenOp();
+      if (!op || !op.path) {
+        postToParent({ type: "error", message: "Open an operation and Try it out first" });
+        return;
+      }
+      postToParent({ type: "useInTest", draft: op });
+    };
+    document.getElementById("btn-refresh").onclick = () => {
+      lastSpecKey = "";
+      postToParent({ type: "refresh" });
+      if (lastMount) mountSwagger(lastMount);
+    };
+
+    postToParent({ type: "hostReady" });
+  </script>
+</body>
+</html>

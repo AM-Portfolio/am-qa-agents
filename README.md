@@ -24,15 +24,27 @@ Remote: https://github.com/AM-Portfolio/am-qa-agents
 ## Local
 
 ```powershell
-# API load (still serves HTML /ui)
+# API load (serves HTML /ui by default)
 cd qa-backend\api-load
 .\scripts\run-local.ps1   # http://localhost:8150/ui
 
-# Flutter operator portal (design system)
+# Flutter operator portal (design system) — separate Chrome tab
 cd ..\..\qa-portal-ui
-flutter pub get
-flutter run -d chrome --web-port=8151 --dart-define=API_BASE=http://localhost:8150
+npm run get
+npm run run
 ```
+
+To serve the Flutter SPA from api-load instead of HTML:
+
+```powershell
+cd qa-portal-ui
+npm run build
+# In qa-backend/api-load/.env:
+# SPT_PORTAL_FLUTTER=true
+# SPT_PORTAL_FLUTTER_DIR=../../qa-portal-ui/build/web
+```
+
+See [qa-portal-ui/README.md](qa-portal-ui/README.md).
 
 ## CI
 

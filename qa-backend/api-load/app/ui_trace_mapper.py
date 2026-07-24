@@ -155,49 +155,51 @@ def map_status_to_traces(
             if step_fail:
                 ok = False
             api_id = _slug(f"{profile}_{name}", fallback=f"step_{i + 1}")
-            traces.append(
-                {
-                    "kind": "ui_step",
-                    "call_index": int(row.get("index") or i + 1),
-                    "api_id": api_id,
-                    "name": name,
-                    "method": action[:24] or "STEP",
-                    "path": f"/{_slug(name)}",
-                    "url": status.get("targetUrl")
-                    or report.get("target_url")
-                    or (report.get("results") or {}).get("final_url")
-                    or "",
-                    "vu": 1,
-                    "iter": 0,
-                    "request": {
-                        "headers": {
-                            "x-ui-profile": str(profile),
-                            "x-ui-phase": str(row.get("phase") or ""),
-                        },
-                        "body": _json_body(
-                            {
-                                "step": row,
-                                "actions": related[-10:],
-                            }
-                        ),
+            shot = row.get("screenshot_url")
+            trace_row: dict[str, Any] = {
+                "kind": "ui_step",
+                "call_index": int(row.get("index") or i + 1),
+                "api_id": api_id,
+                "name": name,
+                "method": action[:24] or "STEP",
+                "path": f"/{_slug(name)}",
+                "url": status.get("targetUrl")
+                or report.get("target_url")
+                or (report.get("results") or {}).get("final_url")
+                or "",
+                "vu": 1,
+                "iter": 0,
+                "request": {
+                    "headers": {
+                        "x-ui-profile": str(profile),
+                        "x-ui-phase": str(row.get("phase") or ""),
                     },
-                    "response": {
-                        "status": 200 if ok else 500,
-                        "headers": {},
-                        "body": _json_body(
-                            {
-                                "status": st,
-                                "error": err or (step_fail[0] if step_fail else None),
-                                "soft_failures": soft_msgs[:5] if not ok else [],
-                                "console_errors": console_errors[:5] if not ok else [],
-                                "design_review": design if i == len(step_timings) - 1 else None,
-                            }
-                        ),
-                    },
-                    "timings": {"duration_ms": row.get("duration_ms")},
-                    "checks_passed": ok,
-                }
-            )
+                    "body": _json_body(
+                        {
+                            "step": row,
+                            "actions": related[-10:],
+                        }
+                    ),
+                },
+                "response": {
+                    "status": 200 if ok else 500,
+                    "headers": {},
+                    "body": _json_body(
+                        {
+                            "status": st,
+                            "error": err or (step_fail[0] if step_fail else None),
+                            "soft_failures": soft_msgs[:5] if not ok else [],
+                            "console_errors": console_errors[:5] if not ok else [],
+                            "design_review": design if i == len(step_timings) - 1 else None,
+                        }
+                    ),
+                },
+                "timings": {"duration_ms": row.get("duration_ms")},
+                "checks_passed": ok,
+            }
+            if shot:
+                trace_row["screenshot_url"] = str(shot)
+            traces.append(trace_row)
     elif action_log:
         for i, entry in enumerate(action_log):
             if not isinstance(entry, dict):

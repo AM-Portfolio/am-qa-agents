@@ -8,10 +8,34 @@ from langchain_core.runnables import RunnableConfig
 
 from app.agent.state import AutonomousAgentState
 from app.browser.actions import run_browser_action
-from app.browser.screenshot import capture_screenshot_base64
+from app.browser.screenshot import capture_and_save_step_screenshot
 from app.context import get_test_context
 
 logger = logging.getLogger(__name__)
+
+
+async def _capture_step_evidence(
+    page: Any,
+    *,
+    ctx: Any,
+    idx: int,
+    step_name: str,
+    screenshot_history: list[str],
+    screenshot_labels: list[str],
+) -> tuple[str | None, str | None]:
+    """Always capture a screenshot for browser evidence (success or failure)."""
+    try:
+        shot, url, path = await capture_and_save_step_screenshot(
+            page,
+            test_id=ctx.test_id,
+            index=idx,
+        )
+        screenshot_history.append(shot)
+        screenshot_labels.append(step_name)
+        return url, path
+    except Exception as exc:
+        logger.warning("Step screenshot failed for %s: %s", step_name, exc)
+        return None, None
 
 
 async def executor_node(state: AutonomousAgentState, config: RunnableConfig) -> dict[str, Any]:
@@ -52,6 +76,14 @@ async def executor_node(state: AutonomousAgentState, config: RunnableConfig) -> 
                         "error": ctx.action_log[-1].get("error"),
                     }
                 )
+        shot_url, shot_file = await _capture_step_evidence(
+            page,
+            ctx=ctx,
+            idx=idx,
+            step_name=step_name,
+            screenshot_history=screenshot_history,
+            screenshot_labels=screenshot_labels,
+        )
         ctx.record_step_timing(
             index=idx,
             name=step_name,
@@ -59,29 +91,20 @@ async def executor_node(state: AutonomousAgentState, config: RunnableConfig) -> 
             phase="execute",
             duration_ms=duration_ms,
             status="warn" if soft_failures and soft_failures[-1].get("step_index") == idx else "ok",
+            screenshot_url=shot_url,
+            screenshot_file=shot_file,
         )
-        if step.get("action") in (
-            "screenshot",
-            "navigate",
-            "navigate_app",
-            "click",
-            "fill",
-            "fill_label",
-            "click_button",
-            "click_demo_login",
-            "click_nav",
-            "click_text",
-            "wait_for_flutter",
-            "wait_for_login",
-            "wait_for_module",
-            "upload_file",
-        ):
-            shot = await capture_screenshot_base64(page)
-            screenshot_history.append(shot)
-            screenshot_labels.append(step_name)
     except Exception as exc:
         duration_ms = (time.perf_counter() - t0) * 1000
         logger.error("Step failed: %s", exc)
+        shot_url, shot_file = await _capture_step_evidence(
+            page,
+            ctx=ctx,
+            idx=idx,
+            step_name=step_name,
+            screenshot_history=screenshot_history,
+            screenshot_labels=screenshot_labels,
+        )
         ctx.record_step_timing(
             index=idx,
             name=step_name,
@@ -90,6 +113,8 @@ async def executor_node(state: AutonomousAgentState, config: RunnableConfig) -> 
             duration_ms=duration_ms,
             status="failed",
             error=str(exc),
+            screenshot_url=shot_url,
+            screenshot_file=shot_file,
         )
         failures = list(state.get("failures_encountered") or [])
         failure_type = "selector_not_found" if "timeout" in str(exc).lower() else "step_error"
@@ -99,6 +124,7 @@ async def executor_node(state: AutonomousAgentState, config: RunnableConfig) -> 
                 "step_index": idx,
                 "step": step,
                 "error": str(exc),
+                "screenshot_url": shot_url,
             }
         )
         ctx.log_action("step_failed", step=step_name, error=str(exc), duration_ms=duration_ms)

@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/network/json_lists.dart';
 
 class ProfilesRepository {
   ProfilesRepository(this._api);
@@ -7,19 +8,28 @@ class ProfilesRepository {
 
   Future<List<Map<String, dynamic>>> listConfigs() async {
     final res = await _api.get('/api/configs');
-    final data = res.data;
-    if (data is Map && data['items'] is List) {
-      return (data['items'] as List)
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
-    }
-    if (data is List) {
-      return data
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
-    }
-    return [];
+    return mapList(res.data, keys: const ['configs', 'profiles', 'items']);
+  }
+
+  Future<Map<String, dynamic>> getConfig(String id) async {
+    final res = await _api.get('/api/configs/$id');
+    return asMap(res.data);
+  }
+
+  Future<Map<String, dynamic>> createConfig(Map<String, dynamic> body) async {
+    final res = await _api.post('/api/configs', data: body);
+    return asMap(res.data);
+  }
+
+  Future<Map<String, dynamic>> updateConfig(
+    String id,
+    Map<String, dynamic> body,
+  ) async {
+    final res = await _api.put('/api/configs/$id', data: body);
+    return asMap(res.data);
+  }
+
+  Future<void> deleteConfig(String id) async {
+    await _api.delete('/api/configs/$id');
   }
 }

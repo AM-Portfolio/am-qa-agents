@@ -7,15 +7,17 @@ Formerly the SPT load portal (`am-spt-poc`); same deploy path, broader capabilit
 ## Quick start (local portal — preferred for UI work)
 
 ```powershell
-cd F:\am-repos\am-repos\am-agents\poc\spt
+cd F:\am-repos\am-repos\am-qa-agents\qa-backend\api-load
 .\scripts\run-local.ps1
 ```
 
-1. Opens **http://localhost:8150/ui** (uvicorn `--reload` — edit HTML/Python and refresh)
+1. Opens **http://localhost:8150/ui** (HTML by default; uvicorn `--reload`)
 2. Uses `.env` for identity login; set `DEFAULT_ENVIRONMENT=dev` (product URLs derive from it)
-3. Use **APIs** to pick endpoints (default = all), **Run test**, **Stop** to cancel a live run
-4. Click an API for Postman-style request/response (debug profile for full traces)
-5. For **Playwright UI**: set header **UI (Playwright)**, pick a flow via **Browse flows**. Local: `SPT_UI_TEST_AGENT_URL=http://localhost:8130`. Cluster: derived as `https://{host}/ui-test` from `APP_ENV`.
+3. **Flutter portal (recommended for operator work):** see [`qa-portal-ui`](../../qa-portal-ui/) — `flutter run` with `API_BASE`, or build web + `SPT_PORTAL_FLUTTER=true`
+4. Use **APIs** / Execute to pick a profile, **Run test**, **Stop** to cancel a live run
+5. For **Playwright UI**: set type **Playwright**, pick a flow. Local: `SPT_UI_TEST_AGENT_URL=http://localhost:8130`. Cluster: derived as `https://{host}/ui-test` from `APP_ENV`.
+
+**Flutter cutover:** set `SPT_PORTAL_FLUTTER=true` and `SPT_PORTAL_FLUTTER_DIR` to `qa-portal-ui/build/web` (see `.env.example`). Docker: `Dockerfile.flutter-artifact` or `Dockerfile.flutter-sdk`.
 
 **Cluster env:** Helm only needs `APP_ENV` + `ROOT_PATH` — analysis/identity/ui-test URLs are derived (see [docs/DEPLOY.md](../../docs/DEPLOY.md)).
 

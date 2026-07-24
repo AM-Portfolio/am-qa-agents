@@ -17,6 +17,18 @@ abstract final class AppRoutes {
 GoRouter createPortalRouter() {
   return GoRouter(
     initialLocation: AppRoutes.runs,
+    redirect: (context, state) {
+      final base = Uri.base.queryParameters;
+      final run = base['run'];
+      if (run != null && run.isNotEmpty && state.matchedLocation == AppRoutes.runs) {
+        return '/runs/$run';
+      }
+      final config = base['config'];
+      if (config != null && config.isNotEmpty && state.matchedLocation == AppRoutes.runs) {
+        return '/profiles?config=$config';
+      }
+      return null;
+    },
     routes: [
       ShellRoute(
         builder: (context, state, child) => OperatorShell(child: child),

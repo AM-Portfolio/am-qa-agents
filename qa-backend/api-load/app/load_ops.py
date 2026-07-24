@@ -13,11 +13,22 @@ ProgressCb = Callable[[dict[str, Any]], None]
 
 async def platform_health() -> dict[str, Any]:
     out: dict[str, Any] = {
+        "status": "ok",
         "k6_binary": __import__("pathlib").Path(settings.k6_bin).is_file(),
         "influxdb": {"configured": bool(settings.influxdb_token), "url": settings.influxdb_url},
-        "minio": {"configured": bool(settings.minio_access_key), "bucket": settings.minio_bucket},
+        "minio": {
+            "configured": bool(settings.minio_access_key),
+            "bucket": settings.minio_bucket,
+            "console_url": settings.minio_public_console_url,
+        },
+        "minio_console_url": settings.minio_public_console_url,
         "grafana_url": settings.grafana_public_url,
         "testkube": {"enabled": settings.testkube_enabled, "url": settings.testkube_api_url},
+        "operator": {
+            "user_id": settings.spt_user_id,
+            "email": settings.spt_auth_username,
+            "display_name": (settings.spt_user_id or settings.spt_auth_username or "Operator").split("@")[0],
+        },
     }
     if settings.testkube_enabled:
         try:

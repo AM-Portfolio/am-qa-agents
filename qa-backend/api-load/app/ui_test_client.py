@@ -191,5 +191,20 @@ async def fetch_trace_zip(test_id: str) -> bytes | None:
         return r.content
 
 
+async def fetch_screenshot(test_id: str, filename: str) -> bytes | None:
+    """Download a per-step evidence PNG from ui-test-agent."""
+    name = str(filename).rsplit("/", 1)[-1].strip()
+    if not name or ".." in name or "/" in name or "\\" in name:
+        return None
+    if not name.lower().endswith(".png"):
+        return None
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        r = await client.get(f"{_base()}/api/v1/test/screenshot/{test_id}/{name}")
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        return r.content
+
+
 def agent_report_html_url(test_id: str) -> str:
     return f"{_base()}/api/v1/test/report/{test_id}"

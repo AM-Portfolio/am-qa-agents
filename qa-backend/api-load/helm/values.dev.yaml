@@ -23,3 +23,6 @@ env:
   LOG_LEVEL: INFO
   ROOT_PATH: /spt-poc
   DEFAULT_ENVIRONMENT: dev
+  # Flutter SPA cutover (after `npm run build:cluster` + image with /portal-flutter):
+  # SPT_PORTAL_FLUTTER: "true"
+  # SPT_PORTAL_FLUTTER_DIR: /portal-flutter

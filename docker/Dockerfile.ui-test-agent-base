@@ -1,6 +1,7 @@
 # Heavy runtime for am-ui-test-agent — rebuild when this file or
 # qa-backend/ui-evidence/requirements.txt changes. Build from monorepo root.
-FROM mcr.microsoft.com/playwright/python:v1.49.1-jammy
+# Keep base tag aligned with playwright== in requirements.txt.
+FROM mcr.microsoft.com/playwright/python:v1.60.0-jammy
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

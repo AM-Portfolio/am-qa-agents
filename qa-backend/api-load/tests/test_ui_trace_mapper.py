@@ -18,6 +18,7 @@ def test_map_step_timings_to_traces():
                 "phase": "execute",
                 "duration_ms": 120.5,
                 "status": "ok",
+                "screenshot_url": "/api/v1/test/screenshot/abc/step_001.png",
             },
             {
                 "index": 2,
@@ -38,6 +39,8 @@ def test_map_step_timings_to_traces():
     assert traces[0]["method"] == "CLICK"
     assert traces[0]["checks_passed"] is True
     assert traces[0]["timings"]["duration_ms"] == 120.5
+    assert traces[0]["screenshot_url"] == "/api/v1/test/screenshot/abc/step_001.png"
+    assert "screenshot_url" not in traces[1]
     assert len(index) == 2
     assert summary["kind"] == "profile"
     assert summary["ui_test_id"] == "abc"

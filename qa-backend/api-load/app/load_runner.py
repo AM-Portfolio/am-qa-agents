@@ -37,6 +37,7 @@ from app.ui_test_client import (
     fetch_report_html,
     fetch_report_json,
     fetch_report_pdf,
+    fetch_screenshot,
     fetch_trace_zip,
     poll_until_done,
     start_profile,
@@ -392,15 +393,47 @@ async def _run_ui_test_agent(
 
     art_dir = Path(settings.data_dir) / "artifacts" / run_id
     art_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy per-step screenshots into SPT artifacts and rewrite URLs for the portal.
+    root = (settings.root_path or "").rstrip("/")
+    for t in traces:
+        if t.get("kind") != "ui_step":
+            continue
+        agent_shot = t.get("screenshot_url")
+        if not agent_shot or "/api/v1/test/screenshot/" not in str(agent_shot):
+            continue
+        fname = str(agent_shot).rsplit("/", 1)[-1]
+        png = await fetch_screenshot(test_id, fname)
+        if not png:
+            continue
+        call_idx = t.get("call_index") or 0
+        local_name = f"ui-step-{int(call_idx):03d}.png"
+        # Defer writing via artifact_files below
+        t["_screenshot_bytes"] = png
+        t["_screenshot_name"] = local_name
+        t["screenshot_url"] = f"{root}/api/runs/{run_id}/artifacts/{local_name}"
+
     traces_path = art_dir / "traces.json"
     index_path = art_dir / "api-index.json"
-    save_traces_file(traces_path, traces)
+    # Strip ephemeral bytes keys before persisting traces.json
+    traces_for_disk: list[dict[str, Any]] = []
+    shot_files: dict[str, bytes] = {}
+    for t in traces:
+        row = dict(t)
+        raw = row.pop("_screenshot_bytes", None)
+        name = row.pop("_screenshot_name", None)
+        if isinstance(raw, (bytes, bytearray)) and name:
+            shot_files[str(name)] = bytes(raw)
+        traces_for_disk.append(row)
+    save_traces_file(traces_path, traces_for_disk)
     save_api_index(index_path, api_index)
+    traces = traces_for_disk
 
     artifact_files: dict[str, bytes] = {
         "traces.json": traces_path.read_bytes(),
         "api-index.json": index_path.read_bytes(),
         "ui-report.json": json.dumps(ui_summary, indent=2, default=str).encode("utf-8"),
+        **shot_files,
     }
     if report:
         artifact_files["ui-report-full.json"] = json.dumps(report, indent=2, default=str).encode(
@@ -433,7 +466,6 @@ async def _run_ui_test_agent(
     # Prefer SPT-hosted HTML so attachments work even when agent is down later
     report_html_url = None
     report_pdf_url = None
-    root = (settings.root_path or "").rstrip("/")
     if html_bytes:
         report_html_url = f"{root}/api/runs/{run_id}/artifacts/ui-report.html"
     else:

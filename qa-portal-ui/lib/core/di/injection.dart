@@ -7,6 +7,8 @@ import '../network/api_client.dart';
 import '../../features/runs/data/runs_repository.dart';
 import '../../features/profiles/data/profiles_repository.dart';
 import '../../features/execute/data/execute_repository.dart';
+import '../../features/specs/data/specs_repository.dart';
+import '../../features/ui_flows/data/ui_flows_repository.dart';
 
 final getIt = GetIt.instance;
 
@@ -54,6 +56,16 @@ Future<void> configureDependencies() async {
   if (!getIt.isRegistered<ExecuteRepository>()) {
     getIt.registerLazySingleton<ExecuteRepository>(
       () => ExecuteRepository(getIt<ApiClient>()),
+    );
+  }
+  if (!getIt.isRegistered<SpecsRepository>()) {
+    getIt.registerLazySingleton<SpecsRepository>(
+      () => SpecsRepository(getIt<ApiClient>()),
+    );
+  }
+  if (!getIt.isRegistered<UiFlowsRepository>()) {
+    getIt.registerLazySingleton<UiFlowsRepository>(
+      () => UiFlowsRepository(getIt<ApiClient>()),
     );
   }
 }

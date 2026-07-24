@@ -1,0 +1,35 @@
+# Multi-stage Flutter + api-load. Build context must include am-modern-ui sibling:
+#   docker build -f am-qa-agents/qa-backend/api-load/Dockerfile.flutter-sdk \
+#     -t am-spt-poc:flutter \
+#     am-repos/   # parent containing am-qa-agents + am-modern-ui
+#
+# Paths inside context:
+#   am-qa-agents/qa-portal-ui
+#   am-qa-agents/qa-backend/api-load
+#   am-modern-ui/
+
+FROM ghcr.io/cirruslabs/flutter:stable AS portal
+WORKDIR /src
+COPY am-qa-agents/qa-portal-ui /src/qa-portal-ui
+COPY am-modern-ui /src/am-modern-ui
+WORKDIR /src/qa-portal-ui
+RUN flutter pub get && flutter build web --release --base-href=/spt-poc/ui/
+
+FROM python:3.12-slim
+WORKDIR /app
+COPY am-qa-agents/qa-backend/api-load/requirements.txt .
+COPY am-qa-agents/qa-backend/api-load/vendor/wheels /wheels
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.txt
+COPY am-qa-agents/qa-backend/api-load/vendor/bin/k6 /usr/local/bin/k6
+RUN chmod +x /usr/local/bin/k6 || true
+COPY am-qa-agents/qa-backend/api-load/app/ app/
+COPY am-qa-agents/qa-backend/api-load/catalog/ catalog/
+COPY am-qa-agents/qa-backend/api-load/k6/ k6/
+COPY am-qa-agents/qa-backend/api-load/playwright/ playwright/
+COPY am-qa-agents/qa-portal-ui /portal-ui
+COPY --from=portal /src/qa-portal-ui/build/web /portal-flutter
+ENV APP_PORT=8150 K6_BIN=/usr/local/bin/k6 DATA_DIR=/data ROOT_PATH=/spt-poc \
+    SPT_PORTAL_UI_DIR=/portal-ui SPT_PORTAL_FLUTTER_DIR=/portal-flutter SPT_PORTAL_FLUTTER=true \
+    PYTHONUNBUFFERED=1
+EXPOSE 8150
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${APP_PORT}"]

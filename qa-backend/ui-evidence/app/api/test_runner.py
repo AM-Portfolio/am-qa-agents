@@ -407,3 +407,17 @@ async def get_test_trace_zip(testId: str):
         media_type="application/zip",
         filename=f"{testId}-trace.zip",
     )
+
+
+@router.get("/screenshot/{testId}/{filename}")
+async def get_step_screenshot(testId: str, filename: str):
+    """Serve per-step browser evidence PNG captured during execution."""
+    safe = Path(filename).name
+    if safe != filename or ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid screenshot name")
+    if not safe.lower().endswith(".png"):
+        raise HTTPException(status_code=400, detail="Only PNG screenshots are served")
+    path = Path(settings.REPORT_DIR) / "screenshots" / testId / safe
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Screenshot not found")
+    return FileResponse(path, media_type="image/png", filename=safe)

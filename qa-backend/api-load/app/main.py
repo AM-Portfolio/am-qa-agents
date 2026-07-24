@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Body, FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -36,6 +37,11 @@ from app.payload_store import (
     save_payload,
     set_active_payload_set,
     upsert_api_in_payload_set,
+)
+from app.portal_paths import (
+    flutter_portal_available,
+    portal_flutter_web_dir,
+    portal_static_dir,
 )
 from app.runners import process_registry
 from app.run_store import (
@@ -77,13 +83,35 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-from app.portal_paths import portal_static_dir
-
 _STATIC_DIR = portal_static_dir()
-app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+if _STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 app.include_router(platform_router)
+# Flutter web on another origin (e.g. localhost:8151 → :8150) needs CORS.
+# Cluster traffic is same-origin via Traefik; local allow-list is for portal dev.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8151",
+        "http://127.0.0.1:8151",
+        "http://localhost:8150",
+        "http://127.0.0.1:8150",
+    ],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.add_middleware(AclMiddleware)
 mount_mcp(app)
+
+_FLUTTER_DIR = portal_flutter_web_dir() if settings.spt_portal_flutter else None
+if _FLUTTER_DIR is not None:
+    app.mount(
+        "/ui",
+        StaticFiles(directory=str(_FLUTTER_DIR), html=True),
+        name="flutter_ui",
+    )
 
 
 @app.on_event("startup")
@@ -124,9 +152,22 @@ async def root() -> RedirectResponse:
     return RedirectResponse(url=f"{prefix}/ui")
 
 
-@app.get("/ui", include_in_schema=False, response_class=HTMLResponse)
-async def dashboard_ui() -> HTMLResponse:
+@app.get("/ui", include_in_schema=False)
+async def dashboard_ui():
+    # Flutter StaticFiles is mounted at /ui when enabled + build present.
+    if settings.spt_portal_flutter and flutter_portal_available():
+        prefix = settings.root_path.rstrip("/") if settings.root_path else ""
+        return RedirectResponse(url=f"{prefix}/ui/")
     return HTMLResponse(render_portal())
+
+
+@app.get("/api/portal/mode", include_in_schema=False)
+async def portal_mode() -> dict[str, Any]:
+    return {
+        "flutter_enabled": bool(settings.spt_portal_flutter),
+        "flutter_available": flutter_portal_available(),
+        "flutter_dir": str(portal_flutter_web_dir() or ""),
+    }
 
 
 @app.get("/api/runs")

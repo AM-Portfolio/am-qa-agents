@@ -60,6 +60,8 @@ class TestRunContext:
         duration_ms: float,
         status: str = "ok",
         error: str | None = None,
+        screenshot_url: str | None = None,
+        screenshot_file: str | None = None,
     ) -> None:
         row: dict[str, Any] = {
             "index": index + 1,
@@ -71,6 +73,10 @@ class TestRunContext:
         }
         if error:
             row["error"] = error
+        if screenshot_url:
+            row["screenshot_url"] = screenshot_url
+        if screenshot_file:
+            row["screenshot_file"] = screenshot_file
         self.step_timings.append(row)
 
 
