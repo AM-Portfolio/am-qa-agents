@@ -1,6 +1,6 @@
-# Heavy runtime for am-ui-test-agent — rebuild when this file or
-# qa-backend/ui-evidence/requirements.txt changes. Build from monorepo root.
-# Keep base tag aligned with playwright== in requirements.txt.
+# Heavy runtime for ui_evidence — rebuild when this file or
+# qa-agent/requirements/ui-evidence.txt changes. Build from monorepo root.
+# Keep base tag aligned with playwright== in requirements.
 FROM mcr.microsoft.com/playwright/python:v1.60.0-jammy
 
 ENV PYTHONUNBUFFERED=1 \
@@ -19,5 +19,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends tzdata \
     && echo $TZ > /etc/timezone \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements/ui-evidence.txt .
-RUN pip install --no-cache-dir -r ui-evidence.txt
+COPY qa-agent/requirements/ui-evidence.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt

@@ -1,15 +1,25 @@
 # Unified layout
 
-Python lives in **flat repo-root packages** (no `src/am_qa_agents/`):
+```text
+am-qa-agents/
+├── qa-agent/              # ALL related backend (SPT + release-gate)
+│   ├── composition/       # one process: HTTP + Temporal worker
+│   ├── gateway/
+│   ├── orchestrator/
+│   ├── intelligence/
+│   ├── learning/
+│   ├── adapters/
+│   ├── stores/
+│   ├── spt/               # former api-load
+│   ├── common/
+│   ├── registry/, config/, catalog/
+│   ├── helm/, Dockerfile
+│   └── tests/, scripts/
+├── ui_evidence/           # kept as-is (separate package)
+├── qa-portal-ui/
+├── bkp/                   # legacy qa-backend backup — ZERO deps on live code
+└── docs/
+```
 
-- `composition/` — one process entry (`am-qa-agents` CLI): HTTP + Temporal worker
-- `gateway/` — release-gate HTTP
-- `orchestrator/` — Temporal workflows/activities
-- `intelligence/`, `learning/`, `adapters/`, `stores/`, `observability/`
-- `spt/` — former api-load
-- `ui_evidence/` — former ui-evidence
-- `common/env_urls.py` — shared URL helpers
-
-Deploy: **one Pod, one container** (`Dockerfile` + `helm/`).
-
-Legacy trees under `qa-backend/` are stubs pointing at the new packages.
+- Live imports use `PYTHONPATH=qa-agent:.`
+- `bkp/` must never be imported by `qa-agent` or `ui_evidence`

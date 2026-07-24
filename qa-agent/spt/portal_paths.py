@@ -7,7 +7,7 @@ from pathlib import Path
 
 def _repo_root_from_app() -> Path:
     # app → api-load → qa-backend → am-qa-agents
-    return Path(__file__).resolve().parents[1]
+    return Path(__file__).resolve().parents[2]
 
 
 def portal_ui_root() -> Path:
