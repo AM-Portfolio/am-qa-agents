@@ -8,7 +8,7 @@ Remote: https://github.com/AM-Portfolio/am-qa-agents
 
 | Package | Role |
 |---------|------|
-| [`qa-portal-ui/`](qa-portal-ui/) | Light HTML/JS **operator** portal (SPT `/ui`) — not Flutter, not product UI |
+| [`qa-portal-ui/`](qa-portal-ui/) | Operator portal: **Flutter** (design system) + legacy HTML until cutover |
 | [`qa-backend/`](qa-backend/) | Complete backend QA engines |
 
 ### Backend modules
@@ -24,17 +24,14 @@ Remote: https://github.com/AM-Portfolio/am-qa-agents
 ## Local
 
 ```powershell
-# API load + portal
+# API load (still serves HTML /ui)
 cd qa-backend\api-load
 .\scripts\run-local.ps1   # http://localhost:8150/ui
 
-# Playwright evidence
-cd qa-backend\ui-evidence
-# see module README
-
-# Release gate
-cd qa-backend\release-gate
-# see module README / docs/LOCAL_RUN.md
+# Flutter operator portal (design system)
+cd ..\..\qa-portal-ui
+flutter pub get
+flutter run -d chrome --web-port=8151 --dart-define=API_BASE=http://localhost:8150
 ```
 
 ## CI

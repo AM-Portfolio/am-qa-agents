@@ -1,0 +1,53 @@
+name: Publish — qa-portal-ui
+
+on:
+  push:
+    branches: ["main", "develop", "feature/**"]
+    paths:
+      - "qa-portal-ui/**"
+      - ".github/workflows/qa-portal-ui.yml"
+  pull_request:
+    branches: ["main", "develop"]
+    paths:
+      - "qa-portal-ui/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Analyze + build web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout am-qa-agents
+        uses: actions/checkout@v4
+        with:
+          path: am-qa-agents
+
+      - name: Checkout am-modern-ui (design system)
+        uses: actions/checkout@v4
+        with:
+          repository: AM-Portfolio/am-modern-ui
+          path: am-modern-ui
+          token: ${{ secrets.GITHUB_PAT || secrets.GITHUB_TOKEN }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Pub get
+        working-directory: am-qa-agents/qa-portal-ui
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: am-qa-agents/qa-portal-ui
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build web
+        working-directory: am-qa-agents/qa-portal-ui
+        run: flutter build web --release --base-href=/spt-poc/ui/
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-portal-ui-web
+          path: am-qa-agents/qa-portal-ui/build/web

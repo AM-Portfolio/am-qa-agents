@@ -1,0 +1,60 @@
+import 'package:go_router/go_router.dart';
+
+import '../../features/profiles/presentation/pages/profiles_page.dart';
+import '../../features/runs/presentation/pages/run_detail_page.dart';
+import '../../features/runs/presentation/pages/runs_page.dart';
+import '../../features/shell/presentation/pages/operator_shell.dart';
+import '../../features/specs/presentation/pages/specs_page.dart';
+import '../../features/ui_flows/presentation/pages/ui_flows_page.dart';
+
+abstract final class AppRoutes {
+  static const runs = '/runs';
+  static const profiles = '/profiles';
+  static const specs = '/specs';
+  static const uiFlows = '/ui-flows';
+}
+
+GoRouter createPortalRouter() {
+  return GoRouter(
+    initialLocation: AppRoutes.runs,
+    routes: [
+      ShellRoute(
+        builder: (context, state, child) => OperatorShell(child: child),
+        routes: [
+          GoRoute(
+            path: AppRoutes.runs,
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: RunsPage(),
+            ),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => RunDetailPage(
+                  runId: state.pathParameters['id']!,
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: AppRoutes.profiles,
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: ProfilesPage(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.specs,
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: SpecsPage(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.uiFlows,
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: UiFlowsPage(),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
