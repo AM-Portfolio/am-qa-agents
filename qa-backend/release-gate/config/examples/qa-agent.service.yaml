@@ -1,0 +1,8 @@
+# Per-service opt-in (lives next to observability.yaml in the product repo).
+# Example path: am-core-services/services/am-analysis/qa-agent.yaml
+apiVersion: am.qa/v1
+kind: ReleaseReadiness
+service: am-analysis
+enabled: true
+branches: [master, main]
+environment: dev

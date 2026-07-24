@@ -1,0 +1,18 @@
+flowchart TB
+  subgraph deterministic [Deterministic no LLM]
+    D1[ingest classify sync impact]
+    D2[LoadContext gate execute]
+    D3[observe post_verify]
+    D4[matrix SoT graph + load-rules]
+  end
+  subgraph llm [LLM max 3 calls]
+    L1[qa-change-intent advisory]
+    L2[qa-test-spec-enrich optional]
+    L3[qa-release-analysis]
+  end
+  subgraph human [HITL release only]
+    H1[approve.release reject.release]
+    H2[PDF preview]
+    H3[learning never auto-promote]
+  end
+  deterministic --> llm --> human

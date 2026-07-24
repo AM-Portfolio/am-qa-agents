@@ -1,0 +1,5 @@
+flowchart LR
+  P0[Phase 0 MVP webhook smoke Cliq] --> P1[Phase 1 sync LoadContext fin-agent]
+  P1 --> P2[Phase 2 ChangeIntent verify LLM PDF]
+  P2 --> P3[Phase 3 full matrix ranker episodes]
+  P3 --> P4[Phase 4 HITL learning SAST]

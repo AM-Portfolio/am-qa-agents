@@ -1,0 +1,16 @@
+flowchart LR
+  H[H observe collect] --> CMP[comparison pack]
+  CMP --> H2[H2 post_test_verify]
+  H2 --> B[ReleaseEvidenceBundle]
+  B --> I[I LLM code+infra narrative]
+  I --> I2[I2 PDF dossier]
+  I2 --> J[J notify]
+  J --> K[K HITL]
+
+  subgraph pack [Baseline vs run]
+    E[endpoint p50 p95 p99 errors RPS]
+    R[CPU RAM OOM restarts]
+    P[pod events CrashLoop]
+    U[users 5xx auth]
+  end
+  CMP --- pack

@@ -1,0 +1,16 @@
+flowchart TB
+  intake[qa-route resolve repos] --> req[request_index Job]
+  req --> poll{index_ready?}
+  poll -->|yes| L0[L0 full MCP]
+  poll -->|timeout| degraded[gnx_mode degraded]
+  subgraph ownedByCI [Owned by code-intelligence NOT qa-agent]
+    sync[tarball analyze repair-fts group sync]
+  end
+  req -.-> sync
+  sync -.-> poll
+  degraded --> L1[L1 GitHub compare]
+  L1 --> L2[L2 hub capabilities]
+  L2 --> L3[L3 smoke-defaults]
+  L0 --> gate[intelligence_gate]
+  L3 --> gate
+  gate --> banner[HITL degraded banner]

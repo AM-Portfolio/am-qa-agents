@@ -1,0 +1,6 @@
+# Flake quarantine — tagged failures become GO_WITH_CAVEATS instead of NO_GO
+known_failures: []
+# Example:
+# - id: market-heatmap-empty-preprod
+#   profile: MARKET_SMOKE_FLOW
+#   reason: heatmap empty state intermittent on preprod weekends

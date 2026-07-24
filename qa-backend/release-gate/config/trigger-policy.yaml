@@ -1,0 +1,7 @@
+# CI merge allowlist (pilot). default deny for trigger_kind=ci_master_merge.
+# Manual / webhook triggers are not gated by this file.
+default: deny
+repos:
+  - name: am-core-services
+    branches: [master, main]
+    services: [am-analysis]

@@ -1,0 +1,19 @@
+flowchart LR
+  subgraph owns [OWNS]
+    O1[ReleaseReadinessWorkflow]
+    O2[GitHub thin edge]
+    O3[registry + env configs]
+    O4[evidence_policy + ChangeIntent]
+    O5[A2A adapters + WorkflowLedger]
+    O6[PDF templates + gated learning]
+    O7[request await index ready only]
+  end
+  subgraph notowns [DOES NOT OWN]
+    N1[fin-agent MetaEngine]
+    N2[ui-test Playwright]
+    N3[tool-agent plugins]
+    N4[GitNexus sync index Jobs code-intelligence]
+    N5[GitNexus serve analyze FTS embeddings]
+    N6[dev-agent fixes]
+    N7[prompts in Python / secrets in LoadContext]
+  end

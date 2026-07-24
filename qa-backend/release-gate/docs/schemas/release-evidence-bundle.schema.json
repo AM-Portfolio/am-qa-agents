@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qa-agent.local/schemas/release-evidence-bundle.schema.json",
+  "title": "ReleaseEvidenceBundle",
+  "type": "object",
+  "required": ["release_evidence_id", "tracking_id", "verification"],
+  "properties": {
+    "release_evidence_id": { "type": "string" },
+    "tracking_id": { "type": "string" },
+    "gnx_mode": { "type": "string" },
+    "change": { "type": "object" },
+    "matrix": { "type": "object" },
+    "tests": { "type": "object" },
+    "comparisons": { "type": "object" },
+    "security": { "type": "object" },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "verified": { "type": "boolean" },
+        "releasable": { "type": "boolean" },
+        "feature_clean": { "type": "boolean" },
+        "infra_clean": { "type": "boolean" },
+        "blockers": { "type": "array" },
+        "warnings": { "type": "array" }
+      }
+    },
+    "analysis": { "type": "object" },
+    "publication": { "type": "object" }
+  }
+}

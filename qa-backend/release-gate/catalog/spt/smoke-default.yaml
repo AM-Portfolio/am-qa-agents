@@ -1,0 +1,11 @@
+# SPT smoke playbook — L3 / docs-only
+id: smoke-default
+name: Smoke default
+priority: 35
+repos: [am-core-services]
+tiers:
+  ui:
+    profile: SMOKE
+  api:
+    scenarios: [health_smoke]
+  flow: []

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="api-base" content="__ROOT_PATH__"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AM Test Agent</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2338bdf8'/%3E%3Cstop offset='100%25' stop-color='%2322c55e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='20' cy='20' r='18' fill='none' stroke='url(%23g)' stroke-width='2'/%3E%3Ccircle cx='20' cy='20' r='7' fill='url(%23g)'/%3E%3Ccircle cx='20' cy='7' r='2.5' fill='%23e8edf4'/%3E%3Ccircle cx='31' cy='26' r='2.5' fill='%23e8edf4'/%3E%3Ccircle cx='9' cy='26' r='2.5' fill='%23e8edf4'/%3E%3C/svg%3E"/>
+  __PORTAL_CSS__
+  <script>
+    window.SPT = {
+      root: "__ROOT_PATH__",
+      grafana: "__GRAFANA_URL__",
+      minio: "__MINIO_CONSOLE__",
+      static: "__STATIC_BASE__",
+      product: "AM Test Agent"
+    };
+    // If opened under a reverse-proxy prefix (/spt-poc/ui) but ROOT_PATH was empty, recover it.
+    (function () {
+      if (window.SPT.root) return;
+      var m = location.pathname.match(/^(\/[^/]+)\/ui\/?$/);
+      if (m) {
+        window.SPT.root = m[1];
+        var meta = document.querySelector('meta[name="api-base"]');
+        if (meta) meta.setAttribute("content", m[1]);
+      }
+    })();
+  </script>
+</head>
+<body class="mode-runs">
+<div id="banner"></div>
+<header>
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="am-agent-g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#38bdf8"/>
+          <stop offset="100%" stop-color="#22c55e"/>
+        </linearGradient>
+      </defs>
+      <circle cx="20" cy="20" r="18" fill="none" stroke="url(#am-agent-g)" stroke-width="1.5" opacity=".55"/>
+      <circle cx="20" cy="20" r="7.5" fill="url(#am-agent-g)" opacity=".95"/>
+      <circle cx="20" cy="6.5" r="2.4" fill="#e8edf4"/>
+      <circle cx="31.5" cy="26.5" r="2.4" fill="#e8edf4"/>
+      <circle cx="8.5" cy="26.5" r="2.4" fill="#e8edf4"/>
+      <path d="M20 12.5 L31 25.2 M20 12.5 L9 25.2 M9 25.2 L31 25.2" fill="none" stroke="#e8edf4" stroke-width="1.2" opacity=".55"/>
+    </svg>
+    <div>
+      <h1>AM Test Agent</h1>
+      <div class="sub">API · UI · load · Playwright · agent-driven suites</div>
+      <div class="health" id="health-bar">checking…</div>
+    </div>
+  </div>
+  <div class="toolbar">
+    <select id="run-config" style="min-width:160px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:.4rem"></select>
+    <select id="run-preset" style="background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:.4rem" onchange="onPresetChange()">
+      <option value="">custom load</option>
+      <option value="smoke">smoke (3 VU / 30s)</option>
+      <option value="load">load (10 VU / 2m)</option>
+      <option value="20u-50" selected>20 users / 50 calls</option>
+      <option value="stress">stress (25 VU / 5m)</option>
+    </select>
+    <div class="load-inputs" title="Shared across all VUs — 20 users × 50 total VU-iterations">
+      <label>VUs</label><input id="run-vus" type="number" min="1" max="50" value="20" oninput="refreshOverrideChip()"/>
+      <label>Calls</label><input id="run-calls" type="number" min="1" max="10000" value="50" oninput="refreshOverrideChip()"/>
+    </div>
+    <div id="audience-load-lock" class="audience-lock" style="display:none"></div>
+    <span id="override-chip" class="override-chip" style="display:none" title="Header values differ from the selected profile">Overriding profile</span>
+    <select id="run-profile" style="background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:.4rem" onchange="onProfileChange(); refreshOverrideChip();" title="load = multi VU/calls with per-call traces. debug = 1 VU × 1 call.">
+      <option value="load" selected>load</option>
+      <option value="debug">debug (1×1)</option>
+    </select>
+    <select id="run-test-type" style="background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:.4rem" onchange="onTestTypeChange()" title="What to run: API load (k6), browser UI (Playwright), or both">
+      <option value="k6" selected>Test: API load (k6)</option>
+      <option value="playwright">Test: UI browser (Playwright)</option>
+      <option value="mixed">Test: API + UI</option>
+    </select>
+    <div id="ui-run-bar" class="ui-run-bar" style="display:none" title="ui-test-agent flows available to run">
+      <span class="ui-agent-chip" id="ui-agent-chip" title="ui-test-agent status">UI agent…</span>
+      <select id="run-ui-mode" onchange="onUiModeChange()" title="Single flow or multi-flow suite">
+        <option value="profile" selected>One flow</option>
+        <option value="suite">Suite</option>
+      </select>
+      <select id="run-ui-profile" title="Pick a deterministic UI flow" onchange="onUiFlowSelectChange()">
+        <option value="">Choose UI flow…</option>
+      </select>
+      <select id="run-ui-suite" style="display:none" title="Multi-flow suite" onchange="onUiFlowSelectChange()">
+        <option value="smoke">smoke</option>
+        <option value="release_gate">release_gate</option>
+      </select>
+      <button type="button" class="secondary" id="btn-ui-flow-picker" onclick="toggleUiFlowPicker()" title="Browse or close UI flow catalog">Browse flows</button>
+      <span class="sub" id="ui-flow-hint"></span>
+    </div>
+    <div id="run-report-formats" class="report-formats" style="display:none" title="Which report attachment formats to generate">
+      <span class="sub">Attach</span>
+      <label><input type="checkbox" data-report-fmt="html" checked/> HTML</label>
+      <label><input type="checkbox" data-report-fmt="pdf" checked/> PDF</label>
+      <label><input type="checkbox" data-report-fmt="json" checked/> JSON</label>
+    </div>
+    <select id="run-openapi-version" style="min-width:200px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:.4rem" title="Which OpenAPI version / env to load APIs from for this run" onchange="onRunOpenApiVersionChange()">
+      <option value="">API version (auto)</option>
+    </select>
+    <button type="button" id="btn-api-picker" class="secondary" onclick="toggleApiPicker()" title="Choose which APIs to run">APIs</button>
+    <button onclick="executeSelected()">Run test</button>
+    <button class="secondary" type="button" id="btn-stop-run" onclick="stopSelectedRun()" style="display:none;background:#7f1d1d;border:1px solid var(--fail)" title="Stop the running k6 test">Stop</button>
+    <button class="secondary" type="button" onclick="toggleSidebar()" id="btn-toggle-sidebar" title="Minimize left sidebar">Hide list</button>
+    <button class="secondary" type="button" onclick="clearSptCacheAndCookies()" title="Clear Test Agent localStorage, cookies, Cache Storage, and server OpenAPI/token caches — then reload">Clear cache</button>
+    <a class="btn secondary" id="grafana-home" href="__GRAFANA_URL__" target="_blank">Grafana ↗</a>
+    <a class="btn secondary" href="__MINIO_CONSOLE__" target="_blank">MinIO ↗</a>
+  </div>
+</header>
+<div id="api-picker" class="api-picker" style="display:none"></div>
+<div id="ui-flow-picker" class="api-picker ui-flow-picker" style="display:none"></div>
+<div class="wrap">
+  <aside class="sidebar" aria-label="Test Agent navigation">
+    <nav class="sidebar-rail" aria-label="Quick nav">
+      <button type="button" class="rail-btn rail-toggle" onclick="toggleSidebar()" title="Expand sidebar" aria-label="Expand sidebar">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+      </button>
+      <div class="rail-sep" role="separator"></div>
+      <button type="button" class="rail-btn" data-mode="runs" id="rail-runs" onclick="railGo('runs')" title="Runs — history &amp; results">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M13 3a9 9 0 1 0 8.94 10h-2.02A7 7 0 1 1 13 5V3l4 3.5L13 10V8a5 5 0 1 0 4.9 4h2.02A7.002 7.002 0 0 1 13 3z"/></svg>
+        <span class="rail-badge" id="rail-runs-count"></span>
+      </button>
+      <button type="button" class="rail-btn" data-mode="configs" id="rail-configs" onclick="railGo('configs')" title="Profiles — saved test presets">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 6a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6zm2 0v12h12V8h-5.17l-2-2H6z"/></svg>
+        <span class="rail-badge" id="rail-configs-count"></span>
+      </button>
+      <button type="button" class="rail-btn" data-mode="specs" id="rail-specs" onclick="railGo('specs')" title="OpenAPI — Swagger contracts">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2zm0 2v11.2l5-2.14 5 2.14V6H7zm2 2h6v2H9V8zm0 4h6v2H9v-2z"/></svg>
+        <span class="rail-badge" id="rail-specs-count"></span>
+      </button>
+      <div class="rail-sep" role="separator"></div>
+      <button type="button" class="rail-btn" onclick="railAction('new-profile')" title="New profile">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z"/></svg>
+      </button>
+      <button type="button" class="rail-btn" onclick="railAction('apis')" title="Pick APIs for run">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/></svg>
+      </button>
+      <button type="button" class="rail-btn" onclick="railAction('ui-flows')" title="Playwright UI flows">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7H5zm3 2h2v2H8V9zm0 4h8v2H8v-2zm4-4h4v2h-4V9z"/></svg>
+      </button>
+      <div class="rail-spacer"></div>
+      <a class="rail-btn" id="rail-grafana" href="__GRAFANA_URL__" target="_blank" rel="noopener" title="Grafana">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 3l7 4v5c0 4.4-3 8.4-7 9.5C8 20.4 5 16.4 5 12V7l7-4zm0 2.2L7 7.5v4.5c0 3.3 2.2 6.3 5 7.3 2.8-1 5-4 5-7.3V7.5l-5-2.3z"/></svg>
+      </a>
+    </nav>
+    <button class="secondary sidebar-toggle" type="button" onclick="toggleSidebar()" title="Minimize sidebar" aria-label="Minimize sidebar">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+    </button>
+    <div class="filters">
+      <div class="tabs">
+        <button class="active" id="tab-runs" onclick="setMode('runs')" title="Run history and results">
+          <span class="tab-chev" id="tab-runs-chev">▾</span>
+          <svg class="tab-ico" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M13 3a9 9 0 1 0 8.94 10h-2.02A7 7 0 1 1 13 5V3l4 3.5L13 10V8a5 5 0 1 0 4.9 4h2.02A7.002 7.002 0 0 1 13 3z"/></svg>
+          <span class="tab-label">Runs</span>
+          <span id="runs-count" class="pill"></span>
+        </button>
+        <button id="tab-configs" onclick="setMode('configs')" title="Saved test profiles">
+          <span class="tab-chev" id="tab-configs-chev">▸</span>
+          <svg class="tab-ico" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M4 6a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6zm2 0v12h12V8h-5.17l-2-2H6z"/></svg>
+          <span class="tab-label">Profiles</span>
+          <span id="configs-count" class="pill"></span>
+        </button>
+        <button id="tab-specs" onclick="setMode('specs')" title="OpenAPI contracts by service">
+          <span class="tab-chev" id="tab-specs-chev">▸</span>
+          <svg class="tab-ico" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2zm0 2v11.2l5-2.14 5 2.14V6H7z"/></svg>
+          <span class="tab-label">OpenAPI</span>
+          <span id="specs-count" class="pill"></span>
+        </button>
+      </div>
+      <div class="filters-runs">
+        <select id="f-profile" onchange="onProfileFilterChange()" title="Filter by run settings profile (kept across tabs)">
+          <option value="">All profiles</option>
+        </select>
+        <input class="flt-runs-only" id="f-run-id" placeholder="Run ID (when no profile)…" title="Exact or prefix run id — use when browsing history without a profile"
+          onkeydown="if(event.key==='Enter'){applyFilters();}" onchange="applyFilters()"/>
+        <select id="f-service" onchange="applyFilters()"><option value="">All services</option></select>
+        <select id="f-env" onchange="applyFilters()"><option value="">All envs</option></select>
+        <select class="flt-runs-only flt-specs-only" id="f-api-version" onchange="applyFilters()" title="OpenAPI / API version">
+          <option value="">API version (auto)</option>
+        </select>
+        <select class="flt-runs-only" id="f-status" onchange="applyFilters()">
+          <option value="">All status</option><option value="passed">passed</option><option value="failed">failed</option><option value="running">running</option><option value="cancelled">cancelled</option>
+        </select>
+        <div class="date-row flt-runs-only">
+          <div class="date-field">
+            <label for="f-from">From</label>
+            <input id="f-from" type="date" title="Started on/after"
+              onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="applyFilters()"/>
+          </div>
+          <div class="date-field">
+            <label for="f-to">To</label>
+            <input id="f-to" type="date" title="Started on/before"
+              onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="applyFilters()"/>
+          </div>
+        </div>
+        <input id="f-q" placeholder="Search…" oninput="applyFilters()"/>
+        <select class="flt-profiles-only" id="f-audience" onchange="refreshConfigs()" title="Profile audience">
+          <option value="">All audiences</option>
+          <option value="developer">developer</option>
+          <option value="agent">agent</option>
+          <option value="ci">ci</option>
+          <option value="shared">shared</option>
+        </select>
+        <button class="secondary flt-profiles-only" style="width:100%" onclick="newConfig()">+ New profile</button>
+      </div>
+    </div>
+    <div class="list" id="sidebar-list"><div class="empty">Loading…</div></div>
+    <div class="list-pager" id="runs-pager" style="display:none"></div>
+  </aside>
+  <main class="main" id="main"><div class="empty">Select a run or configuration.</div></main>
+</div>
+__PORTAL_JS__
+</body>
+</html>

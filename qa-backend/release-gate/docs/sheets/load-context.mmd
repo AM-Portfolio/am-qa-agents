@@ -1,0 +1,10 @@
+flowchart LR
+  c1[environments.yaml] --> res[resolve_load_profile]
+  c2[ui-test targets] --> res
+  c3[credential_refs] --> res
+  c4[fin services] --> res
+  c5[SERVICE overlay] --> res
+  rules[load-rules.yaml] --> lc
+  res --> lc[LoadContext on Ledger]
+  lc --> fin[fin-agent load.services scenarios]
+  lc --> ui[ui-test TestRunRequest]

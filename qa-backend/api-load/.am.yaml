@@ -1,0 +1,8 @@
+# Local amctl identity — matches CI image_name / helm release
+name: am-spt-poc
+release: am-spt-poc
+image: ghcr.io/am-portfolio/am-spt-poc
+runtime: python
+language: python
+dockerfile: Dockerfile
+context: .

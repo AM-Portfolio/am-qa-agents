@@ -1,0 +1,29 @@
+# Grafana / Prometheus panel catalog for observe (§14.2)
+dashboards:
+  - id: qa-services-sli
+    uid: qa-services-sli
+    panels:
+      - metric: http_latency_p95
+        promql: 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=~"$service"}[5m])) by (le, route))'
+      - metric: http_latency_p50
+        promql: 'histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{service=~"$service"}[5m])) by (le, route))'
+      - metric: http_latency_p99
+        promql: 'histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{service=~"$service"}[5m])) by (le, route))'
+      - metric: http_error_rate
+        promql: 'sum(rate(http_requests_total{service=~"$service",code=~"5.."}[5m])) / sum(rate(http_requests_total{service=~"$service"}[5m]))'
+  - id: qa-k8s-resources
+    uid: qa-k8s-resources
+    panels:
+      - metric: cpu_pct_limit
+        promql: 'max(rate(container_cpu_usage_seconds_total{pod=~"$pod"}[5m])) / max(kube_pod_container_resource_limits{resource="cpu",pod=~"$pod"})'
+      - metric: memory_pct_limit
+        promql: 'max(container_memory_working_set_bytes{pod=~"$pod"}) / max(kube_pod_container_resource_limits{resource="memory",pod=~"$pod"})'
+      - metric: pod_restarts
+        promql: 'max(kube_pod_container_status_restarts_total{pod=~"$pod"})'
+service_map:
+  Market Data: { deployment: am-market-data, service: am-market-data }
+  Trade Service: { deployment: am-trade-management-service, service: am-trade-management-service }
+  Analysis Service: { deployment: am-analysis, service: am-analysis }
+  Identity: { deployment: am-identity, service: am-identity }
+  User Management: { deployment: am-user-management, service: am-user-management }
+  Auth Tokens: { deployment: am-auth-tokens, service: am-auth-tokens }

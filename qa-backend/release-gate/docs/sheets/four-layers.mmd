@@ -1,0 +1,21 @@
+flowchart TB
+  subgraph L1 [Triggers]
+    T1[GitHub push PR CI]
+    T2[manual release-readiness]
+    T3[nightly main]
+  end
+  subgraph L2 [Edge thin]
+    E1[StartWorkflow Signal only]
+    E2[WorkflowLedger tracking_id sha env]
+  end
+  subgraph L3 [Temporal qa-agent-v1]
+    W1[ReleaseReadinessWorkflow]
+    W2[intelligence_gate HITL]
+  end
+  subgraph L4 [Ports]
+    P1[Intelligence Episode Catalog Adapters Ledger LLM]
+  end
+  subgraph L5 [Specialists]
+    S1[GitNexus fin-agent ui-test tool-agent dev-agent]
+  end
+  L1 --> L2 --> L3 --> L4 --> L5

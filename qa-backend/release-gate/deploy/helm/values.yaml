@@ -1,0 +1,74 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/am-portfolio/am-qa-agent
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8150
+
+env:
+  QA_AGENT_ENV: "preprod"
+  QA_AGENT_PORT: "8150"
+  TEMPORAL_TASK_QUEUE: "qa-agent-release-v1"
+  QA_AGENT_STORE: "sqlite"
+  QA_AGENT_LLM_ENABLED: "false"
+  QA_AGENT_HITL_AUTO_APPROVE: "false"
+  FIN_AGENT_BASE_URL: "http://am-fin-agent.am-ai.svc.cluster.local:8100"
+  UI_TEST_AGENT_BASE_URL: "http://am-ui-test-agent.am-ai.svc.cluster.local:8130"
+  TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-ai.svc.cluster.local:8141"
+  GNX_MCP_URL: "http://gitnexus-mcp.am-ai.svc.cluster.local:4747"
+  CODE_INTELLIGENCE_INDEX_URL: ""
+  LANGFUSE_HOST: ""
+  OTEL_SERVICE_NAME: "qa-agent"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: "/metrics"
+  prometheus.io/port: "8150"
+
+existingSecret: qa-agent-gateway
+secretKeys:
+  apiToken: QA_AGENT_GATEWAY_TOKEN
+  githubToken: GITHUB_TOKEN
+  githubWebhookSecret: GITHUB_WEBHOOK_SECRET
+  databaseUrl: QA_AGENT_DATABASE_URL
+  langfusePublicKey: LANGFUSE_PUBLIC_KEY
+  langfuseSecretKey: LANGFUSE_SECRET_KEY
+
+persistence:
+  enabled: true
+  size: 2Gi
+  storageClassName: ""
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+worker:
+  enabled: true
+  replicaCount: 1
+  temporal:
+    host: temporal-frontend.temporal.svc.cluster.local:7233
+    namespace: qa-agent
+    taskQueue: qa-agent-release-v1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+rbac:
+  releaseApproverRoles:
+    - release-approver
+    - platform-admin

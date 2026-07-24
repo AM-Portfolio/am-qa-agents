@@ -1,0 +1,48 @@
+name: AM SPT POC Publish
+
+on:
+  push:
+    branches: ["main", "develop", "test/**", "feature/**"]
+    paths:
+      - "qa-backend/api-load/**"
+      - "qa-portal-ui/**"
+  pull_request:
+    branches: ["main", "develop"]
+    paths:
+      - "qa-backend/api-load/**"
+      - "qa-portal-ui/**"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test api-load
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: qa-backend/api-load
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -c "from app.main import app; print(app.title)"
+
+  publish:
+    name: Publish AM SPT POC
+    needs: test
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+    uses: AM-Portfolio/am-pipelines/.github/workflows/central-build-publish.yml@main
+    with:
+      language: python
+      working_directory: qa-backend/api-load
+      image_name: am-spt-poc
+      # Dockerfile COPYs from monorepo root (portal + api-load)
+      build_context: ../..
+      preprod_namespace: load-testing
+      deploy_dev: false
+      deploy_prod: false
+    secrets: inherit

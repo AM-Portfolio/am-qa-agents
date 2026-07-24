@@ -1,0 +1,28 @@
+agents:
+  - agent_id: fin-agent
+    display_name: Finance / Data Prep Agent
+    base_url_env: FIN_AGENT_BASE_URL
+    default_base_url: http://127.0.0.1:8100
+    capabilities:
+      - id: fin.data.prep
+        ops: [execute]
+      - id: fin.api.testing
+        ops: [discover, execute, status]
+
+  - agent_id: ui-test-agent
+    display_name: UI Test Agent
+    base_url_env: UI_TEST_AGENT_BASE_URL
+    default_base_url: http://127.0.0.1:8130
+    capabilities:
+      - id: ui.test.run
+        ops: [execute, status]
+
+  - agent_id: tool-agent
+    display_name: Tool Agent
+    base_url_env: TOOL_AGENT_BASE_URL
+    default_base_url: http://127.0.0.1:8141
+    capabilities:
+      - id: chat.message.send
+        ops: [execute]
+      - id: work-item.create
+        ops: [execute]

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qa-agent.local/schemas/load-context.schema.json",
+  "title": "LoadContext",
+  "type": "object",
+  "required": ["load_context_id", "tracking_id", "environment", "fin", "ui"],
+  "properties": {
+    "load_context_id": { "type": "string" },
+    "tracking_id": { "type": "string" },
+    "environment": { "type": "string" },
+    "docs_only": { "type": "boolean" },
+    "webhook": {
+      "type": "object",
+      "properties": {
+        "repo": { "type": "string" },
+        "branch": { "type": "string" },
+        "head_sha": { "type": "string" },
+        "base_sha": { "type": ["string", "null"] }
+      }
+    },
+    "fin": {
+      "type": "object",
+      "properties": {
+        "services": { "type": "array" },
+        "scenarios": { "type": "array", "items": { "type": "string" } },
+        "impacted_ops": { "type": "array" }
+      }
+    },
+    "ui": {
+      "type": "object",
+      "properties": {
+        "target_url": { "type": "string" },
+        "profile": { "type": "string" },
+        "ui_mode": { "type": "string" },
+        "specification": { "type": "string" }
+      }
+    },
+    "routing": { "type": "object" },
+    "credential_refs": { "type": "object" }
+  }
+}

@@ -1,0 +1,42 @@
+services:
+  - id: am-analysis
+    label: am-analysis
+    public_target_url_dev: "https://am-dev.asrax.in/analysis"
+    public_target_url_preprod: "https://am.asrax.in/analysis"
+    public_target_url_prod: "https://am.asrax.in/analysis"
+  - id: am-portfolio
+    label: am-portfolio
+  - id: am-auth
+    label: am-auth
+  - id: am-core-services
+    label: am-core-services
+  - id: am-market
+    label: am-market
+  - id: am-agents
+    label: am-agents
+  - id: am-modern-ui
+    label: am-modern-ui
+    # SPA origin for Playwright (NOT /analysis — that is the analysis API gateway)
+    default_target_url_dev: "http://localhost:9000"
+    public_target_url_dev: "https://am-dev.asrax.in"
+    public_target_url_preprod: "https://am.asrax.in"
+    public_target_url_prod: "https://am.asrax.in"
+
+environments:
+  - dev
+  - preprod
+  - prod
+
+load_presets:
+  smoke:
+    vus: 3
+    duration: "30s"
+  load:
+    vus: 10
+    duration: "2m"
+  "20u-50":
+    vus: 20
+    iterations: 50
+  stress:
+    vus: 25
+    duration: "5m"

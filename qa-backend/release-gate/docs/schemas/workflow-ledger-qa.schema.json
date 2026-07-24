@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qa-agent.local/schemas/workflow-ledger-qa.schema.json",
+  "title": "WorkflowLedgerQA",
+  "type": "object",
+  "required": ["tracking_id", "workflow_id", "status"],
+  "properties": {
+    "tracking_id": { "type": "string" },
+    "workflow_id": { "type": "string" },
+    "status": { "type": "string" },
+    "route": { "type": ["string", "null"] },
+    "steps": { "type": "object" },
+    "meta": { "type": "object" },
+    "hitl_pending": { "type": ["object", "null"] },
+    "hitl_decision": { "type": ["object", "null"] },
+    "episode_id": { "type": ["string", "null"] },
+    "created_at": { "type": "string" },
+    "updated_at": { "type": "string" }
+  }
+}

@@ -1,0 +1,51 @@
+# repo/path → fin services + ui profile (Phase 1)
+rules:
+  - match:
+      repos: ["am-market"]
+    fin_services: ["Market Data", "Market Data Parser"]
+    scenarios: ["movers_smoke"]
+    ui_profile: null
+    ui_target: null
+
+  - match:
+      repos: ["am-core-services"]
+      paths_any: ["**/analysis/**", "**/trade/**"]
+    fin_services: ["Analysis Service", "Trade Service"]
+    scenarios: []
+    ui_profile: null
+
+  - match:
+      repos: ["am-modern-ui"]
+    fin_services: ["Auth Tokens", "User Management"]
+    scenarios: []
+    ui_profile: AUTH_FLOW_MAIN
+    ui_target: main
+
+  - match:
+      repos: ["am-modern-ui"]
+      paths_any: ["**/portfolio/**", "**/trade/**"]
+    fin_services: ["Auth Tokens", "Trade Service", "Analysis Service"]
+    scenarios: []
+    ui_profile: AUTH_FLOW_PORTFOLIO
+    ui_target: portfolio
+
+  - match:
+      repos: ["am-portfolio", "am-trade-management"]
+    fin_services: ["Trade Service", "Analysis Service"]
+    scenarios: ["portfolio_smoke"]
+    ui_profile: AUTH_FLOW_PORTFOLIO
+    ui_target: portfolio
+
+  - match:
+      paths_any: ["**/*.md", "**/docs/**"]
+    fin_services: []
+    scenarios: []
+    ui_profile: SMOKE
+    ui_target: main
+    docs_only: true
+
+default:
+  fin_services: ["Market Data", "Analysis Service", "Trade Service"]
+  scenarios: []
+  ui_profile: RELEASE_GATE
+  ui_target: main

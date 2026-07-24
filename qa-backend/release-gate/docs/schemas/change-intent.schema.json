@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qa-agent.local/schemas/change-intent.schema.json",
+  "title": "ChangeIntent",
+  "type": "object",
+  "required": ["change_intent_id", "user_goal", "suggested_test_focus", "advisory_only"],
+  "properties": {
+    "change_intent_id": { "type": "string" },
+    "user_goal": { "type": "string" },
+    "affected_user_flows": { "type": "array", "items": { "type": "string" } },
+    "author_stated_scope": { "type": "string" },
+    "risk_hypotheses": { "type": "array", "items": { "type": "string" } },
+    "suggested_test_focus": { "type": "array" },
+    "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+    "advisory_only": { "type": "boolean", "const": true },
+    "provenance": { "type": "object" }
+  }
+}

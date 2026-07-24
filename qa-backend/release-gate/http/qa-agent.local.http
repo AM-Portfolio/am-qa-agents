@@ -1,0 +1,42 @@
+###
+# qa-agent local (REST Client / Cursor)
+# @baseUrl = http://127.0.0.1:8150
+# @token = {{$dotenv QA_AGENT_GATEWAY_TOKEN}}
+###
+
+### health
+GET {{baseUrl}}/health
+
+### release-readiness allow am-analysis (dev)
+POST {{baseUrl}}/v2/workflows/release-readiness
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "repo": "ssd2658/am-core-services",
+  "branch": "master",
+  "head_sha": "deadbeefcafebabe01",
+  "service": "am-analysis",
+  "ci_conclusion": "success",
+  "trigger_kind": "ci_master_merge",
+  "environment": "dev",
+  "assume_ci_success": true,
+  "use_temporal": true
+}
+
+### release-readiness deny am-gateway
+POST {{baseUrl}}/v2/workflows/release-readiness
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "repo": "ssd2658/am-core-services",
+  "branch": "master",
+  "head_sha": "deadbeefcafebabe02",
+  "service": "am-gateway",
+  "ci_conclusion": "success",
+  "trigger_kind": "ci_master_merge",
+  "environment": "dev",
+  "assume_ci_success": true,
+  "use_temporal": true
+}

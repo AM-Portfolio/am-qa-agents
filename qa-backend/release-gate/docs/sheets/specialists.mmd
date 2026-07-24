@@ -1,0 +1,8 @@
+flowchart TB
+  env[environments.yaml load-rules release-policy] --> fac
+  reg[registry agents.yaml] --> fac[composition.build_runtime]
+  fac --> fin[fin-agent :8100 fin.data.prep]
+  fac --> ui[ui-test-agent :8130 ui.test.run]
+  fac --> tool[tool-agent :8141 observe document]
+  fac --> gnx[GitNexus MCP :4747]
+  fac --> dev[dev-agent TBD ticket]

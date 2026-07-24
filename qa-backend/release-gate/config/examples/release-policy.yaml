@@ -1,0 +1,63 @@
+# Phase 2–4 — clean feature + infra gates + matrix tiers + HITL + SAST
+policy:
+  block_on_p0_fail: true
+  block_on_crashloop: true
+  block_on_oom: true
+  warn_on_gnx_degraded: true
+
+  latency:
+    p95_max_delta_pct: 50          # warn above
+    p95_block_delta_pct: 200       # block above
+    p95_max_delta_ms: 500
+
+  resources:
+    cpu_max_pct_limit: 90
+    memory_max_pct_limit: 90
+    max_restart_delta: 2
+
+  errors:
+    max_5xx_delta: 5
+    max_error_log_delta: 20
+
+  users:
+    max_auth_fail_rate_delta: 0.05
+
+  clean_feature:
+    require_p0_pass: true
+    block_on_open_p0_work_item: true
+    warn_on_open_p1_work_item: true
+
+matrix:
+  tier_thresholds:
+    p0: 80
+    p1: 40
+  advisory_boost: 8                # ChangeIntent align only; never alone → P0
+  smoke_floor: 35
+
+hitl:
+  signal_approve: approve.release
+  signal_reject: reject.release
+  timeout_seconds: 86400           # Temporal SLA; inline uses QA_AGENT_HITL_TIMEOUT_SECONDS
+  auto_approve_when_releasable: false
+  disable_auto_when_degraded: true
+  roles: ["release-approver"]
+
+security:
+  mode: sast_first                 # SAST in CI; DAST later
+  block_on_sast_p0: true
+  warn_on_sast_p1: true
+
+llm:
+  enabled_env: QA_AGENT_LLM_ENABLED
+  max_calls_per_run: 3
+
+pdf:
+  store_via: local                 # local | document.store (tool-agent)
+  local_dir: artifacts/pdf
+
+dev_handoff:
+  mode: ticket_only                # never auto-fix until later policy change
+
+learning:
+  score_threshold: 0.7
+  never_auto_promote: true

@@ -1,0 +1,12 @@
+# RELEASE_GATE playbook — main/preprod
+id: release-gate
+name: Release gate
+priority: 80
+repos: [am-core-services]
+tiers:
+  ui:
+    profile: RELEASE_GATE
+  api:
+    scenarios: [health_smoke, contract_smoke]
+  flow:
+    - auth_login

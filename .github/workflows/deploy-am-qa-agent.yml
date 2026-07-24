@@ -1,0 +1,48 @@
+name: Manual Deploy (AM QA Agent)
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag (ghcr.io/am-portfolio/am-qa-agent)"
+        required: true
+        default: "latest"
+        type: string
+      namespace:
+        description: "Kubernetes namespace"
+        required: true
+        default: "am-ai"
+        type: string
+      release_name:
+        description: "Helm release name"
+        required: true
+        default: "qa-agent"
+        type: string
+
+jobs:
+  deploy:
+    name: Deploy am-qa-agent → ${{ github.event.inputs.namespace }}
+    runs-on: self-hosted
+    environment: preprod-am-qa-agent
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_PAT || secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Helm upgrade
+        shell: bash
+        working-directory: qa-backend/release-gate
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.image_tag }}"
+          NS="${{ github.event.inputs.namespace }}"
+          REL="${{ github.event.inputs.release_name }}"
+          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+
+          echo "Deploying ghcr.io/${REPO_OWNER}/am-qa-agent:${TAG} as ${REL} → ${NS}"
+          helm upgrade --install "${REL}" ./deploy/helm \
+            --namespace "${NS}" \
+            --create-namespace \
+            --set "image.repository=ghcr.io/${REPO_OWNER}/am-qa-agent" \
+            --set "image.tag=${TAG}" \
+            --wait --timeout 5m

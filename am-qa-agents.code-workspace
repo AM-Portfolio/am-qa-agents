@@ -1,0 +1,25 @@
+{
+  "folders": [
+    {
+      "name": "qa-portal-ui",
+      "path": "F:/am-repos/am-repos/am-qa-agents/qa-portal-ui"
+    },
+    {
+      "name": "qa-backend/api-load",
+      "path": "F:/am-repos/am-repos/am-qa-agents/qa-backend/api-load"
+    },
+    {
+      "name": "qa-backend/ui-evidence",
+      "path": "F:/am-repos/am-repos/am-qa-agents/qa-backend/ui-evidence"
+    },
+    {
+      "name": "qa-backend/release-gate",
+      "path": "F:/am-repos/am-repos/am-qa-agents/qa-backend/release-gate"
+    },
+    {
+      "name": "am-qa-agents",
+      "path": "F:/am-repos/am-repos/am-qa-agents"
+    }
+  ],
+  "settings": {}
+}
