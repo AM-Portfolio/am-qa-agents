@@ -8,8 +8,8 @@ import yaml
 
 from ui_evidence.config import settings
 
-_CATALOG = Path(__file__).resolve().parents[3] / "qa-agent" / "catalog" / "ui" / "test_data.yaml"
-_FIXTURES = Path(__file__).resolve().parents[3] / "qa-agent" / "catalog" / "ui" / "fixtures"
+_CATALOG = Path(__file__).resolve().parents[3] / "catalog" / "ui" / "test_data.yaml"
+_FIXTURES = Path(__file__).resolve().parents[3] / "catalog" / "ui" / "fixtures"
 
 
 def load_test_data() -> dict[str, Any]:

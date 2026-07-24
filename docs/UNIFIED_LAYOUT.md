@@ -2,24 +2,22 @@
 
 ```text
 am-qa-agents/
-├── qa-agent/              # ALL related backend (SPT + release-gate)
-│   ├── composition/       # one process: HTTP + Temporal worker
-│   ├── gateway/
+├── qa-agent/              # ONE backend tree
+│   ├── composition/       # HTTP + Temporal worker
+│   ├── gateway/           # release-gate HTTP
 │   ├── orchestrator/
 │   ├── intelligence/
 │   ├── learning/
 │   ├── adapters/
-│   ├── stores/
 │   ├── spt/               # former api-load
+│   ├── ui_evidence/       # Playwright UI agent
 │   ├── common/
 │   ├── registry/, config/, catalog/
 │   ├── helm/, Dockerfile
 │   └── tests/, scripts/
-├── ui_evidence/           # kept as-is (separate package)
 ├── qa-portal-ui/
-├── bkp/                   # legacy qa-backend backup — ZERO deps on live code
+├── bkp/                   # legacy — ZERO deps
 └── docs/
 ```
 
-- Live imports use `PYTHONPATH=qa-agent:.`
-- `bkp/` must never be imported by `qa-agent` or `ui_evidence`
+Live imports: `PYTHONPATH=qa-agent`.

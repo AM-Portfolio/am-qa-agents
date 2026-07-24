@@ -1,4 +1,4 @@
-# Unified QA agent image (SPT + release-gate). ui_evidence stays a sibling package.
+# Unified QA agent — one tree: SPT + UI evidence + release-gate
 ARG BASE_IMAGE=ghcr.io/am-portfolio/am-ui-test-agent-base:latest
 FROM ${BASE_IMAGE}
 
@@ -6,7 +6,7 @@ WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH=/app/qa-agent:/app \
+    PYTHONPATH=/app/qa-agent \
     APP_PORT=8150 \
     QA_AGENT_PORT=8150 \
     QA_AGENT_COLOCATED=1 \
@@ -16,7 +16,6 @@ ENV PYTHONUNBUFFERED=1 \
 
 COPY pyproject.toml README.md ./
 COPY qa-agent qa-agent/
-COPY ui_evidence ui_evidence/
 COPY qa-portal-ui qa-portal-ui/
 
 RUN pip install --no-cache-dir ".[temporal,pdf,otel]" \
