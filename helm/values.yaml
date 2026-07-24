@@ -1,0 +1,79 @@
+# One Deployment / one container — SPT + UI evidence + release-gate + Temporal worker
+replicaCount: 1
+
+image:
+  repository: ghcr.io/am-portfolio/am-qa-agents
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8150
+
+# Traefik: point BOTH /spt-poc and /ui-test at this Service (strip prefixes).
+# QA_AGENT_BASE_URL should also target this Service for /v2/* notify.
+
+env:
+  QA_AGENT_ENV: "preprod"
+  APP_ENV: "preprod"
+  APP_PORT: "8150"
+  QA_AGENT_PORT: "8150"
+  QA_AGENT_COLOCATED: "1"
+  QA_AGENT_WORKER_ENABLED: "1"
+  ROOT_PATH: "/spt-poc"
+  TEMPORAL_TASK_QUEUE: "qa-agent-release-v1"
+  TEMPORAL_HOST: "temporal-frontend.temporal.svc.cluster.local:7233"
+  TEMPORAL_NAMESPACE: "qa-agent"
+  QA_AGENT_STORE: "sqlite"
+  QA_AGENT_LLM_ENABLED: "false"
+  QA_AGENT_HITL_AUTO_APPROVE: "false"
+  # Loopback — same container
+  SPT_UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
+  UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
+  UI_TEST_AGENT_BASE_URL: "http://127.0.0.1:8150"
+  FIN_AGENT_BASE_URL: "http://am-fin-agent.am-ai.svc.cluster.local:8100"
+  TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-ai.svc.cluster.local:8141"
+  GNX_MCP_URL: "http://gitnexus-mcp.am-ai.svc.cluster.local:4747"
+  LLM_ROUTING: "gateway"
+  HEADLESS: "true"
+  REPORT_DIR: "/data/reports/ui-test"
+  DATA_DIR: "/data/spt"
+  OTEL_SERVICE_NAME: "am-qa-agents"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: "/metrics"
+  prometheus.io/port: "8150"
+
+existingSecret: qa-agent-gateway
+secretKeys:
+  apiToken: QA_AGENT_GATEWAY_TOKEN
+  githubToken: GITHUB_TOKEN
+  githubWebhookSecret: GITHUB_WEBHOOK_SECRET
+  databaseUrl: QA_AGENT_DATABASE_URL
+  langfusePublicKey: LANGFUSE_PUBLIC_KEY
+  langfuseSecretKey: LANGFUSE_SECRET_KEY
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClassName: ""
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+# Worker runs inside the same container via composition.main (not a second Deployment)
+worker:
+  enabled: false
+
+rbac:
+  releaseApproverRoles:
+    - release-approver
+    - platform-admin

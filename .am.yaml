@@ -1,0 +1,3 @@
+name: am-qa-agents
+release: am-qa-agents
+image: ghcr.io/am-portfolio/am-qa-agents

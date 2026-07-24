@@ -4,53 +4,42 @@ Canonical **QA agents monorepo** for AM Portfolio.
 
 Remote: https://github.com/AM-Portfolio/am-qa-agents
 
-## Packages (2)
+## Layout (unified)
+
+Python packages live at **repo root** (flat — no `src/am_qa_agents/`):
 
 | Package | Role |
 |---------|------|
-| [`qa-portal-ui/`](qa-portal-ui/) | Operator portal: **Flutter** (design system) + legacy HTML until cutover |
-| [`qa-backend/`](qa-backend/) | Complete backend QA engines |
+| `composition/` | One-process entry: HTTP + Temporal worker |
+| `gateway/` | Release-gate HTTP (`/v2/*`, webhooks) |
+| `orchestrator/` | Temporal workflows / activities |
+| `intelligence/`, `learning/`, `adapters/`, `stores/` | Release-gate domain |
+| `spt/` | Former api-load (k6, catalog, MCP `/mcp`, portal APIs) |
+| `ui_evidence/` | Former ui-evidence (Playwright agent) |
+| `common/` | Shared `env_urls` |
+| `qa-portal-ui/` | Flutter operator portal |
+| `helm/` + `Dockerfile` | **One pod / one container** |
 
-### Backend modules
+Legacy `qa-backend/*` trees are **thin stubs** only. See [`docs/UNIFIED_LAYOUT.md`](docs/UNIFIED_LAYOUT.md) and [`docs/CONTRACTS.md`](docs/CONTRACTS.md).
 
-| Module | Image / release | Role |
-|--------|-----------------|------|
-| [`qa-backend/api-load`](qa-backend/api-load/) | `am-spt-poc` | k6, OpenAPI payloads, FastAPI APIs; serves portal |
-| [`qa-backend/ui-evidence`](qa-backend/ui-evidence/) | `am-ui-test-agent` | Playwright testing |
-| [`qa-backend/release-gate`](qa-backend/release-gate/) | `am-qa-agent` | Release GO/NO_GO dossier (Temporal) |
-
-**Outside this repo:** product SPA [`am-modern-ui`](../am-modern-ui).
-
-## Local
+## Local (unified backend)
 
 ```powershell
-# API load (serves HTML /ui by default)
-cd qa-backend\api-load
-.\scripts\run-local.ps1   # http://localhost:8150/ui
-
-# Flutter operator portal (design system) — separate Chrome tab
-cd ..\..\qa-portal-ui
-npm run get
-npm run run
+cd am-qa-agents
+pip install -e ".[all]"
+$env:PYTHONPATH = (Get-Location)
+$env:QA_AGENT_WORKER_ENABLED = "0"   # optional: skip Temporal locally
+python -m composition.main           # http://localhost:8150
 ```
 
-To serve the Flutter SPA from api-load instead of HTML:
+Flutter portal (separate):
 
 ```powershell
 cd qa-portal-ui
-npm run build
-# In qa-backend/api-load/.env:
-# SPT_PORTAL_FLUTTER=true
-# SPT_PORTAL_FLUTTER_DIR=../../qa-portal-ui/build/web
+npm run get
+npm run run   # API_BASE=http://localhost:8150
 ```
 
-See [qa-portal-ui/README.md](qa-portal-ui/README.md).
+## Deploy
 
-## CI
-
-GitHub Actions live in [`.github/workflows/`](.github/workflows/) — names match packages (`api-load`, `ui-evidence`, `release-gate`). See [docs/GITHUB_PIPELINES.md](docs/GITHUB_PIPELINES.md).
-
-## Docs
-
-- [docs/PLAN_ORGANIZE_AUTH_GO.md](docs/PLAN_ORGANIZE_AUTH_GO.md) — auth + GO/NO_GO organize plan
-- [docs/GITHUB_PIPELINES.md](docs/GITHUB_PIPELINES.md) — workflow map
+One image `ghcr.io/am-portfolio/am-qa-agents`, chart in `helm/`. Traefik should route both `/spt-poc` and `/ui-test` to the same Service; notify uses `QA_AGENT_BASE_URL` → `/v2/workflows/release-readiness`.

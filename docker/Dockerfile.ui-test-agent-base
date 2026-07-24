@@ -19,5 +19,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends tzdata \
     && echo $TZ > /etc/timezone \
     && rm -rf /var/lib/apt/lists/*
 
-COPY qa-backend/ui-evidence/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements/ui-evidence.txt .
+RUN pip install --no-cache-dir -r ui-evidence.txt

@@ -1,0 +1,48 @@
+# Unified QA backend — one image, one container (Playwright base + k6 + Temporal).
+ARG BASE_IMAGE=ghcr.io/am-portfolio/am-ui-test-agent-base:latest
+FROM ${BASE_IMAGE}
+
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app \
+    APP_PORT=8150 \
+    QA_AGENT_PORT=8150 \
+    QA_AGENT_COLOCATED=1 \
+    QA_AGENT_WORKER_ENABLED=1 \
+    HEADLESS=true \
+    TZ=Asia/Kolkata
+
+# App packages (flat layout)
+COPY pyproject.toml README.md ./
+COPY composition composition/
+COPY common common/
+COPY gateway gateway/
+COPY orchestrator orchestrator/
+COPY intelligence intelligence/
+COPY learning learning/
+COPY adapters adapters/
+COPY stores stores/
+COPY observability observability/
+COPY runtime runtime/
+COPY spt spt/
+COPY ui_evidence ui_evidence/
+COPY registry registry/
+COPY config config/
+COPY catalog catalog/
+COPY k6 k6/
+COPY vendor vendor/
+
+# Optional portal static (built separately)
+COPY qa-portal-ui qa-portal-ui/
+
+RUN pip install --no-cache-dir ".[temporal,pdf,otel]" \
+    && (test -x vendor/bin/k6 && cp vendor/bin/k6 /usr/local/bin/k6 || true)
+
+EXPOSE 8150
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+  CMD curl -f "http://localhost:${APP_PORT}/health" || exit 1
+
+CMD ["am-qa-agents"]
