@@ -24,12 +24,14 @@ Operator portal for **api-load** — Flutter operator UI (design system + featur
 ## Run locally
 
 ```powershell
-# Terminal A — api-load (HTML /ui by default)
-cd ..\qa-backend\api-load
-.\scripts\run-local.ps1
+# Terminal A — unified qa-agent backend
+cd ..\..
+$env:PYTHONPATH = "$(Get-Location)\qa-agent"
+$env:QA_AGENT_WORKER_ENABLED = "0"
+python -m composition.main   # http://localhost:8150
 
 # Terminal B — Flutter (npm wrappers)
-cd ..\..\qa-portal-ui
+cd qa-portal-ui
 npm run get
 npm run run          # chrome :8151 → API http://localhost:8150
 ```

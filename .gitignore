@@ -14,12 +14,16 @@ htmlcov/
 .env.*
 !.env.example
 
-# Runtime (api-load JSON store — not Dart feature data/ folders)
-qa-backend/**/data/
+# Runtime (local stores — not Dart feature data/ folders)
+**/data/
 **/artifacts/
 *.log
 **/vendor/bin/
 *.exe
+
+# Locked local leftovers after legacy tree removal (close Python/.venv then delete)
+/qa-backend/
+/bkp/
 
 # IDE / OS
 .DS_Store

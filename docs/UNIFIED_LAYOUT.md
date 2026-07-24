@@ -16,8 +16,9 @@ am-qa-agents/
 │   ├── helm/, Dockerfile
 │   └── tests/, scripts/
 ├── qa-portal-ui/
-├── bkp/                   # legacy — ZERO deps
 └── docs/
 ```
 
 Live imports: `PYTHONPATH=qa-agent`.
+
+Legacy `qa-backend/` / `bkp/` were removed from the repo (keep your own external backup if needed).

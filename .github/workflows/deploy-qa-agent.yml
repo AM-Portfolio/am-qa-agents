@@ -1,4 +1,4 @@
-name: Deploy — ui-evidence
+name: Deploy — qa-agent
 
 on:
   workflow_dispatch:
@@ -27,11 +27,11 @@ on:
 
 jobs:
   deploy:
-    name: Deploy ui-evidence → ${{ github.event.inputs.environment }}
+    name: Deploy qa-agent → ${{ github.event.inputs.environment }}
     uses: AM-Portfolio/am-pipelines/.github/workflows/central-deploy.yml@main
     with:
-      service_name: "am-ui-test-agent"
-      working_directory: "qa-backend/ui-evidence"
+      service_name: "am-qa-agents"
+      working_directory: "qa-agent"
       language: "python"
       environment: ${{ github.event.inputs.environment }}
       image_tag: ${{ github.event.inputs.image_tag == 'custom' && github.event.inputs.custom_tag || github.event.inputs.image_tag }}

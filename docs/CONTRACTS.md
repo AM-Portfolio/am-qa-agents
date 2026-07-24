@@ -18,5 +18,4 @@
 
 ## Layout
 
-Flat packages at repo root: `gateway/`, `orchestrator/`, `intelligence/`, `spt/`, `ui_evidence/`, `composition/`, …
-`qa-backend/*` retained as thin stubs only.
+All live backend packages live under [`qa-agent/`](../qa-agent/) (`spt/`, `ui_evidence/`, `gateway/`, `orchestrator/`, `composition/`, …).

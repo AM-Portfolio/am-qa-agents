@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def _repo_root_from_app() -> Path:
-    # app → api-load → qa-backend → am-qa-agents
+    # qa-agent/spt → monorepo root (parents[2])
     return Path(__file__).resolve().parents[2]
 
 

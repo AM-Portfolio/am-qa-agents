@@ -1,8 +1,0 @@
-# Local amctl identity — matches CI image_name / helm release
-name: am-qa-agent
-release: qa-agent
-image: ghcr.io/am-portfolio/am-qa-agent
-runtime: python
-language: python
-dockerfile: Dockerfile
-context: .
