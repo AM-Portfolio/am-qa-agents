@@ -42,30 +42,54 @@ class TraceContextFilter(logging.Filter):
             tid, sid = "", ""
         record.trace_id = tid  # type: ignore[attr-defined]
         record.span_id = sid  # type: ignore[attr-defined]
-        record.tracking_id = tracking_id_var.get() or ""  # type: ignore[attr-defined]
+        existing = getattr(record, "tracking_id", None) or ""
+        record.tracking_id = existing or tracking_id_var.get() or ""  # type: ignore[attr-defined]
         return True
+
+
+_EXTRA_KEYS = (
+    "activity",
+    "workflow_id",
+    "workflow_run_id",
+    "activity_id",
+    "attempt",
+    "phase",
+    "event",
+    "domain",
+    "flow",
+    "duration_ms",
+    "target",
+    "callee",
+    "capability",
+    "method",
+    "status",
+    "route",
+)
 
 
 class JsonFormatter(logging.Formatter):
     """am-logging CLS-shaped console JSON (snake_case fields)."""
 
     def format(self, record: logging.LogRecord) -> str:
+        # Prefer ContextVar when logger didn't pass tracking_id in extra
+        track = getattr(record, "tracking_id", None) or tracking_id_var.get() or ""
         payload: dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "service": getattr(record, "service", SERVICE_NAME),
             "trace_id": getattr(record, "trace_id", "") or "",
             "span_id": getattr(record, "span_id", "") or "",
-            "tracking_id": getattr(record, "tracking_id", "") or "",
+            "tracking_id": track,
             "logger": record.name,
             "message": record.getMessage(),
         }
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
-        # Optional extras commonly used in activities
-        for key in ("activity", "workflow_id", "phase", "event"):
+        for key in _EXTRA_KEYS:
             if hasattr(record, key):
-                payload[key] = getattr(record, key)
+                val = getattr(record, key)
+                if val is not None and val != "":
+                    payload[key] = val
         return json.dumps(payload, default=str)
 
 
@@ -73,11 +97,14 @@ class TextFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         tid = getattr(record, "trace_id", "") or "-"
         sid = getattr(record, "span_id", "") or "-"
-        track = getattr(record, "tracking_id", "") or "-"
+        track = getattr(record, "tracking_id", None) or tracking_id_var.get() or "-"
+        domain = getattr(record, "domain", "") or "-"
+        flow = getattr(record, "flow", "") or "-"
         svc = getattr(record, "service", SERVICE_NAME)
         ts = self.formatTime(record, self.datefmt)
         return (
             f"[{ts}] | [{svc}] | [{tid}:{sid}] | [tracking={track}] | "
+            f"[domain={domain}] | [flow={flow}] | "
             f"{record.levelname} | {record.name} | {record.getMessage()}"
         )
 

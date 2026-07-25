@@ -59,10 +59,26 @@ async def wait_for_catalog_service(
     last_ids: list[str] = []
 
     async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
+        from common.observability.domain_flow import outbound_call
+
         while asyncio.get_event_loop().time() < deadline:
             attempts += 1
             try:
-                resp = await client.get(url)
+                # Avoid flooding logs on long polls — first attempt + every 6th.
+                log_call = attempts == 1 or attempts % 6 == 0
+                if log_call:
+                    with outbound_call(
+                        domain="testing",
+                        service="specs-catalog",
+                        method="GET",
+                        url=url,
+                        capability=service,
+                    ) as meta:
+                        resp = await client.get(url)
+                        meta["status"] = str(resp.status_code)
+                        meta["ok"] = resp.status_code < 400
+                else:
+                    resp = await client.get(url)
                 if resp.status_code >= 400:
                     last_err = f"http_{resp.status_code}"
                 else:

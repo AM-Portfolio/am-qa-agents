@@ -240,6 +240,7 @@ def config_from_request(body: TestConfigIn | dict[str, Any]) -> dict[str, Any]:
         "login_mode",
         "baseline_mode",
         "design_review_enabled",
+        "ui_target_url",
         "report_formats",
     ):
         if data.get(key) is not None:

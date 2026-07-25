@@ -10,7 +10,7 @@ environments:
     gnx_index_mode: job
     code_intelligence_index_url: ""
     block_release_if_gnx_down: false
-    default_ui_profile: RELEASE_GATE
+    default_ui_profile: AUTH_FLOW_MAIN
     ui_targets:
       main:
         base_url: https://am-dev.asrax.in
@@ -24,7 +24,7 @@ environments:
   dev:
     branch_patterns: ["master", "main", "develop"]
     inherits: preprod
-    default_ui_profile: RELEASE_GATE
+    default_ui_profile: AUTH_FLOW_MAIN
     credential_refs:
       ui_test: vault://am-apps-dev/ui-test-agent
 

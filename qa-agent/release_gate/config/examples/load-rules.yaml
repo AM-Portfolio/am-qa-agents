@@ -12,5 +12,5 @@ rules:
 default:
   fin_services: []
   scenarios: []
-  ui_profile: RELEASE_GATE
+  ui_profile: AUTH_FLOW_MAIN
   ui_target: main

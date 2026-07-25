@@ -62,7 +62,17 @@ class ReleaseReadinessWorkflow:
         tracking_id = str(args["tracking_id"])
         retry = RetryPolicy(maximum_attempts=3)
         timeout = timedelta(minutes=15)
+        wf_id = workflow.info().workflow_id
 
+        def _phase(phase: str, *, route: str = "", detail: str = "") -> None:
+            msg = f"flow.phase={phase} tracking_id={tracking_id} workflow_id={wf_id}"
+            if route:
+                msg += f" route={route}"
+            if detail:
+                msg += f" {detail}"
+            workflow.logger.info(msg)
+
+        _phase("classify")
         classified = await workflow.execute_activity(
             activity_classify,
             {**args, "trigger": args.get("trigger") or args},
@@ -71,6 +81,7 @@ class ReleaseReadinessWorkflow:
         )
 
         route = classified["route"]
+        _phase("classify", route=route, detail="done")
         load_context: dict[str, Any] = {}
         index: dict[str, Any] = {}
         change_intent: dict[str, Any] = {}
@@ -89,6 +100,7 @@ class ReleaseReadinessWorkflow:
         feedback: dict[str, Any] = {}
 
         if route == "qa-route":
+            _phase("load_profile", route=route)
             load_context = await workflow.execute_activity(
                 activity_resolve_load_profile,
                 {
@@ -106,6 +118,7 @@ class ReleaseReadinessWorkflow:
                 retry_policy=retry,
             )
 
+            _phase("index", route=route)
             index = await workflow.execute_activity(
                 activity_await_index,
                 {
@@ -150,6 +163,7 @@ class ReleaseReadinessWorkflow:
                     retry_policy=retry,
                 )
 
+            _phase("security", route=route)
             security = await workflow.execute_activity(
                 activity_security_scan,
                 {
@@ -163,6 +177,7 @@ class ReleaseReadinessWorkflow:
                 retry_policy=retry,
             )
 
+            _phase("change_intent", route=route)
             change_intent = await workflow.execute_activity(
                 activity_interpret_change_intent,
                 {
@@ -180,6 +195,7 @@ class ReleaseReadinessWorkflow:
                 retry_policy=retry,
             )
 
+            _phase("matrix", route=route)
             matrix = await workflow.execute_activity(
                 activity_build_test_matrix,
                 {
@@ -211,6 +227,7 @@ class ReleaseReadinessWorkflow:
                     ui["specification"] = plan["specification"]
                 load_context = {**load_context, "ui": ui}
 
+            _phase("fin_prep", route=route)
             fin_prep = await workflow.execute_activity(
                 activity_fin_data_prep,
                 {"tracking_id": tracking_id, "load_context": load_context, "index": index},
@@ -218,6 +235,7 @@ class ReleaseReadinessWorkflow:
                 retry_policy=retry,
             )
 
+            _phase("catalog", route=route)
             catalog_ready = await workflow.execute_activity(
                 activity_ensure_catalog_ready,
                 {
@@ -229,6 +247,7 @@ class ReleaseReadinessWorkflow:
                 retry_policy=RetryPolicy(maximum_attempts=1),
             )
 
+            _phase("execute", route=route)
             smoke = await workflow.execute_activity(
                 activity_execute_matrix,
                 {
@@ -248,6 +267,7 @@ class ReleaseReadinessWorkflow:
                 retry_policy=retry,
             )
 
+            _phase("evidence", route=route)
             comparisons = await workflow.execute_activity(
                 activity_collect_comparisons,
                 {"tracking_id": tracking_id, "load_context": load_context},
@@ -285,6 +305,7 @@ class ReleaseReadinessWorkflow:
             )
             bundle["security"] = security
 
+            _phase("analyze", route=route)
             analysis = await workflow.execute_activity(
                 activity_analyze_release,
                 {"tracking_id": tracking_id, "bundle": bundle},
@@ -293,6 +314,7 @@ class ReleaseReadinessWorkflow:
             )
             bundle["analysis"] = analysis
 
+            _phase("publish", route=route)
             publication = await workflow.execute_activity(
                 activity_publish_pdf,
                 {"tracking_id": tracking_id, "bundle": bundle},
@@ -302,6 +324,7 @@ class ReleaseReadinessWorkflow:
             bundle["publication"] = publication
 
             # Phase K — HITL release gate (PDF preview available)
+            _phase("hitl", route=route, detail="awaiting")
             get_ledger().upsert_step(
                 tracking_id,
                 "awaiting_release",
@@ -342,7 +365,9 @@ class ReleaseReadinessWorkflow:
                     "degraded_banner": index.get("gnx_mode") == "degraded",
                 }
             get_ledger().upsert_step(tracking_id, "release_hitl", hitl)
+            _phase("hitl", route=route, detail=str(hitl.get("decision") or "done"))
         else:
+            _phase("dev_handoff", route=route)
             handoff = await workflow.execute_activity(
                 activity_dev_handoff_ticket,
                 {
@@ -365,6 +390,7 @@ class ReleaseReadinessWorkflow:
             elif hitl.get("decision") == "timed_out":
                 final_status = "hitl_timeout"
 
+        _phase("episode", route=route)
         episode = await workflow.execute_activity(
             activity_persist_episode,
             {
@@ -427,6 +453,7 @@ class ReleaseReadinessWorkflow:
 
         smoke_status = str(smoke.get("status") or ("n/a" if route != "qa-route" else "unknown"))
         fin_status = str(fin_prep.get("status") or ("n/a" if route != "qa-route" else "unknown"))
+        _phase("notify", route=route)
         notify = await workflow.execute_activity(
             activity_notify,
             {
@@ -479,4 +506,5 @@ class ReleaseReadinessWorkflow:
         }
         get_ledger().complete(tracking_id, final_status)
         get_ledger().upsert_step(tracking_id, "complete", outcome)
+        _phase("complete", route=route, detail=final_status)
         return outcome

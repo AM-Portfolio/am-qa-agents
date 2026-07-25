@@ -98,6 +98,12 @@ async def execute_run(
     else:
         cfg = ensure_default_config()
 
+    # Never mutate the stored seed profile in-place; bind request service/env first.
+    # Without this, POST {service: am-analysis} kept empty default-smoke → api_count=0.
+    cfg = dict(cfg)
+    if body.service:
+        cfg["service"] = body.service
+
     audience = str(cfg.get("audience") or "developer").lower()
     enforce_execute_load(
         role=caller.role,
@@ -113,6 +119,12 @@ async def execute_run(
         cfg["environment"] = body.environment
         cfg["target_url"] = default_target_for_service(
             cfg.get("service") or settings.default_service or "", body.environment
+        )
+    elif body.service:
+        # Service override without env change — refresh target for that service
+        cfg["target_url"] = default_target_for_service(
+            cfg.get("service") or "",
+            cfg.get("environment") or settings.default_environment,
         )
     if body.openapi_version is not None:
         cfg["openapi_version"] = body.openapi_version
@@ -152,6 +164,10 @@ async def execute_run(
         cfg["report_formats"] = list(body.report_formats)
     elif body.config and getattr(body.config, "report_formats", None):
         cfg["report_formats"] = list(body.config.report_formats)
+    if getattr(body, "ui_target_url", None):
+        cfg["ui_target_url"] = body.ui_target_url
+    elif body.config and getattr(body.config, "ui_target_url", None):
+        cfg["ui_target_url"] = body.config.ui_target_url
     if body.target_url:
         cfg["target_url"] = body.target_url
     elif body.config and getattr(body.config, "target_url", None):

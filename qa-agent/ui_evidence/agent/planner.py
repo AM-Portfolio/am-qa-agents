@@ -71,6 +71,12 @@ async def plan_steps(
     profile: str,
     ctx,
 ) -> list[dict[str, Any]]:
+    # Suite aliases accidentally posted as single-run profiles
+    profile_u = (profile or "").strip().upper()
+    if profile_u in {"RELEASE_GATE", "SMOKE"}:
+        profile = "AUTH_FLOW_MAIN"
+        logger.info("Mapped suite alias %s → deterministic %s", profile_u, profile)
+
     if is_deterministic_profile(profile):
         steps = build_profile_steps(
             profile,

@@ -109,14 +109,17 @@ def temporal_interceptors() -> list[Any]:
 
 
 def temporal_worker_interceptors() -> list[Any]:
-    """Worker-only interceptors (tracking_id ContextVar for structured logs)."""
+    """Worker interceptors: OTEL spans + tracking_id / domain flow logs."""
+    interceptors: list[Any] = []
+    # TracingInterceptor must be on the Worker for activity spans (Tempo join).
+    interceptors.extend(temporal_interceptors())
     try:
         from common.observability.temporal_context import RunContextInterceptor
 
-        return [RunContextInterceptor()]
+        interceptors.append(RunContextInterceptor())
     except ImportError:
         LOG.warning("RunContextInterceptor unavailable")
-        return []
+    return interceptors
 
 
 def current_trace_ids() -> tuple[str, str]:

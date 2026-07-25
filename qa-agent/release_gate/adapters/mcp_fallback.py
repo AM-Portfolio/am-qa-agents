@@ -96,13 +96,25 @@ async def a2a_execute(
         "rationale": "qa-agent mcp fallback",
     }
     body = {"intent": intent, "include_summary": True, "max_rows": 100}
+    url = f"{base}/api/v1/tools/execute"
     try:
+        from common.observability.domain_flow import outbound_call
+
         async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(
-                f"{base}/api/v1/tools/execute",
-                headers=_caller_headers(),
-                json=body,
-            )
+            with outbound_call(
+                domain="testing",
+                service="tool-agent",
+                method="POST",
+                url=url,
+                capability=capability,
+            ) as meta:
+                resp = await client.post(
+                    url,
+                    headers=_caller_headers(),
+                    json=body,
+                )
+                meta["status"] = str(resp.status_code)
+                meta["ok"] = resp.status_code < 400
             data: Any
             try:
                 data = resp.json()
@@ -147,13 +159,25 @@ async def tools_query(
     }
     if backend:
         body["backend"] = backend
+    url = f"{base}/api/v1/tools/query"
     try:
+        from common.observability.domain_flow import outbound_call
+
         async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(
-                f"{base}/api/v1/tools/query",
-                headers=_caller_headers(),
-                json=body,
-            )
+            with outbound_call(
+                domain="testing",
+                service="tool-agent",
+                method="POST",
+                url=url,
+                capability=backend or "nl_query",
+            ) as meta:
+                resp = await client.post(
+                    url,
+                    headers=_caller_headers(),
+                    json=body,
+                )
+                meta["status"] = str(resp.status_code)
+                meta["ok"] = resp.status_code < 400
             try:
                 data = resp.json()
             except Exception:  # noqa: BLE001
@@ -199,40 +223,51 @@ async def gnx_mcp_call(
         "Content-Type": "application/json",
     }
     try:
+        from common.observability.domain_flow import outbound_call
+
         async with httpx.AsyncClient(timeout=timeout) as client:
-            init = await client.post(
-                mcp_url,
-                headers=headers,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "initialize",
-                    "params": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {},
-                        "clientInfo": {"name": "qa-agent", "version": "0.1.0"},
+            with outbound_call(
+                domain="intake",
+                service="gitnexus",
+                method="POST",
+                url=mcp_url,
+                capability=tool,
+            ) as meta:
+                init = await client.post(
+                    mcp_url,
+                    headers=headers,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "initialize",
+                        "params": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {},
+                            "clientInfo": {"name": "qa-agent", "version": "0.1.0"},
+                        },
                     },
-                },
-            )
-            sid = init.headers.get("mcp-session-id") or init.headers.get("Mcp-Session-Id")
-            sess = {**headers}
-            if sid:
-                sess["Mcp-Session-Id"] = sid
-                await client.post(
+                )
+                sid = init.headers.get("mcp-session-id") or init.headers.get("Mcp-Session-Id")
+                sess = {**headers}
+                if sid:
+                    sess["Mcp-Session-Id"] = sid
+                    await client.post(
+                        mcp_url,
+                        headers=sess,
+                        json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+                    )
+                call = await client.post(
                     mcp_url,
                     headers=sess,
-                    json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/call",
+                        "params": {"name": tool, "arguments": arguments},
+                    },
                 )
-            call = await client.post(
-                mcp_url,
-                headers=sess,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 2,
-                    "method": "tools/call",
-                    "params": {"name": tool, "arguments": arguments},
-                },
-            )
+                meta["status"] = str(call.status_code)
+                meta["ok"] = call.status_code < 400
             text = call.text
             parsed: Any = None
             if "data: " in text:

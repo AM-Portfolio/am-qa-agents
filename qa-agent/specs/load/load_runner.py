@@ -330,10 +330,18 @@ async def _run_ui_test_agent(
     login_mode = config.get("login_mode")
     baseline_mode = config.get("baseline_mode")
     design_review = config.get("design_review_enabled")
+    # Mixed runs: API target may be /analysis — Playwright needs the Flutter app root
+    ui_target = (
+        (config.get("ui_target_url") or "").strip()
+        or (settings.poc_target_url or "").rsplit("/analysis", 1)[0].rstrip("/")
+        or target
+    )
+    if ui_target.endswith("/analysis"):
+        ui_target = ui_target[: -len("/analysis")] or ui_target
 
     _live(
         "playwright",
-        f"Starting ui-test-agent ({'suite=' + ui_suite if ui_suite else 'profile=' + ui_profile})…",
+        f"Starting ui-test-agent ({'suite=' + ui_suite if ui_suite else 'profile=' + ui_profile}) → {ui_target}…",
         pct=5,
     )
 
@@ -341,7 +349,7 @@ async def _run_ui_test_agent(
         if ui_suite:
             test_id = await start_suite(
                 suite=str(ui_suite),
-                target_url=target,
+                target_url=ui_target,
                 login_mode=login_mode,
                 design_review_enabled=design_review,
                 portfolio_id=config.get("portfolio_id"),
@@ -352,7 +360,7 @@ async def _run_ui_test_agent(
         else:
             test_id = await start_profile(
                 profile=str(ui_profile),
-                target_url=target,
+                target_url=ui_target,
                 login_mode=login_mode,
                 baseline_mode=baseline_mode,
                 design_review_enabled=design_review,

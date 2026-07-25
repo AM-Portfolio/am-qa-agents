@@ -1,6 +1,12 @@
 # Dev — am-qa-agents (am-apps-dev)
 # One pod serves Specs (/spt-poc) + UI evidence (/ui-test).
 # Vault: domain path runtime/modules/qa (not per-service). Legacy services/* untouched.
+#
+# IMPORTANT: secretPaths must include mappings here (not only in vault-mappings.yaml).
+# CI/amctl apply order is values.yaml → vault-mappings.yaml → values.dev.yaml;
+# a path-only entry in this file would wipe mappings and dump ALL KV keys, which
+# previously overwrote identity-oidc's AM_MCP_CLIENT_SECRET with a bad qa-path secret
+# and caused Keycloak 401 on am-dev-realm.
 environment: dev
 replicaCount: 1
 
@@ -9,15 +15,30 @@ vault:
   secretPaths:
     otel:
       path: "apps/data/dev/infra/observability"
+      mappings:
+        TRACING_SAMPLING_PROBABILITY: "TRACING_SAMPLING_PROBABILITY"
     # Live KV still under apps/dev/services/* (apps/data/dev/services/* not seeded)
     observability:
       path: "apps/dev/services/am-agents-mcp-gateway"
+      mappings:
+        LANGFUSE_PUBLIC_KEY: "LANGFUSE_PUBLIC_KEY"
+        LANGFUSE_SECRET_KEY: "LANGFUSE_SECRET_KEY"
     llm-api-keys:
       path: "apps/dev/services/am-agents-mcp-gateway"
+      mappings:
+        LITELLM_MASTER_KEY: "LITELLM_MASTER_KEY"
     identity-oidc:
       path: "apps/dev/services/am-identity"
+      mappings:
+        # Only identity owns MCP client credentials (am-dev-realm)
+        AM_MCP_CLIENT_ID: "AM_MCP_CLIENT_ID"
+        AM_MCP_CLIENT_SECRET: "AM_MCP_CLIENT_SECRET"
     qa-agent:
-      path: "apps/data/dev/runtime/modules/qa"
+      # Vault UI path: apps / dev / runtime / modules / qa
+      # (KV v2). Do not use apps/data/dev/... as a separate duplicate path.
+      path: "apps/dev/runtime/modules/qa"
+      # Intentionally no mappings: dump all keys from this KV.
+      # Do NOT store AM_MCP_CLIENT_SECRET here (identity-oidc owns MCP creds).
 
 ingress:
   annotations:
@@ -52,8 +73,11 @@ env:
   QA_AGENT_OBSERVE_FORCE_TEMPLATE: "true"
   # MCP gateway client_credentials (must match Vault AM_MCP_CLIENT_SECRET realm)
   KEYCLOAK_TOKEN_URL: "http://auth.munish.org/auth/realms/am-dev-realm/protocol/openid-connect/token"
+  AM_MCP_CLIENT_ID: "am-mcp-service"
   SPT_PUBLIC_BASE_URL: "https://am-dev.asrax.in/spt-poc"
   SPT_UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_BASE_URL: "http://127.0.0.1:8150"
   SPT_PORTAL_FLUTTER: "true"
+  # Soft dependency — avoid localhost default noise in cluster
+  QDRANT_HOST: "qdrant.am-ai.svc.cluster.local"

@@ -5,11 +5,13 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from common.observability.logging_setup import get_logger
 from orchestrator.queue import (
     assert_safe_task_queue,
     resolve_namespace,
-    resolve_task_queue,
 )
+
+LOG = get_logger("qa.temporal")
 
 
 async def get_temporal_client():
@@ -20,11 +22,32 @@ async def get_temporal_client():
     configure_tracing(service_name="am-qa-agents")
     host = os.getenv("TEMPORAL_HOST", "localhost:7233")
     namespace = resolve_namespace()
-    return await Client.connect(
+    LOG.info(
+        "temporal.connect host=%s namespace=%s",
         host,
-        namespace=namespace,
-        interceptors=temporal_interceptors(),
+        namespace,
+        extra={
+            "event": "temporal.connect",
+            "domain": "workflow",
+            "flow": "workflow.connect",
+            "target": host,
+        },
     )
+    try:
+        client = await Client.connect(
+            host,
+            namespace=namespace,
+            interceptors=temporal_interceptors(),
+        )
+    except Exception:
+        LOG.exception(
+            "temporal.connect.failed host=%s namespace=%s",
+            host,
+            namespace,
+            extra={"event": "temporal.connect.error", "domain": "workflow"},
+        )
+        raise
+    return client
 
 
 async def start_release_readiness(
@@ -35,13 +58,56 @@ async def start_release_readiness(
 ) -> str:
     from temporalio.common import WorkflowIDReusePolicy
 
-    client = await get_temporal_client()
-    handle = await client.start_workflow(
-        "ReleaseReadinessWorkflow",
-        args,
-        id=workflow_id,
-        task_queue=assert_safe_task_queue(),
-        id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
+    queue = assert_safe_task_queue()
+    namespace = resolve_namespace()
+    host = os.getenv("TEMPORAL_HOST", "localhost:7233")
+    LOG.info(
+        "temporal.start tracking_id=%s workflow_id=%s queue=%s",
+        tracking_id,
+        workflow_id,
+        queue,
+        extra={
+            "event": "temporal.start",
+            "domain": "workflow",
+            "flow": "workflow.start",
+            "workflow_id": workflow_id,
+            "tracking_id": tracking_id,
+            "target": f"{host}/{namespace}/{queue}",
+        },
+    )
+    try:
+        client = await get_temporal_client()
+        handle = await client.start_workflow(
+            "ReleaseReadinessWorkflow",
+            args,
+            id=workflow_id,
+            task_queue=queue,
+            id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
+        )
+    except Exception:
+        LOG.exception(
+            "temporal.start.failed tracking_id=%s workflow_id=%s",
+            tracking_id,
+            workflow_id,
+            extra={
+                "event": "temporal.start.error",
+                "domain": "workflow",
+                "workflow_id": workflow_id,
+                "tracking_id": tracking_id,
+            },
+        )
+        raise
+    LOG.info(
+        "temporal.started tracking_id=%s workflow_id=%s",
+        tracking_id,
+        handle.id,
+        extra={
+            "event": "temporal.started",
+            "domain": "workflow",
+            "flow": "workflow.started",
+            "workflow_id": handle.id,
+            "tracking_id": tracking_id,
+        },
     )
     return handle.id
 
@@ -52,9 +118,34 @@ async def signal_release_hitl(
     signal_name: str,
     payload: dict[str, Any] | None = None,
 ) -> None:
-    client = await get_temporal_client()
-    handle = client.get_workflow_handle(workflow_id)
-    await handle.signal(signal_name, payload or {})
+    LOG.info(
+        "temporal.signal workflow_id=%s signal=%s",
+        workflow_id,
+        signal_name,
+        extra={
+            "event": "temporal.signal",
+            "domain": "governance",
+            "flow": "governance.signal",
+            "workflow_id": workflow_id,
+            "phase": signal_name,
+        },
+    )
+    try:
+        client = await get_temporal_client()
+        handle = client.get_workflow_handle(workflow_id)
+        await handle.signal(signal_name, payload or {})
+    except Exception:
+        LOG.exception(
+            "temporal.signal.failed workflow_id=%s signal=%s",
+            workflow_id,
+            signal_name,
+            extra={
+                "event": "temporal.signal.error",
+                "domain": "governance",
+                "workflow_id": workflow_id,
+            },
+        )
+        raise
 
 
 def _apply_matrix_plan(load_context: dict, matrix: dict) -> dict:
@@ -103,10 +194,13 @@ async def run_release_readiness_inline(args: dict[str, Any]) -> dict[str, Any]:
         build_evidence_bundle,
     )
     from stores import get_ledger
+    from common.observability.domain_flow import emit_flow_phase
 
     tracking_id = str(args["tracking_id"])
+    emit_flow_phase(phase="classify", tracking_id=tracking_id, detail="inline")
     classified = await activity_classify({**args, "trigger": args.get("trigger") or args})
     route = classified["route"]
+    emit_flow_phase(phase="classify", tracking_id=tracking_id, route=route, detail="done")
     load_context: dict = {}
     index: dict = {}
     change_intent: dict = {}

@@ -72,9 +72,20 @@ class FinAgentClient:
         owns = self._client is None
         http = self._client or httpx.AsyncClient(timeout=60.0)
         try:
+            from common.observability.domain_flow import outbound_call
+
             for path in ("/api/v1/meta/services", "/api/v1/meta/config"):
                 try:
-                    resp = await http.get(f"{self.base_url}{path}")
+                    url = f"{self.base_url}{path}"
+                    with outbound_call(
+                        domain="testing",
+                        service="fin-agent",
+                        method="GET",
+                        url=url,
+                    ) as meta:
+                        resp = await http.get(url)
+                        meta["status"] = str(resp.status_code)
+                        meta["ok"] = resp.status_code < 400
                     if resp.status_code < 400:
                         return {
                             "status": "OK",

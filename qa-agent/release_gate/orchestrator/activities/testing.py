@@ -80,8 +80,8 @@ async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
     """
     Run scheduled matrix layers via specialists.
 
-    API layer: Specs SPT execute (50 iters default) + live HTTP health/contract load.
-    UI via ui-test-agent when available. Skips SPT when catalog_ready.ready is false.
+    API layer: Specs SPT execute (mixed = analysis APIs + one Playwright profile)
+    + live HTTP health/contract load. When SPT includes UI, skip a second UI fan-out.
     """
     from adapters.api_load import run_api_scenarios
     from adapters.spt_specs import execute_spt_for_services
@@ -96,37 +96,20 @@ async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
     catalog_ready = payload.get("catalog_ready") or {}
 
     ui = load_context.get("ui") or {}
-    profile = plan.get("ui_profile") or ui.get("profile") or "SMOKE"
+    profile = plan.get("ui_profile") or ui.get("profile") or "AUTH_FLOW_MAIN"
+    if str(profile).strip().upper() in {"RELEASE_GATE", "SMOKE"}:
+        profile = "AUTH_FLOW_MAIN"
     target_url = (
         ui.get("target_url")
         or __import__("os").getenv("QA_AGENT_SMOKE_TARGET_URL")
         or "http://127.0.0.1:3000"
     )
     base = (load_context.get("routing") or {}).get("ui_test_agent_base_url")
-    client = UiTestClient(base_url=base)
     routing = load_context.get("routing") or {}
-    ui_result = await client.run_smoke(
-        target_url=str(target_url),
-        profile=str(profile),
-        commit_sha=str(classified.get("head_sha") or payload.get("head_sha") or ""),
-        branch=str(classified.get("branch") or payload.get("branch") or ""),
-        callback_url=payload.get("callback_url")
-        or (load_context.get("github") or {}).get("callback_url"),
-        tool_agent_base_url=routing.get("tool_agent_base_url"),
-        gnx_mcp_url=routing.get("gnx_mcp_url"),
-    )
-    ui_result = {
-        **ui_result,
-        "profile": profile,
-        "specification": plan.get("specification"),
-        "screenshots": ui_result.get("screenshots")
-        or ui_result.get("screenshot_urls")
-        or ui_result.get("artifacts")
-        or [],
-        "reportUrl": ui_result.get("reportUrl") or ui_result.get("report_url"),
-        "matrix_item_ids": [
-            i["id"] for i in (matrix.get("items") or []) if i.get("layer") == "ui" and i.get("tier") in {"P0", "P1"}
-        ],
+    spt_includes_ui = str(os.getenv("QA_AGENT_SPT_INCLUDE_UI") or "true").lower() in {
+        "1",
+        "true",
+        "yes",
     }
 
     # Resolve full service objects (name + base_url + spec_url) from LoadContext
@@ -173,6 +156,9 @@ async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
                 service_names,
                 environment=load_context.get("environment") or payload.get("environment"),
                 tracking_id=tracking_id,
+                ui_profile=str(profile),
+                ui_target_url=str(target_url) if spt_includes_ui else None,
+                test_type="mixed" if spt_includes_ui else "k6",
             )
         api_run = await run_api_scenarios(
             services=services_for_api,
@@ -181,6 +167,68 @@ async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
             tool_agent_base_url=routing.get("tool_agent_base_url"),
         )
         api_run = {**api_run, "spt_specs": spt_run}
+
+    # UI: prefer evidence from mixed SPT run (same portal run id); else dedicated ui-test call
+    ui_result: dict[str, Any]
+    if spt_includes_ui and isinstance(spt_run, dict) and spt_run.get("runs"):
+        first = next((r for r in spt_run["runs"] if isinstance(r, dict)), {}) or {}
+        ui_status = str(first.get("status") or "").lower()
+        ui_ok_hint = bool(first.get("ok")) and bool(first.get("ui_test_id") or first.get("ui_report"))
+        if ui_ok_hint or first.get("ui_test_id"):
+            mapped_status = "COMPLETED" if first.get("ok") else (
+                "FAILED" if ui_status in {"failed", "error", "cancelled"} else str(first.get("status") or "FAILED")
+            )
+            ui_result = {
+                "status": mapped_status,
+                "testId": first.get("ui_test_id"),
+                "mode": "spt_mixed",
+                "profile": profile,
+                "run_id": first.get("run_id") or first.get("id"),
+                "reportUrl": (first.get("ui_report") or {}).get("report_url")
+                if isinstance(first.get("ui_report"), dict)
+                else first.get("ui_report_html_url"),
+                "screenshots": [],
+                "source": "specs_mixed",
+            }
+        else:
+            client = UiTestClient(base_url=base)
+            ui_result = await client.run_smoke(
+                target_url=str(target_url),
+                profile=str(profile),
+                commit_sha=str(classified.get("head_sha") or payload.get("head_sha") or ""),
+                branch=str(classified.get("branch") or payload.get("branch") or ""),
+                callback_url=payload.get("callback_url")
+                or (load_context.get("github") or {}).get("callback_url"),
+                tool_agent_base_url=routing.get("tool_agent_base_url"),
+                gnx_mcp_url=routing.get("gnx_mcp_url"),
+            )
+    else:
+        client = UiTestClient(base_url=base)
+        ui_result = await client.run_smoke(
+            target_url=str(target_url),
+            profile=str(profile),
+            commit_sha=str(classified.get("head_sha") or payload.get("head_sha") or ""),
+            branch=str(classified.get("branch") or payload.get("branch") or ""),
+            callback_url=payload.get("callback_url")
+            or (load_context.get("github") or {}).get("callback_url"),
+            tool_agent_base_url=routing.get("tool_agent_base_url"),
+            gnx_mcp_url=routing.get("gnx_mcp_url"),
+        )
+
+    ui_result = {
+        **ui_result,
+        "profile": profile,
+        "specification": plan.get("specification"),
+        "screenshots": ui_result.get("screenshots")
+        or ui_result.get("screenshot_urls")
+        or ui_result.get("artifacts")
+        or [],
+        "reportUrl": ui_result.get("reportUrl") or ui_result.get("report_url"),
+        "matrix_item_ids": [
+            i["id"] for i in (matrix.get("items") or []) if i.get("layer") == "ui" and i.get("tier") in {"P0", "P1"}
+        ],
+    }
+
     api_layer = {
         **api_run,
         "fin_prep": fin_prep,
@@ -210,6 +258,8 @@ async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
         "succeeded",
         "success",
         "passed",
+        "go",
+        "go_with_caveats",
     }
     if ui_skipped and ui_optional:
         ui_ok = True
@@ -293,6 +343,8 @@ async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
         "execute_matrix",
         {
             "ui_status": ui_result.get("status"),
+            "ui_profile": profile,
+            "ui_mode": ui_result.get("mode"),
             "api_status": api_run.get("status"),
             "api_mode": api_run.get("mode"),
             "api_passed": api_run.get("passed"),
@@ -300,6 +352,7 @@ async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
             "api_load": api_run.get("load"),
             "spt_specs_status": spt_run.get("status") if isinstance(spt_run, dict) else None,
             "spt_specs_failed": spt_run.get("failed") if isinstance(spt_run, dict) else None,
+            "spt_test_type": spt_run.get("test_type") if isinstance(spt_run, dict) else None,
             "p0_failed": out["p0_failed"],
             "plan": plan,
         },

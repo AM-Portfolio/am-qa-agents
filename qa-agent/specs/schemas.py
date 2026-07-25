@@ -38,6 +38,8 @@ class TestConfigIn(BaseModel):
     login_mode: str | None = None
     baseline_mode: str | None = None
     design_review_enabled: bool | None = None
+    # Flutter / modern-ui URL for mixed runs (API target_url may be /analysis)
+    ui_target_url: str | None = None
     # Which report attachments to generate: html | pdf | json
     report_formats: list[Literal["html", "pdf", "json"]] | None = None
 
@@ -62,6 +64,7 @@ class TestConfigUpdate(BaseModel):
     login_mode: str | None = None
     baseline_mode: str | None = None
     design_review_enabled: bool | None = None
+    ui_target_url: str | None = None
     report_formats: list[Literal["html", "pdf", "json"]] | None = None
 
 
@@ -128,6 +131,8 @@ class RunExecuteRequest(BaseModel):
     baseline_mode: str | None = None
     design_review_enabled: bool | None = None
     target_url: str | None = None
+    # Separate from API target_url — Playwright hits the Flutter app root
+    ui_target_url: str | None = None
     report_formats: list[Literal["html", "pdf", "json"]] | None = None
 
 

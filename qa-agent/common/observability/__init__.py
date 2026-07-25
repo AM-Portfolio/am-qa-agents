@@ -1,5 +1,12 @@
 """Shared OTEL tracing + JSON logging for am-qa-agents."""
 
+from common.observability.domain_flow import (
+    domain_for_activity,
+    domain_for_step,
+    emit_flow_phase,
+    emit_step_log,
+    outbound_call,
+)
 from common.observability.logging_setup import (
     bind_tracking_id,
     configure_logging,
@@ -21,7 +28,12 @@ __all__ = [
     "configure_logging",
     "configure_tracing",
     "current_trace_ids",
+    "domain_for_activity",
+    "domain_for_step",
+    "emit_flow_phase",
+    "emit_step_log",
     "get_logger",
+    "outbound_call",
     "set_span_tracking_id",
     "setup_tracing",
     "temporal_interceptors",

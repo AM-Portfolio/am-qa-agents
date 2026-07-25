@@ -4,21 +4,8 @@
 
 vault:
   secretPaths:
-    qa-agent:
-      mappings:
-        QA_AGENT_GATEWAY_TOKEN: "QA_AGENT_GATEWAY_TOKEN"
-        GITHUB_TOKEN: "GITHUB_TOKEN"
-        GITHUB_WEBHOOK_SECRET: "GITHUB_WEBHOOK_SECRET"
-        QA_AGENT_DATABASE_URL: "QA_AGENT_DATABASE_URL"
-        SPT_DATABASE_URL: "SPT_DATABASE_URL"
-        SPT_AUTH_PASSWORD: "SPT_AUTH_PASSWORD"
-        INFLUXDB_TOKEN: "INFLUXDB_TOKEN"
-        MINIO_ACCESS_KEY: "MINIO_ACCESS_KEY"
-        MINIO_SECRET_KEY: "MINIO_SECRET_KEY"
-        TEST_USER_EMAIL: "TEST_USER_EMAIL"
-        TEST_USER_PASSWORD: "TEST_USER_PASSWORD"
-        TEST_ADMIN_EMAIL: "TEST_ADMIN_EMAIL"
-        TEST_ADMIN_PASSWORD: "TEST_ADMIN_PASSWORD"
+    # qa-agent path+keys come from values.<env>.yaml (dump-all; no mappings here).
+    # Keep MCP client secret ONLY under identity-oidc.
 
     observability:
       mappings:
@@ -31,6 +18,7 @@ vault:
 
     identity-oidc:
       mappings:
+        AM_MCP_CLIENT_ID: "AM_MCP_CLIENT_ID"
         AM_MCP_CLIENT_SECRET: "AM_MCP_CLIENT_SECRET"
 
     otel:

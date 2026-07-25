@@ -79,6 +79,11 @@ class UiTestClient:
                 prior="QA_AGENT_SKIP_UI_TEST",
             )
 
+        # RELEASE_GATE / SMOKE → one deterministic profile (not multi-suite fan-out).
+        # SPT mixed run also uses AUTH_FLOW_MAIN so portal run id shows API + Playwright.
+        profile_u = (profile or "").strip().upper()
+        if profile_u in {"RELEASE_GATE", "SMOKE"}:
+            profile = "AUTH_FLOW_MAIN"
         body: dict[str, Any] = {
             "targetUrl": target_url,
             "profile": profile,
@@ -87,13 +92,26 @@ class UiTestClient:
             "baselineMode": "compare",
             "uiMode": "main",
             "specification": "qa-agent release readiness",
+            "loginMode": "demo",
+            "designReviewEnabled": False,
         }
+        run_path = f"{self.base_url}/api/v1/test/run"
         if callback_url:
             body["callbackUrl"] = callback_url
         owns = self._client is None
         client = await self._http()
         try:
-            resp = await client.post(f"{self.base_url}/api/v1/test/run", json=body)
+            from common.observability.domain_flow import outbound_call
+
+            with outbound_call(
+                domain="testing",
+                service="ui-test-agent",
+                method="POST",
+                url=run_path,
+            ) as meta:
+                resp = await client.post(run_path, json=body)
+                meta["status"] = str(resp.status_code)
+                meta["ok"] = resp.status_code < 400
             data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {"body": resp.text}
             if resp.status_code >= 400:
                 return await self._ui_mcp_fallbacks(
@@ -109,7 +127,14 @@ class UiTestClient:
             if isinstance(data, dict):
                 test_id = str(data.get("testId") or data.get("test_id") or "")
             if test_id:
-                status = await self.poll_status(test_id, client=client)
+                polls = int(os.getenv("QA_AGENT_UI_POLL_MAX") or "120")
+                interval = float(os.getenv("QA_AGENT_UI_POLL_SEC") or "3")
+                status = await self.poll_status(
+                    test_id,
+                    client=client,
+                    max_polls=polls,
+                    interval_s=interval,
+                )
                 return {"testId": test_id, "mode": MODE_LIVE, **status, "start": data}
             return {**(data if isinstance(data, dict) else {"data": data}), "mode": MODE_LIVE}
         except httpx.HTTPError as exc:
@@ -224,7 +249,19 @@ class UiTestClient:
                 data = resp.json() if resp.status_code < 400 else {"http_status": resp.status_code}
                 last = data if isinstance(data, dict) else {"body": data}
                 st = str(last.get("status") or "").lower()
-                if st in {"done", "completed", "succeeded", "success", "passed", "failed", "error"}:
+                if st in {
+                    "done",
+                    "completed",
+                    "succeeded",
+                    "success",
+                    "passed",
+                    "failed",
+                    "error",
+                    "go",
+                    "go_with_caveats",
+                    "no_go",
+                    "timeout",
+                }:
                     return last
                 await asyncio.sleep(interval_s)
             return {**last, "status": "TIMEOUT"}

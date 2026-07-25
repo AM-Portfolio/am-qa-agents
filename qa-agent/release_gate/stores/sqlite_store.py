@@ -131,12 +131,14 @@ class SqliteWorkflowLedger:
         )
 
     def upsert_step(self, tracking_id: str, step: str, payload: dict[str, Any]) -> None:
+        workflow_id = ""
         with self._lock:
             conn = self._conn()
             try:
                 run = self._load(conn, tracking_id)
                 if not run:
                     return
+                workflow_id = run.workflow_id
                 run.steps[step] = {**payload, "at": _now()}
                 conn.execute(
                     "UPDATE runs SET steps_json=?, updated_at=? WHERE tracking_id=?",
@@ -145,6 +147,17 @@ class SqliteWorkflowLedger:
                 conn.commit()
             finally:
                 conn.close()
+        try:
+            from common.observability.domain_flow import emit_step_log
+
+            emit_step_log(
+                tracking_id=tracking_id,
+                step=step,
+                payload=payload,
+                workflow_id=workflow_id,
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
     def set_route(self, tracking_id: str, route: str) -> None:
         with self._lock:
