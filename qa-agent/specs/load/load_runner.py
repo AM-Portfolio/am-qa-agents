@@ -1038,7 +1038,38 @@ async def run_k6_local(
             result["status"] = "failed"
             result["error"] = str(exc)
 
+    # Do not start Playwright if the run was stopped / failed during k6
+    if str(result.get("status") or "").lower() in {"cancelled", "failed"}:
+        finished = datetime.now(timezone.utc).isoformat()
+        result["finished_at"] = finished
+        result["steps"] = steps
+        result.setdefault(
+            "live",
+            {
+                "phase": "cancelled" if result.get("status") == "cancelled" else "error",
+                "message": result.get("error") or result.get("status"),
+            },
+        )
+        process_registry.unregister(run_id)
+        process_registry.clear_cancelled(run_id)
+        return result
+
     if config.get("test_type") in {"playwright", "mixed"}:
+        # Re-check cancel in case stop landed between k6 and UI
+        from specs.persistence.run_store import get_run as _get_run_pre_ui
+
+        if process_registry.is_cancel_requested(run_id) or (
+            (_get_run_pre_ui(run_id) or {}).get("status") == "cancelled"
+        ):
+            result["status"] = "cancelled"
+            result["passed"] = False
+            result["error"] = result.get("error") or "stopped by user"
+            result["live"] = {"phase": "cancelled", "message": "Stopped by user"}
+            result["finished_at"] = datetime.now(timezone.utc).isoformat()
+            result["steps"] = steps
+            process_registry.unregister(run_id)
+            process_registry.clear_cancelled(run_id)
+            return result
         try:
             existing_traces = load_traces_file(
                 Path(settings.data_dir) / "artifacts" / run_id / "traces.json"

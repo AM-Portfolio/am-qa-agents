@@ -81,3 +81,8 @@ env:
   SPT_PORTAL_FLUTTER: "true"
   # Soft dependency — avoid localhost default noise in cluster
   QDRANT_HOST: "qdrant.am-ai.svc.cluster.local"
+  # Release mixed smoke: 1 shared iteration across catalog APIs (not 50× load)
+  QA_AGENT_SPT_ITERATIONS: "1"
+  QA_AGENT_API_LOAD_ITERATIONS: "1"
+  QA_AGENT_SPT_VUS: "1"
+  QA_AGENT_API_LOAD_VUS: "1"

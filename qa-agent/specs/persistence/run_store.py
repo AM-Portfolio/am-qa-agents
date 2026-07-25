@@ -20,24 +20,63 @@ def _mode() -> str:
 def list_runs(**kwargs: Any) -> tuple[list[dict[str, Any]], int]:
     mode = _mode()
     if mode == "json":
-        return jb.list_runs(**kwargs)
-    rows, total = db.list_runs(**kwargs)
-    if mode == "dual" and total == 0:
-        # Fallback if DB empty / miss during cutover
-        jrows, jtotal = jb.list_runs(**kwargs)
-        if jtotal:
-            return jrows, jtotal
-    return rows, total
+        rows, total = jb.list_runs(**kwargs)
+    else:
+        rows, total = db.list_runs(**kwargs)
+        if mode == "dual" and total == 0:
+            # Fallback if DB empty / miss during cutover
+            jrows, jtotal = jb.list_runs(**kwargs)
+            if jtotal:
+                rows, total = jrows, jtotal
+    return [normalize_run_view(r) or r for r in rows], total
 
 
 def get_run(run_id: str) -> dict[str, Any] | None:
     mode = _mode()
     if mode == "json":
-        return jb.get_run(run_id)
-    row = db.get_run(run_id)
-    if row is None and mode == "dual":
-        return jb.get_run(run_id)
-    return row
+        row = jb.get_run(run_id)
+    else:
+        row = db.get_run(run_id)
+        if row is None and mode == "dual":
+            row = jb.get_run(run_id)
+    return normalize_run_view(row)
+
+
+def normalize_run_view(row: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Coerce contradictory run fields for API/UI (stop race leftovers)."""
+    if not row:
+        return row
+    out = dict(row)
+    status = str(out.get("status") or "").lower()
+    finished = out.get("finished_at")
+    err = str(out.get("error") or "").lower()
+    # finished_at + running = stop/progress race — never show as live
+    if finished and status in {"running", "pending"}:
+        if "stopped" in err or "cancel" in err:
+            out["status"] = "cancelled"
+        else:
+            out["status"] = "failed" if out.get("passed") is False else "cancelled"
+        status = str(out["status"])
+        live = dict(out.get("live") or {})
+        live["phase"] = "cancelled" if status == "cancelled" else "done"
+        live["message"] = out.get("error") or ("Stopped by user" if status == "cancelled" else "Finished")
+        live.pop("ui_status", None)
+        out["live"] = live
+    # Keep steps from advertising a live k6 while terminal
+    if status in {"cancelled", "failed", "passed", "completed", "error"}:
+        steps = out.get("steps")
+        if isinstance(steps, list) and steps:
+            fixed = []
+            for s in steps:
+                if not isinstance(s, dict):
+                    fixed.append(s)
+                    continue
+                st = dict(s)
+                if str(st.get("status") or "").lower() == "running":
+                    st["status"] = "fail" if status in {"cancelled", "failed", "error"} else "pass"
+                fixed.append(st)
+            out["steps"] = fixed
+    return out
 
 
 def save_run(record: dict[str, Any]) -> dict[str, Any]:

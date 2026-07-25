@@ -398,6 +398,10 @@ async def execute_run(
     def _bg_thread() -> None:
         def on_progress(live: dict) -> None:
             current = get_run(run_id) or {}
+            # Stop/cancel must win — never flip terminal status back to running
+            cur_status = str(current.get("status") or "").lower()
+            if cur_status in {"cancelled", "failed", "passed", "completed", "error"}:
+                return
             prev = dict(current.get("live") or {})
             live_copy = dict(live)
             api_summary = live_copy.pop("api_summary", None)
