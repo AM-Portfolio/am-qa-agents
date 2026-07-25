@@ -80,6 +80,8 @@ jobs:
           cache: true
 
       - name: Build Flutter portal (cluster)
+        id: portal
+        continue-on-error: true
         working-directory: am-qa-agents/qa-portal-ui
         run: |
           flutter pub get
@@ -89,6 +91,17 @@ jobs:
             --dart-define=ROOT_PATH=/spt-poc \
             --no-wasm-dry-run
           test -f build/web/index.html
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+      - name: Portal bake status
+        run: |
+          if [ "${{ steps.portal.outcome }}" != "success" ]; then
+            echo "::warning::Flutter portal bake failed (am-modern-ui). Publishing agent image without SPA; Specs/k6 still ship."
+            rm -rf am-qa-agents/qa-portal-ui/build/web || true
+          else
+            echo "Portal web assets ready"
+            du -sh am-qa-agents/qa-portal-ui/build/web
+          fi
 
       - name: Image tag
         id: meta
