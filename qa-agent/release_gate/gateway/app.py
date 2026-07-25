@@ -13,10 +13,12 @@ import uuid
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
 from composition.identity import AGENT_ID, DISPLAY_NAME, __version__
+from common.observability.logging_setup import bind_tracking_id, get_logger, tracking_context
+from common.observability.tracing import current_trace_ids, set_span_tracking_id
 from intelligence import classify_trigger, idempotency_key
 from intelligence.trigger_policy import evaluate_ci_merge
 from learning import record_promotion
@@ -27,6 +29,7 @@ from observability.metrics import render_metrics
 from stores import get_episode_store, get_ledger
 
 app = FastAPI(title=DISPLAY_NAME, version=__version__)
+LOG = get_logger("qa.release")
 
 
 def _require_token(authorization: str | None) -> None:
@@ -137,48 +140,93 @@ async def start_release_readiness(
 
     tracking_id = f"qa-{uuid.uuid4().hex[:12]}"
     workflow_id = f"release-readiness-{body.repo.replace('/', '-')}-{body.head_sha[:12]}-{body.environment}"
-    ledger.create_run(
-        tracking_id=tracking_id,
-        workflow_id=workflow_id,
-        idempotency_key=key,
-        meta={"env": body.environment, "trigger_kind": body.trigger_kind},
-    )
-    args = {
-        "tracking_id": tracking_id,
-        "trigger": payload,
-        **payload,
-    }
+    with tracking_context(tracking_id):
+        bind_tracking_id(tracking_id)
+        set_span_tracking_id(tracking_id)
+        ledger.create_run(
+            tracking_id=tracking_id,
+            workflow_id=workflow_id,
+            idempotency_key=key,
+            meta={"env": body.environment, "trigger_kind": body.trigger_kind},
+        )
+        args = {
+            "tracking_id": tracking_id,
+            "trigger": payload,
+            **payload,
+        }
+        LOG.info(
+            "release.start service=%s env=%s repo=%s sha=%s workflow_id=%s",
+            body.service,
+            body.environment,
+            body.repo,
+            body.head_sha[:12],
+            workflow_id,
+            extra={"event": "release.start", "workflow_id": workflow_id},
+        )
 
-    if body.use_temporal and os.getenv("QA_AGENT_FORCE_INLINE", "").lower() not in {"1", "true"}:
-        try:
-            wf_id = await tapi.start_release_readiness(
-                tracking_id=tracking_id,
-                workflow_id=workflow_id,
-                args=args,
-            )
-            return {
-                "tracking_id": tracking_id,
-                "workflow_id": wf_id,
-                "mode": "temporal",
-                "classify_preview": classify_trigger(payload).__dict__,
+        def _response(body_dict: dict[str, Any], *, status_code: int = 200) -> JSONResponse:
+            tid, sid = current_trace_ids()
+            headers = {
+                "X-Correlation-Id": tracking_id,
+                "X-Tracking-Id": tracking_id,
             }
-        except Exception as exc:  # noqa: BLE001 — fall back for local MVP
-            outcome = await tapi.run_release_readiness_inline(args)
-            return {
+            if tid:
+                headers["X-Trace-Id"] = tid
+            if sid:
+                headers["X-Span-Id"] = sid
+            return JSONResponse(body_dict, status_code=status_code, headers=headers)
+
+        if body.use_temporal and os.getenv("QA_AGENT_FORCE_INLINE", "").lower() not in {"1", "true"}:
+            try:
+                wf_id = await tapi.start_release_readiness(
+                    tracking_id=tracking_id,
+                    workflow_id=workflow_id,
+                    args=args,
+                )
+                LOG.info(
+                    "release.temporal_started workflow_id=%s",
+                    wf_id,
+                    extra={"event": "release.temporal_started", "workflow_id": wf_id},
+                )
+                return _response(
+                    {
+                        "tracking_id": tracking_id,
+                        "workflow_id": wf_id,
+                        "mode": "temporal",
+                        "classify_preview": classify_trigger(payload).__dict__,
+                    }
+                )
+            except Exception as exc:  # noqa: BLE001 — fall back for local MVP
+                LOG.warning(
+                    "release.temporal_fallback error=%s",
+                    exc,
+                    extra={"event": "release.temporal_fallback"},
+                )
+                outcome = await tapi.run_release_readiness_inline(args)
+                return _response(
+                    {
+                        "tracking_id": tracking_id,
+                        "workflow_id": workflow_id,
+                        "mode": "inline_fallback",
+                        "temporal_error": str(exc),
+                        "outcome": outcome,
+                    }
+                )
+
+        outcome = await tapi.run_release_readiness_inline(args)
+        LOG.info(
+            "release.inline_complete status=%s",
+            (outcome or {}).get("status"),
+            extra={"event": "release.inline_complete"},
+        )
+        return _response(
+            {
                 "tracking_id": tracking_id,
                 "workflow_id": workflow_id,
-                "mode": "inline_fallback",
-                "temporal_error": str(exc),
+                "mode": "inline",
                 "outcome": outcome,
             }
-
-    outcome = await tapi.run_release_readiness_inline(args)
-    return {
-        "tracking_id": tracking_id,
-        "workflow_id": workflow_id,
-        "mode": "inline",
-        "outcome": outcome,
-    }
+        )
 
 
 @app.post("/webhooks/github")

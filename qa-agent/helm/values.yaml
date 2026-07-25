@@ -74,6 +74,7 @@ env:
   QA_AGENT_UI_ONLY_SERVICES: "am-modern-ui"
   QA_AGENT_CATALOG_READY_TIMEOUT_SEC: "180"
   OTEL_SERVICE_NAME: "am-qa-agents"
+  OTEL_SERVICE_NAMESPACE: "am-qa-agents"
   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://otel-collector.monitoring.svc.cluster.local:4318/v1/traces"
   PYTHONDONTWRITEBYTECODE: "1"
 

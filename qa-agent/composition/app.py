@@ -83,6 +83,15 @@ if not any(getattr(r, "path", None) == "/metrics" for r in app.routes):
             app.routes.append(route)
             break
 
+# OTEL + structured logs on the live ASGI app (not discarded ui_app instance)
+from common.observability.logging_setup import configure_logging
+from common.observability.middleware import install_http_tracing
+from common.observability.tracing import setup_tracing
+
+configure_logging()
+install_http_tracing(app)
+setup_tracing(app, service_name="am-qa-agents")
+
 
 @app.get("/unified/health")
 async def unified_health():

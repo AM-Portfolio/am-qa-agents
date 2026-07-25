@@ -35,6 +35,7 @@ otel = [
   "opentelemetry-exporter-otlp-proto-http>=1.24.0",
   "opentelemetry-instrumentation-fastapi>=0.45b0",
   "opentelemetry-instrumentation-asgi>=0.45b0",
+  "opentelemetry-instrumentation-httpx>=0.45b0",
 ]
 all = ["am-qa-agents[temporal,pdf,dev,otel]"]
 

@@ -15,9 +15,16 @@ from orchestrator.queue import (
 async def get_temporal_client():
     from temporalio.client import Client
 
+    from common.observability.tracing import configure_tracing, temporal_interceptors
+
+    configure_tracing(service_name="am-qa-agents")
     host = os.getenv("TEMPORAL_HOST", "localhost:7233")
     namespace = resolve_namespace()
-    return await Client.connect(host, namespace=namespace)
+    return await Client.connect(
+        host,
+        namespace=namespace,
+        interceptors=temporal_interceptors(),
+    )
 
 
 async def start_release_readiness(

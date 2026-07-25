@@ -24,6 +24,12 @@ async def run_worker() -> None:
         SandboxRestrictions,
     )
 
+    from common.observability.logging_setup import configure_logging, get_logger
+    from common.observability.tracing import (
+        configure_tracing,
+        temporal_interceptors,
+        temporal_worker_interceptors,
+    )
     from orchestrator.activities import (
         activity_analyze_release,
         activity_await_index,
@@ -50,14 +56,23 @@ async def run_worker() -> None:
     )
     from orchestrator.workflows import ReleaseReadinessWorkflow
 
+    configure_logging()
+    configure_tracing(service_name="am-qa-agents")
+    log = get_logger("qa.worker")
+
     host = os.getenv("TEMPORAL_HOST", "localhost:7233")
     namespace = resolve_namespace()
     queue = assert_safe_task_queue()
-    client = await Client.connect(host, namespace=namespace)
+    client = await Client.connect(
+        host,
+        namespace=namespace,
+        interceptors=temporal_interceptors(),
+    )
     # Workflow still does light ledger upserts around HITL; pass through am_qa_agent.
     runner = SandboxedWorkflowRunner(
         restrictions=SandboxRestrictions.default.with_passthrough_modules(
             "am_qa_agent",
+            "common",
         )
     )
     worker = Worker(
@@ -89,8 +104,15 @@ async def run_worker() -> None:
             activity_dev_handoff_ticket,
         ],
         workflow_runner=runner,
+        interceptors=temporal_worker_interceptors(),
     )
-    print(f"qa-agent worker listening on queue={queue} host={host} ns={namespace}", flush=True)
+    log.info(
+        "qa-agent worker listening queue=%s host=%s ns=%s",
+        queue,
+        host,
+        namespace,
+        extra={"event": "worker.start"},
+    )
     await worker.run()
 
 

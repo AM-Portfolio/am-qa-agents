@@ -21,9 +21,11 @@ def _start_worker() -> subprocess.Popen[Any] | None:
 def main() -> None:
     from composition.env_bootstrap import load_env
     from composition.runtime import apply_colocated_defaults
+    from common.observability.logging_setup import configure_logging
 
     load_env()
     apply_colocated_defaults()
+    configure_logging()
 
     worker = _start_worker()
     host = os.getenv("QA_AGENT_HOST") or os.getenv("APP_HOST") or "0.0.0.0"
