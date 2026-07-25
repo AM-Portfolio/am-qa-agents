@@ -2,6 +2,10 @@
 # One container / one release name. No separate am-ui-test-agent image.
 FROM mcr.microsoft.com/playwright/python:v1.60.0-jammy
 
+# Helps GHCR associate the package with the source repo (Actions access).
+LABEL org.opencontainers.image.source="https://github.com/AM-Portfolio/am-qa-agents"
+LABEL org.opencontainers.image.title="am-qa-agents"
+
 WORKDIR /app
 
 ARG K6_VERSION=v0.54.0

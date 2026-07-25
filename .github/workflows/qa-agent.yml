@@ -110,12 +110,31 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "IMAGE=ghcr.io/am-portfolio/am-qa-agents:$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Login GHCR
+      # Grant this repo Write on the org package (Manage Actions access).
+      # Required when the package was first pushed with a PAT (repository: null).
+      # Same model as other AM services: GITHUB_TOKEN / GH_TOKEN write, not GHCR_TOKEN
+      # (GHCR_TOKEN is org read:packages for base-image pulls only — see am-pipelines).
+      - name: Link package → repo (Actions write)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          REPO_ID="$(gh api "repos/${GITHUB_REPOSITORY}" --jq .id)"
+          echo "Linking package am-qa-agents → repo id ${REPO_ID}"
+          # Matches am-market-data (repository linked). If this 404s, grant Write under
+          # Package settings → Manage Actions access → AM-Portfolio/am-qa-agents
+          gh api --method PUT \
+            "orgs/${OWNER}/packages/container/am-qa-agents/repositories/${REPO_ID}" \
+            && echo "linked_ok" || echo "::warning::Link API failed — ensure Manage Actions access Write for this repo"
+
+      - name: Login GHCR (write)
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+          # Never prefer GHCR_TOKEN here — it is read:packages and causes write_package.
+          password: ${{ secrets.GH_TOKEN || secrets.GITHUB_PAT || secrets.GITHUB_TOKEN }}
 
       - name: Build & push image (includes k6 + portal)
         working-directory: am-qa-agents
