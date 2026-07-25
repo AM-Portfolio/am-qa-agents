@@ -8,20 +8,36 @@ CI deploy (`deploy-qa-agent.yml`) uses **am-pipelines universal-chart** and laye
 
 Do not rely on a local `Chart.yaml` for production deploys.
 
-Seed Vault path per env (example):
+## Vault (domain paths — not per-service)
 
-```text
-apps/data/<env>/services/am-qa-agents
-```
+| Env | `qa-agent` alias path |
+|-----|------------------------|
+| **dev** | `apps/data/dev/runtime/modules/qa` |
+| preprod / prod | `apps/data/<env>/services/am-qa-agents` until those envs adopt `runtime/modules/qa` |
 
-with keys listed in `vault-mappings.yaml` under `qa-agent.mappings`.
+Keys: see `vault-mappings.yaml` under `qa-agent.mappings`. Seed script: `scripts/seed-runtime-qa-vault.sh` (operator; copies from legacy sources — does **not** delete `services/*`).
 
-Product OpenAPI registrations are **not** baked into the image — mount ConfigMaps of `spt.yaml` files at `SPT_CATALOG_EXTERNAL` (`/catalog-external`).
+Shared aliases (`otel`, `llm`, `identity`) keep existing infra/service paths. Do **not** create `modules/scheduler`, `modules/billing`, etc. — those fold into domain modules later (`market`, `billing`, …).
 
-`values.yaml` projects `spt-catalog-am-{analysis,gateway,mcp-server}` ConfigMaps (same namespace as the deploy). Publish them with:
+`am-auth-policy` already allows `apps/data/*` read — covers `runtime/modules/*`.
+
+## SPT catalogs (any service, zero Helm churn)
+
+Product OpenAPI / load registrations are **not** baked into the image.
+
+| Piece | Role |
+|-------|------|
+| `spt-catalog-bundle` | **Only** volume mounted at `/catalog-external` — every `services/*/spt.yaml` as `<service>.yaml` |
+| `spt-catalog-<service>` | Still published for traces/tooling; **not** listed in Helm |
+| `SPT_CATALOG_EXTERNAL` | `/catalog-external` |
+
+Adding the 40th (or 400th) service = new `spt.yaml` + publish script. **No** `values.yaml` edit.
 
 ```bash
+# from am-core-services
 python scripts/publish-spt-catalogs.py --namespace load-testing --namespace am-apps-dev
 ```
 
-from **am-core-services** (CI: `qa-agent-notify.yml` does this **before** `POST /release-readiness`).
+CI (`qa-agent-notify.yml`) runs this **before** `POST /release-readiness`.
+
+Constraint: one ConfigMap ≤ **1 MiB**. Typical `spt.yaml` files fit dozens of services; if the bundle approaches the limit, split by domain later — still no per-service projected entries.

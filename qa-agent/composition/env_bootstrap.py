@@ -65,6 +65,9 @@ def _apply_aliases() -> None:
         ("LITELLM_BASE_URL", "OPENAI_BASE_URL"),
         ("SUPPORT_AGENT_DATABASE_URL", "QA_AGENT_DATABASE_URL"),
         ("RUN_STORE_DSN", "QA_AGENT_DATABASE_URL"),
+        # Specs + release-gate share one Postgres DSN when only one is set
+        ("QA_AGENT_DATABASE_URL", "SPT_DATABASE_URL"),
+        ("SPT_DATABASE_URL", "QA_AGENT_DATABASE_URL"),
         ("GROWTHBOOK_CLIENT_KEY", "GROWTHBOOK_API_KEY"),
         ("ZOHO_CLIQ_WEBHOOK_URL", "QA_AGENT_CLIQ_WEBHOOK_URL"),
         ("OPENPROJECT_PROJECT_ID", "QA_AGENT_OP_PROJECT_ID"),

@@ -1,6 +1,6 @@
 # Dev — am-qa-agents (am-apps-dev)
 # One pod serves Specs (/spt-poc) + UI evidence (/ui-test).
-# Vault: reuse existing paths until apps/data/dev/services/am-qa-agents is seeded.
+# Vault: domain path runtime/modules/qa (not per-service). Legacy services/* untouched.
 environment: dev
 replicaCount: 1
 
@@ -9,14 +9,15 @@ vault:
   secretPaths:
     otel:
       path: "apps/data/dev/infra/observability"
+    # Live KV still under apps/dev/services/* (apps/data/dev/services/* not seeded)
     observability:
-      path: "apps/data/dev/services/am-agents-mcp-gateway"
+      path: "apps/dev/services/am-agents-mcp-gateway"
     llm-api-keys:
-      path: "apps/data/dev/services/am-agents-mcp-gateway"
+      path: "apps/dev/services/am-agents-mcp-gateway"
     identity-oidc:
-      path: "apps/data/dev/services/am-identity"
+      path: "apps/dev/services/am-identity"
     qa-agent:
-      path: "apps/data/dev/services/am-ui-test-agent"
+      path: "apps/data/dev/runtime/modules/qa"
 
 ingress:
   annotations:

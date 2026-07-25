@@ -1,4 +1,4 @@
-"""Store factory — memory (default) or sqlite durable."""
+"""Store factory — memory | sqlite | postgres (shared infra DB)."""
 
 from __future__ import annotations
 
@@ -25,12 +25,27 @@ __all__ = [
 _LEDGER: Any = None
 
 
+def _store_mode() -> str:
+    mode = (os.getenv("QA_AGENT_STORE") or "").strip().lower()
+    if mode:
+        return mode
+    if os.getenv("QA_AGENT_DATABASE_URL") or os.getenv("SPT_DATABASE_URL"):
+        return "postgres"
+    if os.getenv("QA_AGENT_SQLITE_PATH"):
+        return "sqlite"
+    return "memory"
+
+
 def get_ledger() -> Any:
     global _LEDGER
     if _LEDGER is not None:
         return _LEDGER
-    mode = (os.getenv("QA_AGENT_STORE") or "memory").lower()
-    if mode == "sqlite" or os.getenv("QA_AGENT_SQLITE_PATH"):
+    mode = _store_mode()
+    if mode in {"postgres", "postgresql", "pg"}:
+        from stores.postgres_store import get_postgres_ledger
+
+        _LEDGER = get_postgres_ledger()
+    elif mode == "sqlite" or os.getenv("QA_AGENT_SQLITE_PATH"):
         from stores.sqlite_store import get_sqlite_ledger
 
         _LEDGER = get_sqlite_ledger()

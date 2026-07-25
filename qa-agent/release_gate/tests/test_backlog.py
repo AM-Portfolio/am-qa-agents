@@ -44,6 +44,7 @@ def test_metrics_render():
 def test_sqlite_ledger(tmp_path, monkeypatch):
     monkeypatch.setenv("QA_AGENT_STORE", "sqlite")
     monkeypatch.setenv("QA_AGENT_SQLITE_PATH", str(tmp_path / "t.db"))
+    monkeypatch.delenv("QA_AGENT_DATABASE_URL", raising=False)
     # Reset singleton
     import stores as stores
     import stores.sqlite_store as ss
@@ -60,6 +61,18 @@ def test_sqlite_ledger(tmp_path, monkeypatch):
     assert again.tracking_id == run.tracking_id
     got = ledger.get("qa-sql-1")
     assert "classify" in got.steps
+
+
+def test_postgres_url_normalize():
+    from stores.postgres_store import resolve_database_url
+
+    os.environ["QA_AGENT_DATABASE_URL"] = (
+        "postgresql://u:p@postgresql.infra.svc.cluster.local:5432/am_qa_agent_dev"
+    )
+    try:
+        assert resolve_database_url().startswith("postgresql+psycopg://")
+    finally:
+        os.environ.pop("QA_AGENT_DATABASE_URL", None)
 
 
 def test_dast_disabled_by_default():

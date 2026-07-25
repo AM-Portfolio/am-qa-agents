@@ -39,9 +39,14 @@ class InMemoryEpisodeStore:
         try:
             import os
 
-            if (os.getenv("QA_AGENT_STORE") or "").lower() == "sqlite" or os.getenv(
-                "QA_AGENT_SQLITE_PATH"
+            store = (os.getenv("QA_AGENT_STORE") or "").lower()
+            if store in {"postgres", "postgresql", "pg"} or os.getenv(
+                "QA_AGENT_DATABASE_URL"
             ):
+                from stores.postgres_store import get_postgres_ledger
+
+                get_postgres_ledger().persist_episode(episode)
+            elif store == "sqlite" or os.getenv("QA_AGENT_SQLITE_PATH"):
                 from stores.sqlite_store import get_sqlite_ledger
 
                 get_sqlite_ledger().persist_episode(episode)

@@ -6,7 +6,7 @@
 | Portal UI-test facade | `/api/ui-test/*` on SPT | Same SPT routes |
 | Public UI agent | `https://{host}/ui-test` + `/api/v1/test/*` | Second IngressRoute → same Service |
 | am-core-services notify | `QA_AGENT_BASE_URL` + `/v2/workflows/release-readiness` | After catalog publish + ready poll; **SPT SoT remains `services/*/spt.yaml`** |
-| Product `spt.yaml` | `am.spt/v1` ServiceLoadTest (targets, openapi) | Mounted via ConfigMap → `/catalog-external`; qa-agent hydrates LoadContext from it |
+| Product `spt.yaml` | `am.spt/v1` ServiceLoadTest (targets, openapi) | Aggregated into ConfigMap `spt-catalog-bundle` → `/catalog-external/<service>.yaml` (any N services; Helm does not list each) |
 | Product `qa-agent.yaml` | Thin CI opt-in (`spt.path` / `spt.required`) | Does **not** replace `spt.yaml` |
 | am-modern-ui notify | same endpoint, `service=am-modern-ui` (UI-only, no catalog wait) | Opt-in `qa-agent.yaml` |
 | am-pipelines | `notify-qa-agent.yml` `workflow_call` | Reusable POST helper |

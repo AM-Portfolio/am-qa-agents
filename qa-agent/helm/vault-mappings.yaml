@@ -1,5 +1,6 @@
 # Vault key → env var mappings (no secret values in git).
 # Paths are set per-env in values.{dev,preprod,prod}.yaml under vault.secretPaths.
+# Dev qa-agent path: apps/data/dev/runtime/modules/qa (domain — not services/<repo>).
 
 vault:
   secretPaths:

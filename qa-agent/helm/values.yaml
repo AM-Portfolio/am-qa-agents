@@ -42,11 +42,13 @@ env:
   LOG_FORMAT: json
   TZ: Asia/Kolkata
   ROOT_PATH: "/spt-poc"
-  # Writable path (universal-chart has no PVC by default)
+  # Writable path for reports/PDF (ledger lives in shared Postgres)
   DATA_DIR: "/tmp/qa-agent-data"
   REPORT_DIR: "/tmp/qa-agent-data/reports/ui-test"
   SPT_STORE: "db"
-  QA_AGENT_STORE: "sqlite"
+  # Ledger + Specs share infra Postgres via Vault QA_AGENT_DATABASE_URL / SPT_DATABASE_URL
+  QA_AGENT_STORE: "postgres"
+  QA_AGENT_ARTIFACT_DIR: "/tmp/qa-agent-data/pdf"
   TEMPORAL_TASK_QUEUE: "qa-agent-release-v1"
   TEMPORAL_HOST: "temporal-frontend.temporal.svc.cluster.local:7233"
   TEMPORAL_NAMESPACE: "qa-agent"
@@ -105,7 +107,9 @@ podAnnotations:
   prometheus.io/path: "/metrics"
   prometheus.io/port: "8150"
 
-# Projected SPT catalogs (ConfigMaps published by am-core-services publish-spt-catalogs)
+# All product spt.yaml files — one ConfigMap, any N services (no per-service Helm entries).
+# Published by am-core-services: scripts/publish-spt-catalogs.py → spt-catalog-bundle
+# Keys: <service>.yaml → /catalog-external/<service>.yaml (catalog_loader)
 extraVolumeMounts:
   - name: catalog-external
     mountPath: /catalog-external
@@ -113,25 +117,8 @@ extraVolumeMounts:
 
 extraVolumes:
   - name: catalog-external
-    projected:
+    configMap:
+      name: spt-catalog-bundle
+      optional: true
       defaultMode: 0444
-      sources:
-        - configMap:
-            name: spt-catalog-am-analysis
-            optional: true
-            items:
-              - key: spt.yaml
-                path: am-analysis/spt.yaml
-        - configMap:
-            name: spt-catalog-am-gateway
-            optional: true
-            items:
-              - key: spt.yaml
-                path: am-gateway/spt.yaml
-        - configMap:
-            name: spt-catalog-am-mcp-server
-            optional: true
-            items:
-              - key: spt.yaml
-                path: am-mcp-server/spt.yaml
 
