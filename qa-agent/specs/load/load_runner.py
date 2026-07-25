@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -44,6 +45,30 @@ from specs.ui_bridge.ui_test_client import (
     start_suite,
 )
 from specs.ui_bridge.ui_trace_mapper import agent_status_passed, map_status_to_traces
+
+
+def resolve_k6_bin(configured: str | None = None) -> str | None:
+    """Return an executable k6 path, or None if not found."""
+    candidates: list[str] = []
+    raw = (configured if configured is not None else settings.k6_bin) or ""
+    raw = raw.strip()
+    if raw:
+        candidates.append(raw)
+    env_bin = (os.getenv("K6_BIN") or "").strip()
+    if env_bin and env_bin not in candidates:
+        candidates.append(env_bin)
+    for c in ("/usr/local/bin/k6", "k6"):
+        if c not in candidates:
+            candidates.append(c)
+    for c in candidates:
+        p = Path(c)
+        if p.is_file() and os.access(p, os.X_OK):
+            return str(p)
+        found = shutil.which(c)
+        if found and Path(found).is_file():
+            return found
+    return None
+
 
 ProgressCb = Callable[[dict[str, Any]], None]
 
@@ -224,8 +249,8 @@ def _k6_script_from_config(
 
     progress_url = None
     if run_id:
-        root = (settings.root_path or "").rstrip("/")
-        progress_url = f"http://127.0.0.1:{settings.app_port}{root}/api/runs/{run_id}/progress"
+        # Loopback callbacks must omit Traefik ROOT_PATH
+        progress_url = f"http://127.0.0.1:{settings.app_port}/api/runs/{run_id}/progress"
 
     # Always capture every call up to cap so the inspector can show per-call status.
     # (debug also keeps full bodies; load uses the same sample path.)
@@ -604,7 +629,7 @@ async def run_k6_local(
             "message": f"Finished — {result.get('status')}",
         }
         result["grafana_url"] = __import__(
-            "app.grafana_links", fromlist=["grafana_run_url"]
+            "specs.observability.grafana_links", fromlist=["grafana_run_url"]
         ).grafana_run_url(
             service=result.get("service"),
             environment=result.get("environment"),
@@ -748,9 +773,15 @@ async def run_k6_local(
         api_summary=result["api_summary"],
     )
 
-    k6_bin = settings.k6_bin
-    if not Path(k6_bin).is_file():
-        steps.append({"step": "k6_run", "status": "fail", "error": f"k6 not found at {k6_bin}"})
+    k6_bin = resolve_k6_bin()
+    if not k6_bin:
+        steps.append(
+            {
+                "step": "k6_run",
+                "status": "fail",
+                "error": f"k6 not found (configured={settings.k6_bin!r})",
+            }
+        )
         result["status"] = "failed"
         result["error"] = "k6 binary missing"
         result["finished_at"] = datetime.now(timezone.utc).isoformat()
@@ -765,9 +796,9 @@ async def run_k6_local(
             "POC_TARGET_URL": target,
             "POC_BASE_URL": target,
         }
-        root = (settings.root_path or "").rstrip("/")
-        env["SPT_PROGRESS_URL"] = f"http://127.0.0.1:{settings.app_port}{root}/api/runs/{run_id}/progress"
-        env["SPT_SAMPLE_URL"] = f"http://127.0.0.1:{settings.app_port}{root}/api/runs/{run_id}/sample"
+        # Loopback must not include Traefik ROOT_PATH (/spt-poc) — the app listens on /api/...
+        env["SPT_PROGRESS_URL"] = f"http://127.0.0.1:{settings.app_port}/api/runs/{run_id}/progress"
+        env["SPT_SAMPLE_URL"] = f"http://127.0.0.1:{settings.app_port}/api/runs/{run_id}/sample"
         cmd = [k6_bin, "run", str(script_path)]
         try:
             steps.append(
@@ -1069,7 +1100,9 @@ async def run_k6_local(
         "phase": "done",
         "message": f"Finished — {result.get('status')}",
     }
-    result["grafana_url"] = __import__("app.grafana_links", fromlist=["grafana_run_url"]).grafana_run_url(
+    result["grafana_url"] = __import__(
+        "specs.observability.grafana_links", fromlist=["grafana_run_url"]
+    ).grafana_run_url(
         service=result.get("service"),
         environment=result.get("environment"),
         started_at=result.get("started_at"),

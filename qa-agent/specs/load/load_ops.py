@@ -6,7 +6,7 @@ import httpx
 
 from specs.config import settings
 from specs.load.config_builder import snapshot_for_run
-from specs.load.load_runner import run_k6_local
+from specs.load.load_runner import resolve_k6_bin, run_k6_local
 
 ProgressCb = Callable[[dict[str, Any]], None]
 
@@ -14,7 +14,7 @@ ProgressCb = Callable[[dict[str, Any]], None]
 async def platform_health() -> dict[str, Any]:
     out: dict[str, Any] = {
         "status": "ok",
-        "k6_binary": __import__("pathlib").Path(settings.k6_bin).is_file(),
+        "k6_binary": resolve_k6_bin() is not None,
         "influxdb": {"configured": bool(settings.influxdb_token), "url": settings.influxdb_url},
         "minio": {
             "configured": bool(settings.minio_access_key),

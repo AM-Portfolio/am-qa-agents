@@ -18,7 +18,15 @@ class PortalConfig {
       return PortalConfig(apiBase: api.replaceAll(RegExp(r'/$'), ''), rootPath: root);
     }
     // Same-origin when hosted under api-load (use ROOT_PATH if set).
-    final prefix = root.replaceAll(RegExp(r'/$'), '');
-    return PortalConfig(apiBase: prefix.isEmpty ? '' : prefix, rootPath: prefix);
+    var prefix = root.replaceAll(RegExp(r'/$'), '');
+    if (prefix.isEmpty) {
+      // Infer from browser path: /spt-poc/ui/... → /spt-poc
+      final path = Uri.base.path;
+      final m = RegExp(r'^(/[^/]+)(/ui(?:/|$))').firstMatch(path);
+      if (m != null) {
+        prefix = m.group(1)!;
+      }
+    }
+    return PortalConfig(apiBase: prefix, rootPath: prefix);
   }
 }

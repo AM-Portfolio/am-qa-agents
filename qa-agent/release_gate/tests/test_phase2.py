@@ -13,6 +13,7 @@ os.environ["QA_AGENT_SKIP_OBSERVE"] = "true"
 def test_verify_passes_stub_pack():
     import asyncio
 
+    os.environ["QA_AGENT_UI_OPTIONAL"] = "true"
     pack = asyncio.get_event_loop().run_until_complete(
         collect_comparison_pack(services=["Market Data"])
     )
@@ -26,6 +27,30 @@ def test_verify_passes_stub_pack():
     assert v["verified"] is True
     assert v["releasable"] is True
     assert v["feature_clean"] is True
+
+
+def test_verify_blocks_spt_and_ui_skip():
+    os.environ.pop("QA_AGENT_UI_OPTIONAL", None)
+    v = post_test_verify(
+        smoke={
+            "status": "FAILED",
+            "skipped": True,
+            "ui": {"status": "skipped", "skipped": True},
+            "api": {
+                "status": "FAILED",
+                "spt_specs": {"status": "FAILED", "failed": ["am-analysis"], "ok": False},
+                "catalog_ready": {"ready": True},
+            },
+            "layers": {"ui_ok": False, "spt_ok": False, "live_ok": False},
+            "p0_failed": ["p0-api-1"],
+        },
+        comparisons={"endpoints": [], "resources": [], "users": {}},
+        gnx_mode="full",
+        fin_prep={"status": "OK"},
+    )
+    assert v["releasable"] is False
+    assert any(b.startswith("spt_specs_failed:") for b in v["blockers"])
+    assert "ui_skipped" in v["blockers"] or "ui_failed" in v["blockers"]
 
 
 def test_verify_blocks_oom():
@@ -42,6 +67,7 @@ def test_verify_blocks_oom():
         ],
         "users": {"user_facing_5xx": {"b": 0, "r": 0}},
     }
+    os.environ["QA_AGENT_UI_OPTIONAL"] = "true"
     v = post_test_verify(smoke={"skipped": True}, comparisons=pack, gnx_mode="full")
     assert v["verified"] is False
     assert any(b.startswith("oom:") for b in v["blockers"])

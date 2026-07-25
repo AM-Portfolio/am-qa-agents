@@ -25,7 +25,13 @@ def store_mode() -> StoreMode:
 
 def database_url() -> str:
     if settings.spt_database_url:
-        return settings.spt_database_url
+        url = settings.spt_database_url.strip()
+        # Image ships psycopg3; bare postgresql:// defaults to psycopg2 in SQLAlchemy.
+        if url.startswith("postgresql://"):
+            return "postgresql+psycopg://" + url[len("postgresql://") :]
+        if url.startswith("postgres://"):
+            return "postgresql+psycopg://" + url[len("postgres://") :]
+        return url
     path = Path(settings.data_dir) / "spt.db"
     path.parent.mkdir(parents=True, exist_ok=True)
     return f"sqlite:///{path.resolve().as_posix()}"

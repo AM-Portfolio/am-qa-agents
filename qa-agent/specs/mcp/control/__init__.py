@@ -257,21 +257,26 @@ def spt_ensure_working_payload(
 ) -> dict[str, Any]:
     """Build → Try → write set+overlay on 2xx. LLM only if allow_llm / env flag."""
     import asyncio
+    import concurrent.futures
 
     from specs.payloads.payload_pipeline import ensure_working_payload
 
-    return asyncio.run(
-        ensure_working_payload(
-            service=service,
-            environment=environment,
-            method=method,
-            path=path,
-            operation_id=operation_id,
-            api_id=api_id,
-            write_back=write_back,
-            allow_llm=allow_llm,
-        )
+    coro = ensure_working_payload(
+        service=service,
+        environment=environment,
+        method=method,
+        path=path,
+        operation_id=operation_id,
+        api_id=api_id,
+        write_back=write_back,
+        allow_llm=allow_llm,
     )
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()
 
 
 @mcp.tool(name="spt_prepare_mcp_payloads")
@@ -339,13 +344,19 @@ def prompt_dev_load() -> str:
 
 def mount_mcp(app: Any) -> None:
     """Mount streamable HTTP MCP under /mcp."""
+    import logging
+
+    log = logging.getLogger("specs.mcp")
     try:
         mcp_app = mcp.streamable_http_app()
         app.mount("/mcp", mcp_app)
-    except Exception:
-        # Older mcp versions
-        try:
-            mcp_app = mcp.sse_app()  # type: ignore[attr-defined]
-            app.mount("/mcp", mcp_app)
-        except Exception:
-            pass
+        log.info("Control MCP mounted at /mcp (streamable HTTP)")
+        return
+    except Exception as exc:
+        log.warning("streamable MCP mount failed: %s", exc)
+    try:
+        mcp_app = mcp.sse_app()  # type: ignore[attr-defined]
+        app.mount("/mcp", mcp_app)
+        log.info("Control MCP mounted at /mcp (SSE fallback)")
+    except Exception as exc:
+        log.exception("Control MCP failed to mount — /mcp will be unavailable: %s", exc)

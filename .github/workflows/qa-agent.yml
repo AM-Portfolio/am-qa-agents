@@ -10,6 +10,7 @@ on:
       - "package.json"
       - "docker/**"
       - ".code-intelligence.yaml"
+      - ".github/workflows/qa-agent.yml"
   pull_request:
     branches: ["main", "develop"]
     paths:
@@ -19,6 +20,7 @@ on:
       - "package.json"
       - "docker/**"
       - ".code-intelligence.yaml"
+      - ".github/workflows/qa-agent.yml"
   workflow_dispatch:
 
 jobs:
@@ -31,7 +33,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install package
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,temporal,pdf]"
       - name: Import check
         env:
           PYTHONPATH: qa-agent:qa-agent/release_gate
@@ -39,23 +41,92 @@ jobs:
       - name: Pytest
         env:
           PYTHONPATH: qa-agent:qa-agent/release_gate
-        run: pytest -q qa-agent/specs/tests/test_env_urls.py qa-agent/release_gate/tests/test_trigger_policy.py qa-agent/ui_evidence/tests/test_env_urls.py
+          QA_AGENT_SKIP_OBSERVE: "true"
+        run: |
+          pytest -q \
+            qa-agent/specs/tests/test_env_urls.py \
+            qa-agent/release_gate/tests/test_trigger_policy.py \
+            qa-agent/release_gate/tests/test_phase2.py \
+            qa-agent/release_gate/tests/test_phase3.py \
+            qa-agent/ui_evidence/tests/test_env_urls.py
 
   publish:
     name: Publish qa-agent (am-qa-agents)
     needs: test
     if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    uses: AM-Portfolio/am-pipelines/.github/workflows/central-build-publish.yml@main
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - name: Checkout am-qa-agents
+        uses: actions/checkout@v4
+        with:
+          path: am-qa-agents
+
+      - name: Checkout am-modern-ui (design system for portal)
+        uses: actions/checkout@v4
+        with:
+          repository: AM-Portfolio/am-modern-ui
+          path: am-modern-ui
+          token: ${{ secrets.GITHUB_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build Flutter portal (cluster)
+        working-directory: am-qa-agents/qa-portal-ui
+        run: |
+          flutter pub get
+          flutter build web --release \
+            --base-href=/spt-poc/ui/ \
+            --dart-define=API_BASE=/spt-poc \
+            --dart-define=ROOT_PATH=/spt-poc \
+            --no-wasm-dry-run
+          test -f build/web/index.html
+
+      - name: Image tag
+        id: meta
+        run: |
+          TAG="sha-${GITHUB_SHA::7}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "IMAGE=ghcr.io/am-portfolio/am-qa-agents:$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image (includes k6 + portal)
+        working-directory: am-qa-agents
+        run: |
+          docker build -f qa-agent/Dockerfile \
+            -t "ghcr.io/am-portfolio/am-qa-agents:${{ steps.meta.outputs.tag }}" \
+            -t "ghcr.io/am-portfolio/am-qa-agents:latest" \
+            .
+          docker push "ghcr.io/am-portfolio/am-qa-agents:${{ steps.meta.outputs.tag }}"
+          docker push "ghcr.io/am-portfolio/am-qa-agents:latest"
+
+  deploy-dev:
+    name: Deploy qa-agent → dev
+    needs: publish
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      actions: write
+    uses: AM-Portfolio/am-pipelines/.github/workflows/central-deploy.yml@main
     with:
-      language: python
-      working_directory: "."
-      image_name: am-qa-agents
-      dockerfile: qa-agent/Dockerfile
-      build_context: "."
-      deploy_dev: false
-      deploy_preprod: false
-      deploy_prod: false
+      service_name: am-qa-agents
+      working_directory: "qa-agent"
+      language: "python"
+      environment: "dev"
+      image_tag: ${{ needs.publish.outputs.image_tag }}
+      namespace: am-apps-dev
     secrets: inherit

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from temporalio import activity
 
+import os
 import uuid
 from typing import Any
 
@@ -200,51 +201,92 @@ async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
     item_results: list[dict[str, Any]] = []
-    ui_ok = str(ui_result.get("status") or "").lower() in {
+    ui_optional = str(os.getenv("QA_AGENT_UI_OPTIONAL") or "").lower() in {"1", "true", "yes"}
+    ui_skipped = bool(ui_result.get("skipped"))
+    ui_status = str(ui_result.get("status") or "").lower()
+    ui_ok = (not ui_skipped) and ui_status in {
         "completed",
         "done",
         "succeeded",
         "success",
         "passed",
-        "skipped",
-        "",
-    } or bool(ui_result.get("skipped"))
-    api_ok = str(api_run.get("status") or "").upper() in {"PASSED", "PARTIAL", "OK"}
+    }
+    if ui_skipped and ui_optional:
+        ui_ok = True
+
+    live_ok = str(api_run.get("status") or "").upper() in {"PASSED", "OK"}
+    spt_status = str(spt_run.get("status") or "").upper() if isinstance(spt_run, dict) else ""
+    spt_skipped = bool(isinstance(spt_run, dict) and spt_run.get("skipped"))
+    spt_ok = spt_skipped or spt_status in {"PASSED", "OK"} or (
+        isinstance(spt_run, dict) and bool(spt_run.get("ok")) and not spt_run.get("failed")
+    )
+    if isinstance(spt_run, dict) and spt_run.get("failed"):
+        spt_ok = False
+    if isinstance(spt_run, dict) and spt_status == "FAILED":
+        spt_ok = False
+    # API P0 requires both live HTTP and Specs SPT (when SPT ran / was expected)
+    api_ok = live_ok and (spt_ok or spt_skipped)
+
     for item in matrix.get("p0") or []:
         layer = item.get("layer")
         passed = True
+        release_blocker = True
         if layer == "ui":
             passed = ui_ok
         elif layer == "api":
-            # Prefer per-service result when item names a service
             svc = item.get("service")
+            live_svc_ok = live_ok
             if svc:
                 match = next((s for s in (api_run.get("services") or []) if s.get("name") == svc), None)
-                passed = bool(match and match.get("ok")) if match is not None else api_ok
-            else:
-                passed = api_ok
+                live_svc_ok = bool(match and match.get("ok")) if match is not None else live_ok
+            spt_svc_ok = spt_ok
+            if svc and isinstance(spt_run, dict) and isinstance(spt_run.get("runs"), list):
+                spt_match = next(
+                    (r for r in spt_run["runs"] if r.get("service") == svc),
+                    None,
+                )
+                if spt_match is not None:
+                    spt_svc_ok = bool(spt_match.get("ok")) or bool(spt_match.get("skipped"))
+            passed = live_svc_ok and spt_svc_ok
         elif layer == "flow":
-            passed = True  # planned-only until flow executor
+            # Planned-only — do not block release until flow executor exists
+            passed = True
+            release_blocker = False
         item_results.append(
             {
                 "id": item["id"],
                 "tier": "P0",
                 "layer": layer,
                 "passed": passed,
-                "release_blocker": True,
+                "release_blocker": release_blocker,
             }
         )
+
+    p0_failed = [r["id"] for r in item_results if r.get("release_blocker") and not r["passed"]]
+    layers_failed: list[str] = []
+    if not ui_ok:
+        layers_failed.append("ui")
+    if not api_ok:
+        layers_failed.append("api")
+    aggregate = "FAILED" if (p0_failed or layers_failed) else "PASSED"
 
     out = {
         "ui": ui_result,
         "api": api_layer,
         "flow": flow_layer,
         "item_results": item_results,
-        "p0_failed": [r["id"] for r in item_results if not r["passed"]],
+        "p0_failed": p0_failed,
         "gnx_mode": index.get("gnx_mode"),
-        "status": ui_result.get("status"),
+        "status": aggregate,
         "skipped": ui_result.get("skipped"),
         "reportUrl": ui_result.get("reportUrl") or ui_result.get("report_url"),
+        "layers": {
+            "ui_ok": ui_ok,
+            "live_ok": live_ok,
+            "spt_ok": spt_ok,
+            "api_ok": api_ok,
+            "failed": layers_failed,
+        },
     }
     get_ledger().upsert_step(
         tracking_id,

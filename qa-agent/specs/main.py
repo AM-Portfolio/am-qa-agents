@@ -105,8 +105,44 @@ app.add_middleware(
 app.add_middleware(AclMiddleware)
 mount_mcp(app)
 
+
+class _FlutterNoCacheMiddleware:
+    """Avoid CDN/browser serving stale Flutter SPA shells after deploys."""
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        path = scope.get("path") or ""
+        # Traefik may forward /spt-poc/ui/... (full path) or /ui/... (stripped).
+        no_cache = "/ui" in path and (
+            path.endswith(".js")
+            or path.endswith(".html")
+            or path.rstrip("/").endswith("/ui")
+            or path.endswith("/")
+        )
+
+        async def send_wrapper(message: Any) -> None:
+            if no_cache and message["type"] == "http.response.start":
+                headers = [
+                    (k, v)
+                    for k, v in message.get("headers", [])
+                    if k.lower() not in (b"cache-control", b"expires", b"pragma")
+                ]
+                headers.append((b"cache-control", b"no-cache, no-store, must-revalidate"))
+                headers.append((b"pragma", b"no-cache"))
+                message = {**message, "headers": headers}
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper if no_cache else send)
+
+
 _FLUTTER_DIR = portal_flutter_web_dir() if settings.spt_portal_flutter else None
 if _FLUTTER_DIR is not None:
+    app.add_middleware(_FlutterNoCacheMiddleware)
     app.mount(
         "/ui",
         StaticFiles(directory=str(_FLUTTER_DIR), html=True),

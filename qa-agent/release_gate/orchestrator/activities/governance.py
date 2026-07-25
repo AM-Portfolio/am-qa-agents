@@ -77,11 +77,15 @@ async def activity_github_check_run(payload: dict[str, Any]) -> dict[str, Any]:
     hitl = payload.get("hitl") or {}
     verification = payload.get("verification") or {}
     decision = hitl.get("decision")
-    if decision == "approved":
+    releasable = bool(verification.get("releasable"))
+    # HITL approve cannot greenwash a failed SPT/UI verify
+    if decision == "approved" and releasable:
         conclusion = "success"
+    elif decision == "approved" and not releasable:
+        conclusion = "failure"
     elif decision in {"rejected", "timed_out"}:
         conclusion = "failure"
-    elif verification.get("releasable"):
+    elif releasable:
         conclusion = "neutral"
     else:
         conclusion = "failure"
@@ -93,6 +97,7 @@ async def activity_github_check_run(payload: dict[str, Any]) -> dict[str, Any]:
         summary=(
             f"tracking_id={tracking_id}\n"
             f"releasable={verification.get('releasable')}\n"
+            f"blockers={verification.get('blockers')}\n"
             f"hitl={decision}\n"
             f"pdf={payload.get('pdf_docs_ref')}\n"
         ),

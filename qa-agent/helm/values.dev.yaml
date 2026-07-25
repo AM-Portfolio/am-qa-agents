@@ -40,7 +40,9 @@ env:
   DEFAULT_ENVIRONMENT: dev
   ROOT_PATH: /spt-poc
   LOG_LEVEL: INFO
-  TEMPORAL_NAMESPACE: qa-agent-dev
+  # Must exist in Temporal cluster (create qa-agent-dev before switching back)
+  TEMPORAL_NAMESPACE: qa-agent
+  QA_AGENT_WORKER_ENABLED: "1"
   FIN_AGENT_BASE_URL: "http://am-fin-agent.am-ai.svc.cluster.local:8100"
   TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-apps-dev.svc.cluster.local:8141"
   GNX_MCP_URL: "http://gitnexus-mcp.am-ai.svc.cluster.local:4747"
@@ -48,3 +50,4 @@ env:
   SPT_UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_BASE_URL: "http://127.0.0.1:8150"
+  SPT_PORTAL_FLUTTER: "true"

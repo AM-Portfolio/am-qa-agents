@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,10 @@ def _policy() -> dict[str, Any]:
         with open(cfg, encoding="utf-8") as f:
             return (yaml.safe_load(f) or {}).get("policy") or {}
     return {}
+
+
+def _ui_optional() -> bool:
+    return str(os.getenv("QA_AGENT_UI_OPTIONAL") or "").lower() in {"1", "true", "yes"}
 
 
 def post_test_verify(
@@ -29,32 +34,74 @@ def post_test_verify(
     warnings: list[str] = []
     blockers: list[str] = []
     clean_pol = pol.get("clean_feature") or {}
+    matrix = matrix_results or smoke or {}
 
     # Catalog registration race — SPT must not run against missing registration
-    api = (matrix_results or smoke or {}).get("api") or {}
+    api = matrix.get("api") or {}
     catalog_ready = api.get("catalog_ready") or {}
     if catalog_ready.get("ready") is False and not catalog_ready.get("skipped"):
         blockers.append("catalog_not_ready")
 
+    # Specs SPT failures are release blockers (alongside live HTTP)
+    spt = api.get("spt_specs") or {}
+    if isinstance(spt, dict) and not spt.get("skipped"):
+        spt_st = str(spt.get("status") or "").upper()
+        failed_svcs = spt.get("failed") or []
+        if spt_st in {"FAILED", "PARTIAL"} or failed_svcs or spt.get("ok") is False:
+            detail = ",".join(str(x) for x in failed_svcs) if failed_svcs else (spt_st or "failed")
+            blockers.append(f"spt_specs_failed:{detail}")
+
     # UI / smoke (also used as matrix UI layer status)
-    st = str(smoke.get("status") or "").lower()
-    skipped = bool(smoke.get("skipped"))
-    if not skipped and st not in {"completed", "done", "succeeded", "success", "passed", ""}:
+    ui = matrix.get("ui") if isinstance(matrix.get("ui"), dict) else None
+    st = str((ui or smoke).get("status") or "").lower()
+    skipped = bool((ui or smoke).get("skipped"))
+    if skipped:
+        if _ui_optional():
+            warnings.append("ui_skipped")
+        elif pol.get("block_on_p0_fail", True):
+            blockers.append("ui_skipped")
+        else:
+            warnings.append("ui_skipped")
+    elif ui is not None and st not in {"completed", "done", "succeeded", "success", "passed"}:
         if pol.get("block_on_p0_fail", True):
             blockers.append(f"smoke_status:{st or 'missing'}")
         else:
             warnings.append(f"smoke_status:{st or 'missing'}")
+    elif ui is None and st and st not in {
+        "completed",
+        "done",
+        "succeeded",
+        "success",
+        "passed",
+        "failed",
+        "partial",
+        "",
+    }:
+        # Legacy smoke-only path (no nested ui dict)
+        if pol.get("block_on_p0_fail", True):
+            blockers.append(f"smoke_status:{st}")
+        else:
+            warnings.append(f"smoke_status:{st}")
+
+    layers = matrix.get("layers") if isinstance(matrix.get("layers"), dict) else {}
+    if layers.get("ui_ok") is False and not _ui_optional():
+        if "ui_skipped" not in blockers and not any(b.startswith("smoke_status:") for b in blockers):
+            blockers.append("ui_failed")
+    if layers.get("spt_ok") is False and not any(b.startswith("spt_specs_failed:") for b in blockers):
+        blockers.append("spt_specs_failed:layers")
+    if layers.get("live_ok") is False:
+        blockers.append("api_live_failed")
 
     # SAST findings (Phase 4)
-    for b in (matrix_results or {}).get("sast_blockers") or []:
+    for b in matrix.get("sast_blockers") or []:
         blockers.append(str(b) if str(b).startswith("sast:") else f"sast:{b}")
-    security = (matrix_results or {}).get("security") or {}
+    security = matrix.get("security") or {}
     for b in security.get("blockers") or []:
         if b not in blockers:
             blockers.append(b)
 
     # Matrix P0 failures (Phase 3)
-    for failed_id in (matrix_results or {}).get("p0_failed") or []:
+    for failed_id in matrix.get("p0_failed") or []:
         if clean_pol.get("require_p0_pass", True) or pol.get("block_on_p0_fail", True):
             blockers.append(f"matrix_p0_fail:{failed_id}")
         else:
@@ -118,10 +165,13 @@ def post_test_verify(
         b
         for b in blockers
         if b.startswith("smoke_")
+        or b.startswith("ui_")
         or b.startswith("latency_")
         or b.startswith("matrix_p0_")
         or b.startswith("open_work_item_p0")
         or b.startswith("sast:")
+        or b.startswith("spt_specs_")
+        or b.startswith("api_live_")
     ]
     feature_clean = len(feature_blockers) == 0
     infra_clean = not any(b.startswith("oom:") or b.startswith("restarts:") for b in blockers)

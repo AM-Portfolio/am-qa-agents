@@ -56,6 +56,7 @@ def test_change_intent_template():
 def test_verify_blocks_matrix_p0():
     from intelligence.verify import post_test_verify
 
+    os.environ["QA_AGENT_UI_OPTIONAL"] = "true"
     v = post_test_verify(
         smoke={"skipped": True, "status": "COMPLETED"},
         comparisons={"endpoints": [], "resources": [], "users": {}},
@@ -69,6 +70,7 @@ def test_verify_blocks_matrix_p0():
 def test_verify_blocks_open_p0_work_item():
     from intelligence.verify import post_test_verify
 
+    os.environ["QA_AGENT_UI_OPTIONAL"] = "true"
     v = post_test_verify(
         smoke={"skipped": True},
         comparisons={"endpoints": [], "resources": [], "users": {}},

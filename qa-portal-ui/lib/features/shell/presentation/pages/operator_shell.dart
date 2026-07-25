@@ -143,8 +143,10 @@ class OperatorShell extends StatelessWidget {
                         BlocBuilder<_ShellCubit, _ShellState>(
                           builder: (context, shell) {
                             return ExecuteBar(
-                              apiOk: shell.apiOk,
-                              apiMessage: shell.message,
+                              apiOk: shell.apiOk && shell.k6Ok != false,
+                              apiMessage: shell.k6Ok == false
+                                  ? 'k6 missing'
+                                  : shell.message,
                               onClearCache: () =>
                                   context.read<_ShellCubit>().clearCache(),
                             );
@@ -168,6 +170,7 @@ class OperatorShell extends StatelessWidget {
 class _ShellState {
   const _ShellState({
     this.apiOk = false,
+    this.k6Ok,
     this.grafanaUrl,
     this.minioUrl,
     this.operator,
@@ -175,6 +178,7 @@ class _ShellState {
   });
 
   final bool apiOk;
+  final bool? k6Ok;
   final String? grafanaUrl;
   final String? minioUrl;
   final Map<String, dynamic>? operator;
@@ -182,6 +186,7 @@ class _ShellState {
 
   _ShellState copyWith({
     bool? apiOk,
+    bool? k6Ok,
     String? grafanaUrl,
     String? minioUrl,
     Map<String, dynamic>? operator,
@@ -189,6 +194,7 @@ class _ShellState {
   }) {
     return _ShellState(
       apiOk: apiOk ?? this.apiOk,
+      k6Ok: k6Ok ?? this.k6Ok,
       grafanaUrl: grafanaUrl ?? this.grafanaUrl,
       minioUrl: minioUrl ?? this.minioUrl,
       operator: operator ?? this.operator,
@@ -210,19 +216,21 @@ class _ShellCubit extends Cubit<_ShellState> {
       emit(
         _ShellState(
           apiOk: true,
+          k6Ok: data['k6_binary'] == true,
           grafanaUrl: data['grafana_url']?.toString(),
           minioUrl: data['minio_console_url']?.toString() ??
               (data['minio'] is Map
                   ? (data['minio'] as Map)['console_url']?.toString()
                   : null),
           operator: op is Map ? Map<String, dynamic>.from(op) : null,
-          message: null,
+          message: data['k6_binary'] == true ? null : 'k6 binary missing on agent',
         ),
       );
     } catch (e) {
       emit(
         _ShellState(
           apiOk: false,
+          k6Ok: false,
           message: e.toString(),
           operator: state.operator,
           grafanaUrl: state.grafanaUrl,

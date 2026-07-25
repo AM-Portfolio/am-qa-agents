@@ -13,4 +13,7 @@
 **/*.log
 qa-agent/vendor/wheels/
 qa-portal-ui/.dart_tool/
-qa-portal-ui/build/
+# Keep build/web for Specs Flutter portal; drop Flutter compile intermediates
+qa-portal-ui/build/**
+!qa-portal-ui/build/web/
+!qa-portal-ui/build/web/**

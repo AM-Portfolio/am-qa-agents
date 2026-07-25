@@ -310,6 +310,8 @@ class ReleaseReadinessWorkflow:
                     "recommendation": analysis.get("recommendation"),
                     "gnx_mode": index.get("gnx_mode"),
                     "releasable": verification.get("releasable"),
+                    "blockers": verification.get("blockers"),
+                    "warnings": verification.get("warnings"),
                     "degraded_banner": index.get("gnx_mode") == "degraded",
                 },
             )
