@@ -5,8 +5,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from spt import load_ops
-from spt.catalog_loader import (
+from specs.load import load_ops
+from specs.catalog.catalog_loader import (
     default_target_for_service,
     list_registered_services,
     load_catalog,
@@ -14,18 +14,18 @@ from spt.catalog_loader import (
     openapi_versions_by_env,
     reachable_target_for_service,
 )
-from spt.config import settings
-from spt.config_builder import ensure_default_config
-from spt.db.engine import db_health, store_mode
-from spt.load_runner import get_run_trace_at, list_run_traces
-from spt.payload_store import (
+from specs.config import settings
+from specs.load.config_builder import ensure_default_config
+from specs.persistence.db.engine import db_health, store_mode
+from specs.load.load_runner import get_run_trace_at, list_run_traces
+from specs.payloads.payload_store import (
     get_payload_set,
     list_payload_sets,
     list_payloads,
     save_payload,
     set_active_payload_set,
 )
-from spt.run_store import (
+from specs.persistence.run_store import (
     count_running,
     get_config,
     get_run,

@@ -8,10 +8,10 @@ from typing import Any, Optional
 
 from mcp.server.fastmcp import FastMCP
 
-from spt import services
-from spt.config_builder import config_from_request, ensure_default_config
-from spt.run_store import delete_config, get_run, save_config
-from spt.schemas import TestConfigIn
+from specs import services
+from specs.load.config_builder import config_from_request, ensure_default_config
+from specs.persistence.run_store import delete_config, get_run, save_config
+from specs.schemas import TestConfigIn
 
 mcp = FastMCP(
     "am-test-agent",
@@ -118,7 +118,7 @@ def spt_get_run_live(run_id: str) -> dict[str, Any]:
 
 @mcp.tool(name="spt_running_count")
 def spt_running_count() -> dict[str, Any]:
-    from spt.run_store import count_running
+    from specs.persistence.run_store import count_running
 
     return {"running": count_running()}
 
@@ -135,8 +135,8 @@ def spt_execute_run(
     triggered_by: str = "mcp",
     wait: bool = False,
 ) -> dict[str, Any]:
-    from spt.acl import Caller
-    from spt.services.execute_svc import execute_run_sync
+    from specs.security.acl import Caller
+    from specs.services.execute_svc import execute_run_sync
 
     return execute_run_sync(
         config_id=config_id,
@@ -154,8 +154,8 @@ def spt_execute_run(
 
 @mcp.tool(name="spt_stop_run")
 def spt_stop_run(run_id: str) -> dict[str, Any]:
-    from spt.runners import process_registry
-    from spt.run_store import get_run, update_run
+    from specs.load.runners import process_registry
+    from specs.persistence.run_store import get_run, update_run
     from datetime import datetime, timezone
 
     row = get_run(run_id)
@@ -232,7 +232,7 @@ def spt_build_payload(
     api_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Schema-first payload from live OpenAPI (+ overlay). No LLM."""
-    from spt.payload_pipeline import build_payload
+    from specs.payloads.payload_pipeline import build_payload
 
     return build_payload(
         service=service,
@@ -258,7 +258,7 @@ def spt_ensure_working_payload(
     """Build → Try → write set+overlay on 2xx. LLM only if allow_llm / env flag."""
     import asyncio
 
-    from spt.payload_pipeline import ensure_working_payload
+    from specs.payloads.payload_pipeline import ensure_working_payload
 
     return asyncio.run(
         ensure_working_payload(
@@ -282,7 +282,7 @@ def spt_prepare_mcp_payloads(
     try_each: bool = False,
 ) -> dict[str, Any]:
     """Map real portfolioId / PORTFOLIO {id} from MCP into all OpenAPI ops that need them."""
-    from spt.payload_pipeline import prepare_mcp_payloads, prepare_mcp_payloads_for_service
+    from specs.payloads.payload_pipeline import prepare_mcp_payloads, prepare_mcp_payloads_for_service
 
     if service:
         return prepare_mcp_payloads_for_service(

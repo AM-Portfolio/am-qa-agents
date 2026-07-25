@@ -8,4 +8,4 @@ from __future__ import annotations
 #   app/api/payloads.py
 #   app/api/catalog.py
 #   app/api/platform.py
-# Wired via include_router from spt.main once extracted.
+# Wired via include_router from specs.main once extracted.
