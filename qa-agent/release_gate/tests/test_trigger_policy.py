@@ -1,28 +1,28 @@
-"""Tests for CI merge trigger policy (am-analysis pilot)."""
+"""Tests for CI merge trigger policy (inline policy fixtures — not baked product names)."""
 
 from __future__ import annotations
 
 from intelligence.trigger_policy import evaluate_ci_merge
 
 
-PILOT = {
+SAMPLE = {
     "default": "deny",
     "repos": [
         {
-            "name": "am-core-services",
+            "name": "example-monorepo",
             "branches": ["master", "main"],
-            "services": ["am-analysis"],
+            "services": ["demo-service"],
         }
     ],
 }
 
 
-def test_allows_pilot_core_analysis_on_master() -> None:
+def test_allows_listed_service_on_master() -> None:
     ok, reason = evaluate_ci_merge(
-        repo="ssd2658/am-core-services",
+        repo="org/example-monorepo",
         branch="master",
-        service="am-analysis",
-        policy=PILOT,
+        service="demo-service",
+        policy=SAMPLE,
     )
     assert ok is True
     assert reason == "ok"
@@ -30,10 +30,10 @@ def test_allows_pilot_core_analysis_on_master() -> None:
 
 def test_denies_missing_service() -> None:
     ok, reason = evaluate_ci_merge(
-        repo="am-core-services",
+        repo="example-monorepo",
         branch="master",
         service=None,
-        policy=PILOT,
+        policy=SAMPLE,
     )
     assert ok is False
     assert reason == "service_required"
@@ -41,10 +41,10 @@ def test_denies_missing_service() -> None:
 
 def test_denies_other_service() -> None:
     ok, reason = evaluate_ci_merge(
-        repo="am-core-services",
+        repo="example-monorepo",
         branch="master",
-        service="am-gateway",
-        policy=PILOT,
+        service="other-service",
+        policy=SAMPLE,
     )
     assert ok is False
     assert "service_not_allowed" in reason
@@ -52,10 +52,10 @@ def test_denies_other_service() -> None:
 
 def test_denies_other_repo() -> None:
     ok, reason = evaluate_ci_merge(
-        repo="am-portfolio",
+        repo="other-repo",
         branch="main",
-        service="am-analysis",
-        policy=PILOT,
+        service="demo-service",
+        policy=SAMPLE,
     )
     assert ok is False
     assert "repo_not_in_policy" in reason
@@ -63,10 +63,10 @@ def test_denies_other_repo() -> None:
 
 def test_denies_wrong_branch() -> None:
     ok, reason = evaluate_ci_merge(
-        repo="am-core-services",
+        repo="example-monorepo",
         branch="feature/x",
-        service="am-analysis",
-        policy=PILOT,
+        service="demo-service",
+        policy=SAMPLE,
     )
     assert ok is False
     assert "branch_not_allowed" in reason

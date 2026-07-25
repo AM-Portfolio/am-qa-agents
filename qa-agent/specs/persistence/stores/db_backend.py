@@ -7,9 +7,9 @@ from typing import Any
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from spt.db.engine import get_session
-from spt.db.models import IdempotencyKeyRow, ProfileRow, RunDetailRow, RunLiveRow, RunRow
-from spt.stores import json_backend as jb
+from specs.persistence.db.engine import get_session
+from specs.persistence.db.models import IdempotencyKeyRow, ProfileRow, RunDetailRow, RunLiveRow, RunRow
+from specs.persistence.stores import json_backend as jb
 
 
 def _now() -> str:

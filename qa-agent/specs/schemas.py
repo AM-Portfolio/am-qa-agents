@@ -20,7 +20,7 @@ class PayloadBundle(BaseModel):
 class TestConfigIn(BaseModel):
     name: str = "default-smoke"
     description: str = ""
-    service: str = "am-core-services"
+    service: str = ""
     environment: str = "dev"
     openapi_version: str | None = None  # OpenAPI info.version pin for load-test catalog
     test_type: Literal["k6", "playwright", "mixed"] = "k6"

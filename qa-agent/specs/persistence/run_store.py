@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from spt.db.engine import store_mode
-from spt.stores import db_backend as db
-from spt.stores import json_backend as jb
+from specs.persistence.db.engine import store_mode
+from specs.persistence.stores import db_backend as db
+from specs.persistence.stores import json_backend as jb
 
 # Re-export helpers used elsewhere
 api_outcome_counts = jb.api_outcome_counts

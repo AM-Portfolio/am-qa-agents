@@ -1,28 +1,24 @@
-# ui-test-agent test data contract — see docs/TEST_DATA.md
+# ui-test-agent test data — personas only (no product service catalog).
 defaults:
   persona: demo_user
 
 personas:
   demo_user:
     login_mode: demo
-    description: Default Demo Login; portfolio count may be 0..N
+    description: Default Demo Login
   credentials_user:
     login_mode: credentials
-    description: Stable preprod user from TEST_USER_EMAIL / TEST_USER_PASSWORD
+    description: Stable user from TEST_USER_EMAIL / TEST_USER_PASSWORD
   admin_user:
     login_mode: credentials
-    description: Admin for Analysis / AI Chat gate tests (TEST_ADMIN_*)
+    description: Admin user from TEST_ADMIN_*
   sandbox_user:
     login_mode: credentials
-    description: Write-test user for doc upload / trade add — do not use prod data
+    description: Write-test user — do not use prod data
 
 backends:
   local:
-    dashboard: [am_app:9000, identity]
-    portfolio: [am_app:9000, portfolio:8072]
-    market: [am_app:9000, market:8092]
-    trade: [am_app:9000, trades]
-    doc_intel: [am_app:9000, docs:8085]
+    all: [target]
   preprod:
     all: [AM_API_BASE_URL]
 

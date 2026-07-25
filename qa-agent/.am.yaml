@@ -1,3 +1,29 @@
+# amctl config — single product: Specs + UI evidence + release-gate
+# Container / Helm release / GHCR image: am-qa-agents (not am-ui-test-agent)
+#
+# Image build context = monorepo root (parent of this dir).
+#
+#   cd qa-agent
+#   am deploy --env dev --dry-run
+#   am deploy --env dev --via helm     # → namespace am-apps-dev
+
 name: am-qa-agents
 release: am-qa-agents
+runtime: python
+language: python
+dockerfile: Dockerfile
+context: ..
 image: ghcr.io/am-portfolio/am-qa-agents
+components:
+  - specs          # SPT / load / catalog  → public /spt-poc
+  - ui_evidence    # Playwright UI tests   → public /ui-test (same pod)
+  - release_gate   # Temporal go/no-go
+github:
+  repo: AM-Portfolio/am-qa-agents
+  deploy_workflow: deploy-qa-agent.yml
+  service: am-qa-agents
+  ref: main
+deploy:
+  via: helm
+  rebuild: always
+  # --env dev → am-apps-dev

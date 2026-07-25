@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from spt.config import settings
-from spt.identity_client import jwt_sub, login_identity
+from specs.config import settings
+from specs.security.identity_client import jwt_sub, login_identity
 
 
 def sanitize_auth_env(auth: dict[str, Any] | None) -> dict[str, Any]:

@@ -1,8 +1,8 @@
-# SPT smoke playbook — L3 / docs-only
+# Generic smoke playbook template (no pinned product repos).
 id: smoke-default
 name: Smoke default
 priority: 35
-repos: [am-core-services]
+repos: []
 tiers:
   ui:
     profile: SMOKE

@@ -6,10 +6,10 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
-from spt.config import settings
-from spt.db.engine import get_session, store_mode
-from spt.db.models import RunRow
-from spt.stores import json_backend as jb
+from specs.config import settings
+from specs.persistence.db.engine import get_session, store_mode
+from specs.persistence.db.models import RunRow
+from specs.persistence.stores import json_backend as jb
 
 
 def purge_old_runs(*, days: int | None = None, dry_run: bool = False) -> dict:

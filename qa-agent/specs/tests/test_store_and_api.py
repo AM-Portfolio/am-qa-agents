@@ -15,21 +15,21 @@ class StoreFacadeTests(unittest.TestCase):
         os.environ["SPT_STORE"] = "db"
         os.environ.pop("SPT_DATABASE_URL", None)
         # Reload settings / engine
-        from spt.config import settings
+        from specs.config import settings
 
         settings.data_dir = self._td.name
         settings.spt_store = "db"
         settings.spt_database_url = None
-        from spt.db import engine as eng
+        from specs.persistence.db import engine as eng
 
         eng._engine = None
         eng._SessionLocal = None
-        from spt.db.engine import init_db
+        from specs.persistence.db.engine import init_db
 
         init_db()
 
     def tearDown(self) -> None:
-        from spt.db.engine import dispose_engine
+        from specs.persistence.db.engine import dispose_engine
 
         dispose_engine()
         try:
@@ -38,14 +38,14 @@ class StoreFacadeTests(unittest.TestCase):
             pass
 
     def test_save_list_get_run(self) -> None:
-        from spt.run_store import get_run, list_runs, save_run, slim_run_for_list
+        from specs.persistence.run_store import get_run, list_runs, save_run, slim_run_for_list
 
         saved = save_run(
             {
                 "status": "passed",
                 "passed": True,
                 "config_name": "t",
-                "service": "am-analysis",
+                "service": "demo-service",
                 "environment": "dev",
                 "api_summary": [{"api_id": "a", "checks_passed": True}],
                 "payloads_used": {"bench_run": {"vus": 1, "iterations": 1}},
@@ -59,12 +59,12 @@ class StoreFacadeTests(unittest.TestCase):
         self.assertEqual(got["status"], "passed")
 
     def test_profile_crud(self) -> None:
-        from spt.run_store import delete_config, get_config, list_configs, save_config
+        from specs.persistence.run_store import delete_config, get_config, list_configs, save_config
 
         c = save_config(
             {
                 "name": "p1",
-                "service": "am-analysis",
+                "service": "demo-service",
                 "audience": "agent",
                 "payloads": {"bench_run": {"vus": 1, "iterations": 1}},
             }
@@ -74,8 +74,8 @@ class StoreFacadeTests(unittest.TestCase):
         self.assertTrue(delete_config(c["id"]))
 
     def test_compare(self) -> None:
-        from spt.run_store import save_run
-        from spt.services import compare_runs
+        from specs.persistence.run_store import save_run
+        from specs.services import compare_runs
 
         a = save_run({"status": "passed", "p90_ms": 100, "fail_pct": 0.0, "config_name": "a"})
         b = save_run({"status": "passed", "p90_ms": 120, "fail_pct": 0.1, "config_name": "b"})
@@ -84,11 +84,11 @@ class StoreFacadeTests(unittest.TestCase):
         self.assertAlmostEqual(cmp["deltas_b_minus_a"]["p90_ms"], 20)
 
     def test_migrate_json(self) -> None:
-        from spt.db.migrate_json import migrate_all, parity_check
-        from spt.stores import json_backend as jb
+        from specs.persistence.db.migrate_json import migrate_all, parity_check
+        from specs.persistence.stores import json_backend as jb
 
-        jb.save_run({"id": "json-run-1", "status": "passed", "config_name": "from-json", "service": "am-analysis"})
-        jb.save_config({"id": "json-cfg-1", "name": "from-json", "service": "am-analysis", "audience": "developer"})
+        jb.save_run({"id": "json-run-1", "status": "passed", "config_name": "from-json", "service": "demo-service"})
+        jb.save_config({"id": "json-cfg-1", "name": "from-json", "service": "demo-service", "audience": "developer"})
         stats = migrate_all()
         self.assertGreaterEqual(stats["runs"], 1)
         self.assertGreaterEqual(stats["profiles"], 1)
@@ -101,20 +101,22 @@ class FastApiSmokeTests(unittest.TestCase):
         self._td = tempfile.TemporaryDirectory()
         os.environ["DATA_DIR"] = self._td.name
         os.environ["SPT_STORE"] = "db"
-        os.environ["CATALOG_EXTERNAL_DIR"] = str(Path(__file__).resolve().parents[1] / "catalog")
-        from spt.config import settings
+        os.environ["CATALOG_EXTERNAL_DIR"] = str(
+            Path(__file__).resolve().parents[1] / "resources" / "catalog"
+        )
+        from specs.config import settings
 
         settings.data_dir = self._td.name
         settings.spt_store = "db"
         settings.spt_database_url = None
         settings.spt_acl_required = False
-        from spt.db import engine as eng
+        from specs.persistence.db import engine as eng
 
         eng._engine = None
         eng._SessionLocal = None
 
     def tearDown(self) -> None:
-        from spt.db.engine import dispose_engine
+        from specs.persistence.db.engine import dispose_engine
 
         dispose_engine()
         try:
@@ -125,7 +127,7 @@ class FastApiSmokeTests(unittest.TestCase):
     def test_health_and_profiles(self) -> None:
         from fastapi.testclient import TestClient
 
-        from spt.main import spt
+        from specs.main import app
 
         with TestClient(app) as client:
             h = client.get("/health")

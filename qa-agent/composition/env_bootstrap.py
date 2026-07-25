@@ -6,38 +6,53 @@ import os
 from pathlib import Path
 
 
+def _qa_agent_root() -> Path:
+    # composition/env_bootstrap.py → qa-agent/
+    return Path(__file__).resolve().parents[1]
+
+
 def _repo_root() -> Path:
+    # am-qa-agents monorepo root
     return Path(__file__).resolve().parents[2]
 
 
 def load_env(*, override: bool = False) -> Path | None:
     """
-    Load `.env` from qa-agent repo root (gitignored).
+    Load `.env` from qa-agent/ (preferred), then monorepo root / cwd.
 
     Also maps am-agents-style aliases so one lab env pattern works.
+    Skipped in-cluster (KUBERNETES_SERVICE_HOST) — Helm/Vault own config.
     """
+    if os.getenv("KUBERNETES_SERVICE_HOST"):
+        _apply_aliases()
+        return None
+
     try:
         from dotenv import load_dotenv
     except ImportError:
         load_dotenv = None  # type: ignore[assignment]
 
-    root = _repo_root()
-    path = root / ".env"
-    if load_dotenv and path.is_file():
-        load_dotenv(path, override=override)
-    elif load_dotenv:
-        # Allow cwd .env when running from elsewhere
-        cwd_env = Path.cwd() / ".env"
-        if cwd_env.is_file():
-            load_dotenv(cwd_env, override=override)
-            path = cwd_env
-        else:
-            path = None
+    loaded: Path | None = None
+    candidates = [
+        _qa_agent_root() / ".env",
+        _repo_root() / ".env",
+        Path.cwd() / ".env",
+    ]
+    if load_dotenv:
+        for path in candidates:
+            if path.is_file():
+                try:
+                    load_dotenv(path, override=override)
+                    loaded = path
+                    break
+                except UnicodeDecodeError:
+                    # Local .env with non-UTF8 bytes — skip rather than crash
+                    continue
     else:
-        path = path if path.is_file() else None
+        loaded = next((p for p in candidates if p.is_file()), None)
 
     _apply_aliases()
-    return path
+    return loaded
 
 
 def _apply_aliases() -> None:

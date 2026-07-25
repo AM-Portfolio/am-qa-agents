@@ -5,17 +5,17 @@ import json
 import logging
 from typing import Any
 
-from spt.catalog_loader import load_catalog, load_openapi_document, proxy_try_request
-from spt.config import settings
-from spt.fin_api_client import llm_suggest_payload
-from spt.openapi_overlay import load_overlay, upsert_operation_overlay
-from spt.payload_builder import (
+from specs.catalog.catalog_loader import load_catalog, load_openapi_document, proxy_try_request
+from specs.config import settings
+from specs.legacy.fin_api_client import llm_suggest_payload
+from specs.catalog.openapi_overlay import load_overlay, upsert_operation_overlay
+from specs.payloads.payload_builder import (
     build_query_string,
     build_request_from_operation,
     find_operation,
     operation_key,
 )
-from spt.payload_store import save_payload, upsert_api_in_payload_set
+from specs.payloads.payload_store import save_payload, upsert_api_in_payload_set
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +45,8 @@ def _apply_mcp_enrich(
     request = dict(built["request"])
     source = built.get("source") or "schema"
     try:
-        from spt.mcp_data_client import fetch_prep_context
-        from spt.mcp_payload_enrich import enrich_request_from_mcp
+        from specs.mcp.mcp_data_client import fetch_prep_context
+        from specs.payloads.mcp_payload_enrich import enrich_request_from_mcp
 
         use_ctx = ctx if ctx is not None else fetch_prep_context()
         enriched = enrich_request_from_mcp(request, use_ctx)
@@ -145,8 +145,8 @@ def prepare_mcp_payloads_for_service(
             "skipped": [],
         }
 
-    from spt.mcp_data_client import fetch_prep_context
-    from spt.mcp_payload_enrich import is_placeholder
+    from specs.mcp.mcp_data_client import fetch_prep_context
+    from specs.payloads.mcp_payload_enrich import is_placeholder
 
     ctx = fetch_prep_context(force=True)
     mapped: list[dict[str, Any]] = []

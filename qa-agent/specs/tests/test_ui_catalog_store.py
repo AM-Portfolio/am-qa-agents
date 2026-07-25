@@ -6,14 +6,14 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from spt.ui_flow_catalog import build_ui_flow_catalog
+from specs.ui_bridge.ui_flow_catalog import build_ui_flow_catalog
 
 
 class UiCatalogStoreTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmpdir = tempfile.TemporaryDirectory()
         self.data_dir = Path(self._tmpdir.name)
-        self._settings_patch = mock.patch("app.ui_catalog_store.settings")
+        self._settings_patch = mock.patch("specs.ui_bridge.ui_catalog_store.settings")
         self.settings = self._settings_patch.start()
         self.settings.data_dir = str(self.data_dir)
 
@@ -22,7 +22,7 @@ class UiCatalogStoreTests(unittest.TestCase):
         self._tmpdir.cleanup()
 
     def test_merge_custom_flow_and_override(self) -> None:
-        from spt.ui_catalog_store import merge_catalog, upsert_flow
+        from specs.ui_bridge.ui_catalog_store import merge_catalog, upsert_flow
 
         upsert_flow(
             {
@@ -56,7 +56,7 @@ class UiCatalogStoreTests(unittest.TestCase):
         self.assertFalse(builtin["deletable"])
 
     def test_resolve_custom_flow_and_suite(self) -> None:
-        from spt.ui_catalog_store import resolve_ui_run, upsert_flow, upsert_suite
+        from specs.ui_bridge.ui_catalog_store import resolve_ui_run, upsert_flow, upsert_suite
 
         upsert_flow(
             {
@@ -88,7 +88,7 @@ class UiCatalogStoreTests(unittest.TestCase):
         )
 
     def test_reject_unknown_runs_as(self) -> None:
-        from spt.ui_catalog_store import UiCatalogError, upsert_flow
+        from specs.ui_bridge.ui_catalog_store import UiCatalogError, upsert_flow
 
         with self.assertRaises(UiCatalogError):
             upsert_flow(

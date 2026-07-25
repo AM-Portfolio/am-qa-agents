@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from spt.config import settings
+from specs.config import settings
 
 
 def artifact_dir(run_id: str) -> Path:

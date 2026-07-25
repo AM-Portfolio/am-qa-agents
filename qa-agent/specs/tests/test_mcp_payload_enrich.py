@@ -1,7 +1,7 @@
 """Unit tests for MCP placeholder enricher."""
 from __future__ import annotations
 
-from spt.mcp_payload_enrich import enrich_request_from_mcp, is_placeholder
+from specs.payloads.mcp_payload_enrich import enrich_request_from_mcp, is_placeholder
 
 
 def test_is_placeholder():
@@ -89,7 +89,7 @@ def test_enrich_symbol():
 
 
 def test_pick_portfolio_filters_unknown():
-    from spt.mcp_data_client import _pick_portfolio
+    from specs.mcp.mcp_data_client import _pick_portfolio
 
     picked = _pick_portfolio(
         [

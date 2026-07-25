@@ -1,0 +1,44 @@
+# Prod — am-qa-agents (am-apps-prod)
+# Ingress disabled until cutover (avoid stealing Traefik traffic with empty endpoints).
+environment: prod
+replicaCount: 1
+
+vault:
+  enabled: true
+  secretPaths:
+    otel:
+      path: "apps/data/prod/infra/observability"
+    observability:
+      path: "apps/data/prod/services/am-mcp-gateway"
+    llm-api-keys:
+      path: "apps/data/prod/services/am-mcp-gateway"
+    identity-oidc:
+      path: "apps/data/prod/services/am-identity"
+    qa-agent:
+      path: "apps/data/prod/services/am-qa-agents"
+
+ingress:
+  enabled: false
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-prod-global-cors@kubernetescrd,
+      am-apps-prod-strip-prefix-apps@kubernetescrd
+  hosts:
+    - host: am.asrax.in
+      paths:
+        - path: /spt-poc
+          pathType: Prefix
+        - path: /ui-test
+          pathType: Prefix
+
+env:
+  APP_ENV: prod
+  QA_AGENT_ENV: prod
+  DEFAULT_ENVIRONMENT: prod
+  ROOT_PATH: /spt-poc
+  LOG_LEVEL: WARN
+  QA_AGENT_HITL_AUTO_APPROVE: "false"
+  QA_AGENT_LLM_ENABLED: "false"
+  TEMPORAL_NAMESPACE: qa-agent
+  GNX_MCP_URL: "http://gitnexus-mcp.am-ai.svc.cluster.local:4747"
+  SPT_PUBLIC_BASE_URL: "https://am.asrax.in/spt-poc"

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from spt.config import settings
-from spt.portal_paths import portal_static_dir, portal_template_path
+from specs.config import settings
+from specs.portal.portal_paths import portal_static_dir, portal_template_path
 
 _JS_FILES = (
     "util.js",

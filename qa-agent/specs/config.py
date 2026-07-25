@@ -6,7 +6,7 @@ from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self
 
-from spt import env_urls
+from specs import env_urls
 
 
 class Settings(BaseSettings):
@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     spt_run_retention_days: int = 30
     k6_bin: str = "/usr/local/bin/k6"
     default_environment: str = "dev"
+    # Empty → no baked product default; set via SPT_DEFAULT_SERVICE / registration
+    default_service: str = ""
     spt_user_id: str = "ssd2658"
     spt_public_base_url: str = ""
     spt_identity_url: str = ""

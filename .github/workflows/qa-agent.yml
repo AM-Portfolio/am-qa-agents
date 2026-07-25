@@ -7,14 +7,18 @@ on:
       - "qa-agent/**"
       - "qa-portal-ui/**"
       - "pyproject.toml"
+      - "package.json"
       - "docker/**"
+      - ".code-intelligence.yaml"
   pull_request:
     branches: ["main", "develop"]
     paths:
       - "qa-agent/**"
       - "qa-portal-ui/**"
       - "pyproject.toml"
+      - "package.json"
       - "docker/**"
+      - ".code-intelligence.yaml"
   workflow_dispatch:
 
 jobs:
@@ -30,12 +34,12 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Import check
         env:
-          PYTHONPATH: qa-agent
+          PYTHONPATH: qa-agent:qa-agent/release_gate
         run: python -c "from composition.app import app; print(getattr(app, 'title', 'ok'), len(app.routes))"
       - name: Pytest
         env:
-          PYTHONPATH: qa-agent
-        run: pytest -q qa-agent/tests/spt/test_env_urls.py qa-agent/tests/release/test_trigger_policy.py qa-agent/tests/ui/test_env_urls.py
+          PYTHONPATH: qa-agent:qa-agent/release_gate
+        run: pytest -q qa-agent/specs/tests/test_env_urls.py qa-agent/release_gate/tests/test_trigger_policy.py qa-agent/ui_evidence/tests/test_env_urls.py
 
   publish:
     name: Publish qa-agent (am-qa-agents)

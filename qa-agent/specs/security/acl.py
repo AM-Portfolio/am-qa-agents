@@ -14,9 +14,9 @@ from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
 
-from spt.config import settings
-from spt.db.engine import get_session, init_db, store_mode
-from spt.db.models import ApiKeyRow
+from specs.config import settings
+from specs.persistence.db.engine import get_session, init_db, store_mode
+from specs.persistence.db.models import ApiKeyRow
 
 PUBLIC_PREFIXES = (
     "/health",

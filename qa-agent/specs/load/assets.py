@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-K6_SCRIPT = ROOT / "k6" / "smoke-get.js"
-PLAYWRIGHT_SCRIPT = ROOT / "playwright" / "smoke-navigate.spec.ts"
+K6_SCRIPT = ROOT / "resources" / "k6" / "smoke-get.js"
+PLAYWRIGHT_SCRIPT = ROOT / "resources" / "playwright" / "smoke-navigate.spec.ts"
 
 
 def read_text(path: Path) -> str:

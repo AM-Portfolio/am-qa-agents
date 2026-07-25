@@ -1,4 +1,4 @@
-"""Unified FastAPI app — SPT + UI evidence + release-gate on one process."""
+"""Unified FastAPI app — specs + UI evidence + release-gate on one process."""
 
 from __future__ import annotations
 
@@ -12,23 +12,56 @@ from fastapi.responses import JSONResponse
 
 from composition.identity import AGENT_ID, DISPLAY_NAME, __version__
 from gateway.app import app as release_app
-from spt.main import app as spt_app
+from specs.main import app as specs_app
 from ui_evidence.main import app as ui_app
 
-# SPT is the base app (portal, MCP /mcp, /api/*, probes)
-app = spt_app
+# Specs is the base app (portal, MCP /mcp, /api/*, probes)
+app = specs_app
 app.title = f"{DISPLAY_NAME} Unified Backend"
 app.version = __version__
 
 
 def _merge_routes(target, source, *, skip_paths: set[str]) -> None:
-    existing = {getattr(r, "path", None) for r in target.routes}
+    """Merge source routes onto target.
+
+    FastAPI 0.12x nests ``include_router`` as ``_IncludedRouter`` with ``path=None``.
+    Treating ``None`` as a unique path key skipped every nested router after the first.
+    Re-include those routers onto the target app instead of copying the wrapper.
+    """
+    existing = {
+        getattr(r, "path", None)
+        for r in target.routes
+        if getattr(r, "path", None) is not None
+    }
     for route in source.routes:
         path = getattr(route, "path", None)
-        if path in skip_paths or path in existing:
+        if path in skip_paths:
             continue
+        if path is not None and path in existing:
+            continue
+
+        if type(route).__name__ == "_IncludedRouter":
+            ctx = getattr(route, "include_context", None)
+            orig = getattr(route, "original_router", None)
+            if orig is not None and ctx is not None:
+                prefix = getattr(ctx, "prefix", "") or ""
+                # Avoid double-mount if prefix routes already present
+                sample = next(
+                    (getattr(sr, "path", None) for sr in getattr(orig, "routes", [])),
+                    None,
+                )
+                probe = f"{prefix.rstrip('/')}{sample or ''}" if sample else prefix
+                if probe and probe in existing:
+                    continue
+                target.include_router(orig, prefix=prefix)
+                for sr in getattr(orig, "routes", []):
+                    sp = getattr(sr, "path", None)
+                    if sp:
+                        existing.add(f"{prefix.rstrip('/')}{sp}")
+                continue
+
         target.routes.append(route)
-        if path:
+        if path is not None:
             existing.add(path)
 
 
@@ -43,6 +76,13 @@ _merge_routes(
     skip_paths={"/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"},
 )
 
+# Reuse ui_evidence /metrics handler (gauges already registered when ui_app imported)
+if not any(getattr(r, "path", None) == "/metrics" for r in app.routes):
+    for route in ui_app.routes:
+        if getattr(route, "path", None) == "/metrics":
+            app.routes.append(route)
+            break
+
 
 @app.get("/unified/health")
 async def unified_health():
@@ -51,6 +91,6 @@ async def unified_health():
             "status": "ok",
             "agent_id": AGENT_ID,
             "service": "am-qa-agents",
-            "components": ["spt", "ui_evidence", "release_gate"],
+            "components": ["specs", "ui_evidence", "release_gate"],
         }
     )

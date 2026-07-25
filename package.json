@@ -1,0 +1,28 @@
+{
+  "name": "am-qa-agents",
+  "version": "0.2.1",
+  "private": true,
+  "description": "Monorepo wrappers — backend API + Flutter portal + smoke/tests",
+  "scripts": {
+    "backend:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-backend.ps1",
+    "backend:import": "python scripts/with_pythonpath.py python -c \"from composition.app import app; print(getattr(app,'title','ok'), len(app.routes))\"",
+    "api:smoke": "python scripts/smoke_api.py",
+    "agent:test": "python scripts/with_pythonpath.py pytest -q qa-agent/specs/tests/test_env_urls.py qa-agent/release_gate/tests/test_trigger_policy.py qa-agent/ui_evidence/tests/test_env_urls.py qa-agent/specs/tests/test_store_and_api.py",
+    "vps:forward": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/vps-port-forward.ps1",
+    "vps:forward:qdrant": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/vps-port-forward.ps1 -IncludeQdrant",
+    "ui:get": "npm --prefix qa-portal-ui run get",
+    "ui:analyze": "npm --prefix qa-portal-ui run analyze",
+    "ui:test": "npm --prefix qa-portal-ui run test",
+    "ui:start": "npm --prefix qa-portal-ui run run:local",
+    "ui:start:dev": "npm --prefix qa-portal-ui run run:dev",
+    "ui:start:cluster": "npm --prefix qa-portal-ui run run:cluster",
+    "ui:build": "npm --prefix qa-portal-ui run build:local",
+    "ui:build:cluster": "npm --prefix qa-portal-ui run build:cluster",
+    "test:flow": "npm run api:smoke && npm run agent:test",
+    "test": "npm run test:flow",
+    "start": "npm run backend:start",
+    "dev:ui": "npm run ui:start",
+    "build": "npm run ui:build:cluster",
+    "ci": "npm run agent:test"
+  }
+}

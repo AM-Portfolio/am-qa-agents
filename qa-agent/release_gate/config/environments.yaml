@@ -1,4 +1,5 @@
-# Phase 1 LoadContext environments
+# Phase 1 LoadContext environments — agent endpoints only.
+# Per-product service_map / targets come from external config (ConfigMap / vault), not baked here.
 environments:
   preprod:
     branch_patterns: ["main", "develop", "release/*"]
@@ -16,38 +17,10 @@ environments:
         profile: AUTH_FLOW_MAIN
         ui_mode: main
         auth_login_mode: demo
-      portfolio:
-        base_url: https://am-dev.asrax.in
-        profile: AUTH_FLOW_PORTFOLIO
-        ui_mode: portfolio
-        auth_login_mode: demo
-    service_map:
-      # am-platform services (not a separate "am-auth" product)
-      Identity:
-        base_url: https://am-dev.asrax.in/identity
-        spec_url: https://am-dev.asrax.in/identity/openapi.json
-      User Management:
-        base_url: https://am-dev.asrax.in/users
-        spec_url: https://am-dev.asrax.in/users/openapi.json
-      Auth Tokens:
-        base_url: https://am-dev.asrax.in/auth
-        spec_url: https://am-dev.asrax.in/auth/openapi.json
-      Market Data:
-        base_url: https://am-dev.asrax.in/market
-        spec_url: https://am-dev.asrax.in/market/v3/api-docs
-      Trade Service:
-        base_url: https://am-dev.asrax.in/trade
-        spec_url: https://am-dev.asrax.in/trade/v3/api-docs
-      Analysis Service:
-        base_url: https://am-dev.asrax.in/analysis
-        spec_url: https://am-dev.asrax.in/analysis/v3/api-docs
-      Market Data Parser:
-        base_url: https://am-dev.asrax.in/market/parser
-        spec_url: https://am-dev.asrax.in/market/parser/v3/api-docs
+    service_map: {}
     credential_refs:
       ui_test: vault://am-apps-preprod/ui-test-agent
 
-  # Pilot target for CI merges (qa-agent.yaml environment: dev)
   dev:
     branch_patterns: ["master", "main", "develop"]
     inherits: preprod
@@ -63,7 +36,6 @@ environments:
   local:
     branch_patterns: ["*"]
     inherits: preprod
-    # Prefer public am-dev agents from laptop (no local specialist ports required)
     fin_agent_base_url: https://am-dev.asrax.in/fin-agent
     ui_test_agent_base_url: https://am-dev.asrax.in/ui-test
     tool_agent_base_url: https://am-dev.asrax.in/tools

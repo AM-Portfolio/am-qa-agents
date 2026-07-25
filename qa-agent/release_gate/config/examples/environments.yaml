@@ -1,46 +1,32 @@
-# Phase 1 LoadContext environments
+# Phase 1 LoadContext environments — agent endpoints only.
+# Per-product service_map / targets come from external config (ConfigMap / vault), not baked here.
 environments:
   preprod:
     branch_patterns: ["main", "develop", "release/*"]
-    fin_agent_base_url: http://127.0.0.1:8100
-    ui_test_agent_base_url: http://127.0.0.1:8130
-    gnx_mcp_url: http://127.0.0.1:4747
+    fin_agent_base_url: https://am-dev.asrax.in/fin-agent
+    ui_test_agent_base_url: https://am-dev.asrax.in/ui-test
+    tool_agent_base_url: https://am-dev.asrax.in/tools
+    gnx_mcp_url: https://gitnexus.asrax.in
     gnx_index_mode: job
-    code_intelligence_index_url: ""   # set to Job/API trigger URL when available
+    code_intelligence_index_url: ""
     block_release_if_gnx_down: false
     default_ui_profile: RELEASE_GATE
     ui_targets:
       main:
-        base_url: https://app.preprod.example
+        base_url: https://am-dev.asrax.in
         profile: AUTH_FLOW_MAIN
         ui_mode: main
         auth_login_mode: demo
-      portfolio:
-        base_url: https://portfolio.preprod.example
-        profile: AUTH_FLOW_PORTFOLIO
-        ui_mode: portfolio
-        auth_login_mode: demo
-    service_map:
-      Auth Tokens:
-        base_url: https://auth.preprod.example
-        spec_url: https://auth.preprod.example/v3/api-docs
-      User Management:
-        base_url: https://users.preprod.example
-        spec_url: https://users.preprod.example/v3/api-docs
-      Market Data:
-        base_url: https://market.preprod.example
-        spec_url: https://market.preprod.example/v3/api-docs
-      Trade Service:
-        base_url: https://trade.preprod.example
-        spec_url: https://trade.preprod.example/v3/api-docs
-      Analysis Service:
-        base_url: https://analysis.preprod.example
-        spec_url: https://analysis.preprod.example/v3/api-docs
-      Market Data Parser:
-        base_url: https://mdp.preprod.example
-        spec_url: https://mdp.preprod.example/v3/api-docs
+    service_map: {}
     credential_refs:
       ui_test: vault://am-apps-preprod/ui-test-agent
+
+  dev:
+    branch_patterns: ["master", "main", "develop"]
+    inherits: preprod
+    default_ui_profile: RELEASE_GATE
+    credential_refs:
+      ui_test: vault://am-apps-dev/ui-test-agent
 
   feature:
     branch_patterns: ["feature/*", "fix/*", "chore/*"]
@@ -50,12 +36,13 @@ environments:
   local:
     branch_patterns: ["*"]
     inherits: preprod
-    fin_agent_base_url: http://127.0.0.1:8100
-    ui_test_agent_base_url: http://127.0.0.1:8130
-    gnx_mcp_url: http://127.0.0.1:4747
+    fin_agent_base_url: https://am-dev.asrax.in/fin-agent
+    ui_test_agent_base_url: https://am-dev.asrax.in/ui-test
+    tool_agent_base_url: https://am-dev.asrax.in/tools
+    gnx_mcp_url: https://gitnexus.asrax.in
     ui_targets:
       main:
-        base_url: http://127.0.0.1:3000
+        base_url: https://am-dev.asrax.in
         profile: SMOKE
         ui_mode: main
         auth_login_mode: demo

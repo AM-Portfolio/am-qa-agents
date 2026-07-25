@@ -1,26 +1,5 @@
-services:
-  - id: am-analysis
-    label: am-analysis
-    public_target_url_dev: "https://am-dev.asrax.in/analysis"
-    public_target_url_preprod: "https://am.asrax.in/analysis"
-    public_target_url_prod: "https://am.asrax.in/analysis"
-  - id: am-portfolio
-    label: am-portfolio
-  - id: am-auth
-    label: am-auth
-  - id: am-core-services
-    label: am-core-services
-  - id: am-market
-    label: am-market
-  - id: am-agents
-    label: am-agents
-  - id: am-modern-ui
-    label: am-modern-ui
-    # SPA origin for Playwright (NOT /analysis — that is the analysis API gateway)
-    default_target_url_dev: "http://localhost:9000"
-    public_target_url_dev: "https://am-dev.asrax.in"
-    public_target_url_preprod: "https://am.asrax.in"
-    public_target_url_prod: "https://am.asrax.in"
+# Generic presets only — service registrations come from SPT_CATALOG_EXTERNAL / per-repo spt.yaml.
+services: []
 
 environments:
   - dev

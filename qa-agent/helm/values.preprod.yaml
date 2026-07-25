@@ -1,0 +1,43 @@
+# Preprod — am-qa-agents (am-apps-preprod)
+environment: preprod
+replicaCount: 1
+
+vault:
+  enabled: true
+  secretPaths:
+    otel:
+      path: "apps/data/preprod/infra/observability"
+    observability:
+      path: "apps/data/preprod/services/am-agents-mcp-gateway"
+    llm-api-keys:
+      path: "apps/data/preprod/services/am-agents-mcp-gateway"
+    identity-oidc:
+      path: "apps/data/preprod/services/am-identity"
+    qa-agent:
+      path: "apps/data/preprod/services/am-qa-agents"
+
+ingress:
+  annotations:
+    traefik.ingress.kubernetes.io/router.priority: "100"
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-preprod-global-cors@kubernetescrd,
+      am-apps-preprod-strip-prefix-apps@kubernetescrd
+  hosts:
+    - host: am.asrax.in
+      paths:
+        - path: /spt-poc
+          pathType: Prefix
+        - path: /ui-test
+          pathType: Prefix
+
+env:
+  APP_ENV: preprod
+  QA_AGENT_ENV: preprod
+  DEFAULT_ENVIRONMENT: preprod
+  ROOT_PATH: /spt-poc
+  LOG_LEVEL: INFO
+  TEMPORAL_NAMESPACE: qa-agent
+  FIN_AGENT_BASE_URL: "http://am-fin-agent.am-ai.svc.cluster.local:8100"
+  TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-apps-preprod.svc.cluster.local:8141"
+  GNX_MCP_URL: "http://gitnexus-mcp.am-ai.svc.cluster.local:4747"
+  SPT_PUBLIC_BASE_URL: "https://am.asrax.in/spt-poc"

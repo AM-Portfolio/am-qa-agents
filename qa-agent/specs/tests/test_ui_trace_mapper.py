@@ -1,7 +1,7 @@
 """Unit tests for ui-test-agent → SPT trace mapping."""
 from __future__ import annotations
 
-from spt.ui_trace_mapper import agent_status_passed, map_status_to_traces
+from specs.ui_bridge.ui_trace_mapper import agent_status_passed, map_status_to_traces
 
 
 def test_map_step_timings_to_traces():

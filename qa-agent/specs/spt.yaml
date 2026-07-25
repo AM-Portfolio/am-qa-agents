@@ -1,0 +1,19 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-qa-agents-specs
+label: QA Specs / load / MCP
+enabled: true
+runtime: python
+owners: [qa-agents]
+description: Unified qa-agent Specs surface (portal, k6, Control MCP) — self registration
+source:
+  repo: am-qa-agents
+  path: qa-agent/specs/spt.yaml
+  team: qa-agents
+tags: [qa, python, fastapi, load]
+targets:
+  dev: "https://am-dev.asrax.in/spt-poc"
+  preprod: "https://am-preprod.asrax.in/spt-poc"
+  prod: "https://am.asrax.in/spt-poc"
+openapi:
+  path: /openapi.json

@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from spt.config import settings
-from spt.run_store import get_run
-from spt.trace_store import load_traces_file, redact_headers, redact_trace
+from specs.config import settings
+from specs.persistence.run_store import get_run
+from specs.persistence.trace_store import load_traces_file, redact_headers, redact_trace
 
 
 def _now() -> str:
@@ -185,7 +185,7 @@ def save_from_trace(
     service: str | None = None,
 ) -> dict[str, Any]:
     run = get_run(run_id) or {}
-    service = service or str(run.get("service") or "am-analysis")
+    service = service or str(run.get("service") or settings.default_service or "")
     traces_path = Path(settings.data_dir) / "artifacts" / run_id / "traces.json"
     raw = None
     for row in load_traces_file(traces_path):
@@ -486,7 +486,7 @@ def payload_set_to_refs(service: str, version: int | None = None) -> list[dict[s
 
 def apply_payload_set(config: dict[str, Any], version: int | None = None) -> dict[str, Any]:
     """Merge an entire service payload set into config.payloads.api_overrides."""
-    service = str(config.get("service") or "am-analysis")
+    service = str(config.get("service") or settings.default_service or "")
     payload_set = get_payload_set(service, version)
     if not payload_set:
         return config
@@ -514,7 +514,7 @@ def apply_payload_refs(config: dict[str, Any], refs: list[dict[str, Any]] | None
     payloads = dict(cfg.get("payloads") or {})
     overrides = list(payloads.get("api_overrides") or [])
     by_id = {str(o.get("id")): o for o in overrides if o.get("id")}
-    service = str(cfg.get("service") or "am-analysis")
+    service = str(cfg.get("service") or settings.default_service or "")
     for ref in refs:
         api_id = str(ref.get("api_id") or "")
         if not api_id:

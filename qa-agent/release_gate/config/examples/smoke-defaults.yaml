@@ -1,7 +1,7 @@
-# L3 fallback when GitNexus degraded (Phase 1)
+# L3 fallback when GitNexus degraded (Phase 1) — generic, no product services.
 smoke_defaults:
   profile: SMOKE
   ui_target: main
-  fin_services: ["Market Data"]
+  fin_services: []
   scenarios: ["health_smoke"]
   description: Minimal matrix when gnx_mode=degraded

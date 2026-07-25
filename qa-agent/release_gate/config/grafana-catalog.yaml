@@ -1,4 +1,5 @@
 # Grafana / Prometheus panel catalog for observe (§14.2)
+# service_map is empty here — map deployments via external config.
 dashboards:
   - id: qa-services-sli
     uid: qa-services-sli
@@ -20,10 +21,4 @@ dashboards:
         promql: 'max(container_memory_working_set_bytes{pod=~"$pod"}) / max(kube_pod_container_resource_limits{resource="memory",pod=~"$pod"})'
       - metric: pod_restarts
         promql: 'max(kube_pod_container_status_restarts_total{pod=~"$pod"})'
-service_map:
-  Market Data: { deployment: am-market-data, service: am-market-data }
-  Trade Service: { deployment: am-trade-management-service, service: am-trade-management-service }
-  Analysis Service: { deployment: am-analysis, service: am-analysis }
-  Identity: { deployment: am-identity, service: am-identity }
-  User Management: { deployment: am-user-management, service: am-user-management }
-  Auth Tokens: { deployment: am-auth-tokens, service: am-auth-tokens }
+service_map: {}

@@ -1,0 +1,37 @@
+# Vault key → env var mappings (no secret values in git).
+# Paths are set per-env in values.{dev,preprod,prod}.yaml under vault.secretPaths.
+
+vault:
+  secretPaths:
+    qa-agent:
+      mappings:
+        QA_AGENT_GATEWAY_TOKEN: "QA_AGENT_GATEWAY_TOKEN"
+        GITHUB_TOKEN: "GITHUB_TOKEN"
+        GITHUB_WEBHOOK_SECRET: "GITHUB_WEBHOOK_SECRET"
+        QA_AGENT_DATABASE_URL: "QA_AGENT_DATABASE_URL"
+        SPT_DATABASE_URL: "SPT_DATABASE_URL"
+        SPT_AUTH_PASSWORD: "SPT_AUTH_PASSWORD"
+        INFLUXDB_TOKEN: "INFLUXDB_TOKEN"
+        MINIO_ACCESS_KEY: "MINIO_ACCESS_KEY"
+        MINIO_SECRET_KEY: "MINIO_SECRET_KEY"
+        TEST_USER_EMAIL: "TEST_USER_EMAIL"
+        TEST_USER_PASSWORD: "TEST_USER_PASSWORD"
+        TEST_ADMIN_EMAIL: "TEST_ADMIN_EMAIL"
+        TEST_ADMIN_PASSWORD: "TEST_ADMIN_PASSWORD"
+
+    observability:
+      mappings:
+        LANGFUSE_PUBLIC_KEY: "LANGFUSE_PUBLIC_KEY"
+        LANGFUSE_SECRET_KEY: "LANGFUSE_SECRET_KEY"
+
+    llm-api-keys:
+      mappings:
+        LITELLM_MASTER_KEY: "LITELLM_MASTER_KEY"
+
+    identity-oidc:
+      mappings:
+        AM_MCP_CLIENT_SECRET: "AM_MCP_CLIENT_SECRET"
+
+    otel:
+      mappings:
+        TRACING_SAMPLING_PROBABILITY: "TRACING_SAMPLING_PROBABILITY"

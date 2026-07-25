@@ -10,22 +10,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from spt.acl import AclMiddleware, Caller, seed_bootstrap_keys
-from spt.api.platform import router as platform_router
-from spt.config import settings
-from spt.config_builder import config_from_request, ensure_default_config
-from spt.dashboard import render_portal
-from spt.db.engine import init_db, store_mode
-from spt.grafana_links import grafana_embed_url, grafana_run_url
-from spt import load_ops
-from spt.load_runner import (
+from specs.security.acl import AclMiddleware, Caller, seed_bootstrap_keys
+from specs.api.platform import router as platform_router
+from specs.config import settings
+from specs.load.config_builder import config_from_request, ensure_default_config
+from specs.portal.dashboard import render_portal
+from specs.persistence.db.engine import init_db, store_mode
+from specs.observability.grafana_links import grafana_embed_url, grafana_run_url
+from specs.load import load_ops
+from specs.load.load_runner import (
     get_run_api_index,
     get_run_trace,
     get_run_trace_at,
     list_run_traces,
 )
-from spt.mcp_control import mount_mcp
-from spt.payload_store import (
+from specs.mcp.control import mount_mcp
+from specs.payloads.payload_store import (
     create_payload_set,
     delete_payload,
     ensure_payload_set,
@@ -38,13 +38,13 @@ from spt.payload_store import (
     set_active_payload_set,
     upsert_api_in_payload_set,
 )
-from spt.portal_paths import (
+from specs.portal.portal_paths import (
     flutter_portal_available,
     portal_flutter_web_dir,
     portal_static_dir,
 )
-from spt.runners import process_registry
-from spt.run_store import (
+from specs.load.runners import process_registry
+from specs.persistence.run_store import (
     delete_config,
     get_config,
     get_run,
@@ -56,7 +56,7 @@ from spt.run_store import (
     slim_run_for_list,
     update_run,
 )
-from spt.schemas import (
+from specs.schemas import (
     PayloadCreateRequest,
     PayloadSetCreateRequest,
     PayloadSetUpsertApiRequest,
@@ -69,9 +69,9 @@ from spt.schemas import (
     UiSuiteIn,
     UiSuiteUpdate,
 )
-from spt.services import compare_runs, previous_for_profile
-from spt.services import execute_svc
-from spt.trace_store import filter_api_index
+from specs.services import compare_runs, previous_for_profile
+from specs.services import execute_svc
+from specs.persistence.trace_store import filter_api_index
 
 app = FastAPI(
     title="AM Test Agent",
@@ -119,7 +119,7 @@ async def startup() -> None:
     if store_mode() != "json":
         init_db()
         try:
-            from spt.db.migrate_json import migrate_all
+            from specs.persistence.db.migrate_json import migrate_all
 
             migrate_all()
         except Exception:
@@ -127,7 +127,7 @@ async def startup() -> None:
         seed_bootstrap_keys()
         # Orphaned "running" rows from crashed processes / JSON migration
         try:
-            from spt.run_store import list_runs, update_run
+            from specs.persistence.run_store import list_runs, update_run
 
             rows, _ = list_runs(limit=200, status="running")
             for row in rows:
@@ -692,7 +692,7 @@ async def api_save_config_from_run(run_id: str, name: str | None = None) -> dict
             "name": name or f"from-run-{run_id[:8]}",
             "description": f"Saved from run {run_id}",
             "environment": run.get("environment") or settings.default_environment,
-            "service": run.get("service") or "am-analysis",
+            "service": run.get("service") or settings.default_service or "",
             "test_type": run.get("test_type") or "k6",
             "run_profile": run.get("run_profile") or snap.get("run_profile") or "load",
             "audience": snap.get("audience") or "developer",
@@ -717,10 +717,10 @@ async def api_export_run(run_id: str) -> dict:
 @app.get("/api/ui-test/profiles")
 async def api_ui_test_profiles() -> dict:
     """List ui-test-agent flows/suites with friendly labels + agent online status."""
-    from spt.config import settings
-    from spt.ui_catalog_store import merge_catalog
-    from spt.ui_flow_catalog import build_ui_flow_catalog
-    from spt.ui_test_client import UiTestAgentError, list_profiles
+    from specs.config import settings
+    from specs.ui_bridge.ui_catalog_store import merge_catalog
+    from specs.ui_bridge.ui_flow_catalog import build_ui_flow_catalog
+    from specs.ui_bridge.ui_test_client import UiTestAgentError, list_profiles
 
     agent_url = (settings.ui_test_agent_url or "").rstrip("/") or None
     try:
@@ -749,7 +749,7 @@ async def api_ui_test_profiles() -> dict:
 
 @app.post("/api/ui-test/flows")
 async def api_ui_create_flow(body: UiFlowIn) -> dict:
-    from spt.ui_catalog_store import UiCatalogError, upsert_flow
+    from specs.ui_bridge.ui_catalog_store import UiCatalogError, upsert_flow
 
     try:
         return upsert_flow(body.model_dump(), create=True)
@@ -759,7 +759,7 @@ async def api_ui_create_flow(body: UiFlowIn) -> dict:
 
 @app.put("/api/ui-test/flows/{flow_id}")
 async def api_ui_update_flow(flow_id: str, body: UiFlowUpdate) -> dict:
-    from spt.ui_catalog_store import UiCatalogError, upsert_flow
+    from specs.ui_bridge.ui_catalog_store import UiCatalogError, upsert_flow
 
     patch = body.model_dump(exclude_unset=True)
     patch["id"] = flow_id
@@ -771,7 +771,7 @@ async def api_ui_update_flow(flow_id: str, body: UiFlowUpdate) -> dict:
 
 @app.delete("/api/ui-test/flows/{flow_id}")
 async def api_ui_delete_flow(flow_id: str, reset: bool = False) -> dict:
-    from spt.ui_catalog_store import UiCatalogError, delete_flow
+    from specs.ui_bridge.ui_catalog_store import UiCatalogError, delete_flow
 
     try:
         return delete_flow(flow_id, reset=reset)
@@ -781,7 +781,7 @@ async def api_ui_delete_flow(flow_id: str, reset: bool = False) -> dict:
 
 @app.post("/api/ui-test/suites")
 async def api_ui_create_suite(body: UiSuiteIn) -> dict:
-    from spt.ui_catalog_store import UiCatalogError, upsert_suite
+    from specs.ui_bridge.ui_catalog_store import UiCatalogError, upsert_suite
 
     try:
         return upsert_suite(body.model_dump(), create=True)
@@ -791,7 +791,7 @@ async def api_ui_create_suite(body: UiSuiteIn) -> dict:
 
 @app.put("/api/ui-test/suites/{suite_id}")
 async def api_ui_update_suite(suite_id: str, body: UiSuiteUpdate) -> dict:
-    from spt.ui_catalog_store import UiCatalogError, upsert_suite
+    from specs.ui_bridge.ui_catalog_store import UiCatalogError, upsert_suite
 
     patch = body.model_dump(exclude_unset=True)
     patch["id"] = suite_id
@@ -803,7 +803,7 @@ async def api_ui_update_suite(suite_id: str, body: UiSuiteUpdate) -> dict:
 
 @app.delete("/api/ui-test/suites/{suite_id}")
 async def api_ui_delete_suite(suite_id: str, reset: bool = False) -> dict:
-    from spt.ui_catalog_store import UiCatalogError, delete_suite
+    from specs.ui_bridge.ui_catalog_store import UiCatalogError, delete_suite
 
     try:
         return delete_suite(suite_id, reset=reset)
@@ -830,7 +830,7 @@ async def api_run_artifacts(run_id: str) -> dict:
     row = get_run(run_id)
     if not row:
         raise HTTPException(status_code=404, detail="Run not found")
-    from spt.artifact_store import artifact_dir
+    from specs.persistence.artifact_store import artifact_dir
 
     art_dir = artifact_dir(run_id)
     files: list[dict[str, Any]] = []

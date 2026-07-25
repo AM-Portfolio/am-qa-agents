@@ -1,48 +1,6 @@
-# repo/path → fin services + ui profile (Phase 1)
+# repo/path → fin services + ui profile
+# Product-specific rules belong in external config mounts, not in this repo.
 rules:
-  - match:
-      repos: ["am-market"]
-    fin_services: ["Market Data", "Market Data Parser"]
-    scenarios: ["movers_smoke"]
-    ui_profile: null
-    ui_target: null
-
-  - match:
-      repos: ["am-core-services"]
-      paths_any: ["**/am-analysis/**", "**/analysis/**"]
-    fin_services: ["Analysis Service"]
-    scenarios: ["health_smoke", "contract_smoke"]
-    ui_profile: null
-
-  - match:
-      repos: ["am-core-services"]
-      paths_any: ["**/analysis/**", "**/trade/**"]
-    fin_services: ["Analysis Service", "Trade Service"]
-    scenarios: ["health_smoke", "contract_smoke"]
-    ui_profile: null
-
-  - match:
-      repos: ["am-modern-ui"]
-    fin_services: ["Identity", "User Management", "Auth Tokens"]
-    scenarios: []
-    ui_profile: AUTH_FLOW_MAIN
-    ui_target: main
-
-  - match:
-      repos: ["am-modern-ui"]
-      paths_any: ["**/portfolio/**", "**/trade/**"]
-    fin_services: ["Identity", "User Management", "Auth Tokens", "Trade Service", "Analysis Service"]
-    scenarios: []
-    ui_profile: AUTH_FLOW_PORTFOLIO
-    ui_target: portfolio
-
-  - match:
-      repos: ["am-portfolio", "am-trade-management"]
-    fin_services: ["Trade Service", "Analysis Service"]
-    scenarios: ["portfolio_smoke"]
-    ui_profile: AUTH_FLOW_PORTFOLIO
-    ui_target: portfolio
-
   - match:
       paths_any: ["**/*.md", "**/docs/**"]
     fin_services: []
@@ -52,7 +10,7 @@ rules:
     docs_only: true
 
 default:
-  fin_services: ["Market Data", "Analysis Service", "Trade Service"]
+  fin_services: []
   scenarios: []
   ui_profile: RELEASE_GATE
   ui_target: main

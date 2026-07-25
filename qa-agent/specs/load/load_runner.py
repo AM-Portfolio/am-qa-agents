@@ -14,15 +14,15 @@ from typing import Any, Callable
 
 import httpx
 
-from spt.artifact_store import persist_run_artifacts
-from spt.auth_resolver import ensure_auth_env, sanitize_auth_env
-from spt.catalog_loader import apis_for_config
-from spt.config import settings
-from spt.influx_metrics import build_spt_influx_lines
-from spt.metrics import extract_metrics_summary
-from spt.runners import process_registry
-from spt.script_generator import generate_k6_script
-from spt.trace_store import (
+from specs.persistence.artifact_store import persist_run_artifacts
+from specs.security.auth_resolver import ensure_auth_env, sanitize_auth_env
+from specs.catalog.catalog_loader import apis_for_config
+from specs.config import settings
+from specs.observability.influx_metrics import build_spt_influx_lines
+from specs.observability.metrics import extract_metrics_summary
+from specs.load.runners import process_registry
+from specs.load.script_generator import generate_k6_script
+from specs.persistence.trace_store import (
     build_api_index,
     capture_traces_http,
     load_summary_file,
@@ -31,7 +31,7 @@ from spt.trace_store import (
     save_api_index,
     save_traces_file,
 )
-from spt.ui_test_client import (
+from specs.ui_bridge.ui_test_client import (
     UiTestAgentError,
     agent_report_html_url,
     fetch_report_html,
@@ -43,7 +43,7 @@ from spt.ui_test_client import (
     start_profile,
     start_suite,
 )
-from spt.ui_trace_mapper import agent_status_passed, map_status_to_traces
+from specs.ui_bridge.ui_trace_mapper import agent_status_passed, map_status_to_traces
 
 ProgressCb = Callable[[dict[str, Any]], None]
 
@@ -451,7 +451,7 @@ async def _run_ui_test_agent(
 
     artifacts = await persist_run_artifacts(
         run_id,
-        str(config.get("service") or "am-modern-ui"),
+        str(config.get("service") or settings.default_service or ""),
         artifact_files,
     )
 
@@ -523,9 +523,9 @@ async def run_k6_local(
 
     # Playwright-only: skip identity auth + k6; UI agent owns browser login.
     if test_type == "playwright":
-        service = config.get("service") or "am-modern-ui"
+        service = config.get("service") or settings.default_service or ""
         env = config.get("environment") or settings.default_environment
-        from spt.catalog_loader import default_target_for_service, reachable_target_for_service
+        from specs.catalog.catalog_loader import default_target_for_service, reachable_target_for_service
 
         target = reachable_target_for_service(
             service,
@@ -631,7 +631,7 @@ async def run_k6_local(
             "runner": "k6-local",
             "run_profile": profile,
             "config_name": config.get("name", "unnamed"),
-            "service": config.get("service", "am-analysis"),
+            "service": config.get("service") or settings.default_service or "",
             "environment": config.get("environment", settings.default_environment),
             "test_type": config.get("test_type", "k6"),
             "triggered_by": triggered_by,
@@ -680,7 +680,7 @@ async def run_k6_local(
         "run_profile": profile,
         "config_id": config.get("id"),
         "config_name": config.get("name", "unnamed"),
-        "service": config.get("service", "am-analysis"),
+        "service": config.get("service") or settings.default_service or "",
         "environment": config.get("environment", settings.default_environment),
         "test_type": config.get("test_type", "k6"),
         "triggered_by": triggered_by,
@@ -798,7 +798,7 @@ async def run_k6_local(
                 last_progress.update(parsed)
                 # Prefer HTTP progress callbacks when present (more accurate / finer-grained)
                 try:
-                    from spt.run_store import get_run
+                    from specs.persistence.run_store import get_run
 
                     cur = (get_run(run_id) or {}).get("live") or {}
                     if int(cur.get("api_hits") or 0) > 0 or int(cur.get("completed_iterations") or 0) > 0:
@@ -852,7 +852,7 @@ async def run_k6_local(
             stop_heartbeat = threading.Event()
 
             def _heartbeat() -> None:
-                from spt.run_store import get_run, update_run
+                from specs.persistence.run_store import get_run, update_run
 
                 started_ts = datetime.now(timezone.utc)
                 while not stop_heartbeat.wait(1.0):
@@ -886,7 +886,7 @@ async def run_k6_local(
                 stop_heartbeat.set()
                 hb.join(timeout=2)
 
-            from spt.run_store import get_run as _get_run_now
+            from specs.persistence.run_store import get_run as _get_run_now
 
             cancelled = process_registry.is_cancel_requested(run_id) or (
                 (_get_run_now(run_id) or {}).get("status") == "cancelled"

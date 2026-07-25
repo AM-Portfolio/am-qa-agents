@@ -6,10 +6,10 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from spt.config import settings
-from spt.config_builder import snapshot_for_run
-from spt.metrics import extract_metrics_summary
-from spt.mcp_client import RemoteMcpClient
+from specs.config import settings
+from specs.load.config_builder import snapshot_for_run
+from specs.observability.metrics import extract_metrics_summary
+from specs.mcp.mcp_client import RemoteMcpClient
 
 ROOT = Path(__file__).resolve().parents[1]
 K6_SCRIPT = ROOT / "k6" / "smoke-get.js"
@@ -297,7 +297,7 @@ async def run_test_from_config(config: dict[str, Any]) -> dict[str, Any]:
 
 
 async def run_smoke_test() -> dict[str, Any]:
-    from spt.config_builder import default_config_dict
+    from specs.load.config_builder import default_config_dict
 
     record = await run_test_from_config(default_config_dict())
     legacy = {

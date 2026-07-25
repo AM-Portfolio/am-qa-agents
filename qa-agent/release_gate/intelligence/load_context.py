@@ -159,6 +159,43 @@ def apply_load_rules(
     }
 
 
+def _hydrate_service_from_spt(service: str, environment: str) -> dict[str, Any] | None:
+    """Fill fin service base_url/spec_url from existing am.spt/v1 registration (spt.yaml)."""
+    try:
+        from specs.catalog.catalog_loader import load_registration, reachable_target_for_service
+    except ImportError:
+        return None
+
+    reg = load_registration(service)
+    if not reg or reg.get("enabled") is False:
+        return None
+
+    base = ""
+    try:
+        base = str(reachable_target_for_service(service, environment) or "").rstrip("/")
+    except Exception:  # noqa: BLE001 — fall back to targets map
+        base = ""
+    if not base:
+        targets = reg.get("targets") if isinstance(reg.get("targets"), dict) else {}
+        base = str(targets.get(environment) or targets.get("dev") or "").rstrip("/")
+
+    oas = reg.get("openapi") if isinstance(reg.get("openapi"), dict) else {}
+    runtime = str(reg.get("runtime") or "java")
+    path = str(oas.get("path") or ("/openapi.json" if runtime == "python" else "/v3/api-docs"))
+    if not path.startswith("/"):
+        path = f"/{path}"
+    spec_url = f"{base}{path}" if base else ""
+
+    return {
+        "name": service,
+        "base_url": base,
+        "spec_url": spec_url,
+        "runtime": runtime,
+        "source": "spt_registration",
+        "spt_label": reg.get("label") or service,
+    }
+
+
 def resolve_load_profile(
     *,
     tracking_id: str,
@@ -173,30 +210,31 @@ def resolve_load_profile(
 ) -> dict[str, Any]:
     env_name, block = resolve_env_block(branch, environment)
     paths = list(changed_paths or [])
-    # CI service hint → synthetic paths so analysis/trade load-rules match
-    svc = (service or "").strip().lower().replace("_", "-")
-    if svc in {"am-analysis", "analysis"} and not paths:
-        paths = ["services/am-analysis/src/main/java/Application.java"]
-    elif svc in {"am-trade", "am-trade-service", "trade"} and not paths:
-        paths = ["services/am-trade/src/main/java/Application.java"]
+    svc = (service or "").strip()
 
     applied = apply_load_rules(repo=repo, changed_paths=paths, env_block=block)
 
-    # Narrow fin services to the CI service when known
-    if svc in {"am-analysis", "analysis"}:
-        applied["fin_services"] = [
-            s for s in applied["fin_services"] if s.get("name") == "Analysis Service"
-        ] or applied["fin_services"]
+    # CI / notify service hint: prefer existing SPT registration (spt.yaml) over empty load-rules.
+    if svc:
         applied["scenarios"] = list(
             dict.fromkeys([*(applied.get("scenarios") or []), "health_smoke", "contract_smoke"])
         )
-    elif svc in {"am-trade", "am-trade-service", "trade"}:
-        applied["fin_services"] = [
-            s for s in applied["fin_services"] if s.get("name") == "Trade Service"
-        ] or applied["fin_services"]
-        applied["scenarios"] = list(
-            dict.fromkeys([*(applied.get("scenarios") or []), "health_smoke", "contract_smoke"])
-        )
+        hydrated = _hydrate_service_from_spt(svc, env_name)
+        if hydrated:
+            others = [
+                s
+                for s in (applied.get("fin_services") or [])
+                if isinstance(s, dict) and s.get("name") != svc
+            ]
+            applied["fin_services"] = [hydrated, *others]
+        elif not any(
+            isinstance(s, dict) and s.get("name") == svc for s in (applied.get("fin_services") or [])
+        ):
+            # Keep service name so SPT execute / catalog wait still have a target id
+            applied["fin_services"] = [
+                {"name": svc, "base_url": "", "spec_url": "", "source": "service_hint"},
+                *(applied.get("fin_services") or []),
+            ]
 
     ui_t = applied["ui_target"]
     lc = {

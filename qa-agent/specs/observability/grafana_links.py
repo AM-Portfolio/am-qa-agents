@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 
-from spt.config import settings
+from specs.config import settings
 
 # Wide pad so sparse post-run points still land in the visible window.
 _PAD_BEFORE_MIN = 30

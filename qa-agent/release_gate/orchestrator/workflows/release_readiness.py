@@ -18,6 +18,7 @@ with workflow.unsafe.imports_passed_through():
         activity_dev_handoff_ticket,
         activity_evaluate_learning,
         activity_execute_matrix,
+        activity_ensure_catalog_ready,
         activity_fin_data_prep,
         activity_github_check_run,
         activity_ingest_hitl_feedback,
@@ -217,6 +218,17 @@ class ReleaseReadinessWorkflow:
                 retry_policy=retry,
             )
 
+            catalog_ready = await workflow.execute_activity(
+                activity_ensure_catalog_ready,
+                {
+                    "tracking_id": tracking_id,
+                    "service": args.get("service") or load_context.get("service"),
+                    "environment": args.get("environment") or load_context.get("environment"),
+                },
+                start_to_close_timeout=timedelta(minutes=5),
+                retry_policy=RetryPolicy(maximum_attempts=1),
+            )
+
             smoke = await workflow.execute_activity(
                 activity_execute_matrix,
                 {
@@ -226,9 +238,11 @@ class ReleaseReadinessWorkflow:
                     "index": index,
                     "matrix": matrix,
                     "fin_prep": fin_prep,
+                    "catalog_ready": catalog_ready,
                     "callback_url": args.get("callback_url"),
                     "head_sha": classified.get("head_sha"),
                     "branch": classified.get("branch"),
+                    "environment": args.get("environment") or load_context.get("environment"),
                 },
                 start_to_close_timeout=timedelta(minutes=20),
                 retry_policy=retry,

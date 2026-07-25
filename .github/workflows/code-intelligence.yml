@@ -1,0 +1,13 @@
+name: Code Intelligence Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    uses: AM-Portfolio/am-pipelines/.github/workflows/code-intelligence-verify.yml@main
+    secrets: inherit

@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from spt.config import settings
+from specs.config import settings
 
 _HTTP_METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
 

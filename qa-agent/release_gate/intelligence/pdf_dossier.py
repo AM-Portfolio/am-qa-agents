@@ -59,16 +59,59 @@ def _change_summary(change: dict[str, Any]) -> str:
 
 def _ui_summary(tests: dict[str, Any]) -> str:
     ui = tests.get("ui_results") or {}
+    shots = ui.get("screenshots") or []
+    shot_html = ""
+    if shots:
+        items = []
+        for s in shots[:20]:
+            if isinstance(s, dict):
+                url = s.get("url") or s.get("path") or s.get("href") or ""
+                label = s.get("name") or s.get("label") or url
+            else:
+                url, label = str(s), str(s)
+            if url:
+                items.append(f'<li><a href="{_esc(url)}">{_esc(label)}</a></li>')
+        shot_html = "<p><b>Screenshots:</b></p><ul>" + "".join(items) + "</ul>"
+    report = ui.get("reportUrl") or ui.get("report_url") or ""
+    report_html = f'<p><b>UI report:</b> <a href="{_esc(report)}">{_esc(report)}</a></p>' if report else ""
+    spt = (tests.get("api_results") or {}).get("spt_specs") or {}
+    spt_html = (
+        f"<p><b>SPT Specs:</b> status={_esc(spt.get('status'))} "
+        f"passed={_esc(spt.get('passed'))} failed={_esc(spt.get('failed'))} "
+        f"load={_esc(spt.get('load'))} skipped={_esc(spt.get('skipped'))}</p>"
+    )
     return (
         f"<p><b>UI:</b> status={_esc(ui.get('status'))} mode={_esc(ui.get('mode'))} "
         f"profile={_esc(ui.get('profile'))} skipped={_esc(ui.get('skipped'))}</p>"
+        f"{report_html}{shot_html}"
         f"<p><b>API:</b> status={_esc((tests.get('api_results') or {}).get('status'))} "
         f"mode={_esc((tests.get('api_results') or {}).get('mode'))} "
         f"load={_esc((tests.get('api_results') or {}).get('load'))} "
         f"passed={_esc((tests.get('api_results') or {}).get('passed'))} "
         f"failed={_esc((tests.get('api_results') or {}).get('failed'))}</p>"
+        f"{spt_html}"
         f"<p><b>P0 failed:</b> {_esc(tests.get('p0_failed') or [])}</p>"
     )
+
+
+def _rows_spt_specs(tests: dict[str, Any]) -> str:
+    spt = (tests.get("api_results") or {}).get("spt_specs") or {}
+    runs = spt.get("runs") or []
+    if not runs:
+        return '<tr><td colspan="6">No Specs SPT run</td></tr>'
+    rows: list[str] = []
+    for run in runs:
+        rows.append(
+            "<tr>"
+            f"<td>{_esc(run.get('service'))}</td>"
+            f"<td>{_esc('PASS' if run.get('ok') else 'FAIL')}</td>"
+            f"<td>{_esc(run.get('iterations'))}</td>"
+            f"<td>{_esc(run.get('api_count'))}</td>"
+            f"<td>{_esc(run.get('run_id') or run.get('id'))}</td>"
+            f"<td>{_esc(run.get('error') or run.get('reason') or run.get('status'))}</td>"
+            "</tr>"
+        )
+    return "".join(rows)
 
 
 def enrich_comparisons_from_api_load(
@@ -176,7 +219,13 @@ infra_clean={_esc(verification.get('infra_clean'))}
 <tr><th>Service</th><th>Scenario</th><th>Result</th><th>URL</th><th>p50 ms</th><th>p95 ms</th><th>Codes</th></tr>
 {_rows_api_load(tests)}
 </table>
-<p class="muted">API load VUs from execute_matrix (direct HTTP against LoadContext base_urls).</p>
+<p class="muted">Direct HTTP load against LoadContext base_urls (default 50 iterations).</p>
+<h2>3b. Specs SPT (payload APIs)</h2>
+<table>
+<tr><th>Service</th><th>Result</th><th>Iterations</th><th>API count</th><th>Run id</th><th>Detail</th></tr>
+{_rows_spt_specs(tests)}
+</table>
+<p class="muted">Specs POST /api/runs/execute — iterations shared across catalog payload APIs.</p>
 <h2>4. Endpoint comparison (baseline → run)</h2>
 <table><tr><th>Service</th><th>Route</th><th>p95 ms</th><th>Flags</th></tr>
 {''.join(rows_ep) or '<tr><td colspan="4">none</td></tr>'}

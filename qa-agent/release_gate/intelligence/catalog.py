@@ -13,7 +13,8 @@ def _catalog_root() -> Path:
     env = os.getenv("QA_AGENT_CATALOG_DIR")
     if env:
         return Path(env)
-    return Path(__file__).resolve().parents[1] / "catalog"
+    # release_gate/intelligence → qa-agent/specs/resources/catalog
+    return Path(__file__).resolve().parents[2] / "specs" / "resources" / "catalog"
 
 
 def load_spt_playbooks() -> list[dict[str, Any]]:

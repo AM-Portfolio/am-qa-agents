@@ -1,0 +1,41 @@
+# .code-intelligence.yaml — am-qa-agents
+enabled: true
+tool: gitnexus
+phase: local
+versions:
+  gitnexus: 1.6.9
+  graphifyy: 0.4.11
+production:
+  branch: main
+  embeddings: false
+  ci: false
+  mode: verify
+local:
+  sync_on_commit: true
+  sync_on_save: false
+  index_workspace: true
+  watch_debounce_sec: 30
+gitnexus:
+  skipAgentsMd: true
+  skipSkills: true
+  group_path: agents/am-qa-agents
+capabilities:
+  domain: agents
+  surfaces:
+    - http
+    - temporal
+    - tool_map
+  pdg: true
+  scan:
+    static:
+      - qa-agent/composition
+      - qa-agent/specs
+      - qa-agent/ui_evidence
+      - qa-agent/release_gate
+  flows:
+    - name: release-readiness
+      entry: qa-agent/release_gate/gateway/app.py
+    - name: specs-load
+      entry: qa-agent/specs/main.py
+    - name: ui-evidence
+      entry: qa-agent/ui_evidence/main.py

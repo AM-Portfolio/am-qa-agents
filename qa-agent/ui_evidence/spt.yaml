@@ -1,0 +1,20 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-qa-agents-ui
+label: QA UI evidence
+enabled: true
+runtime: python
+owners: [qa-agents]
+description: Unified qa-agent UI evidence surface (Playwright) — self registration
+source:
+  repo: am-qa-agents
+  path: qa-agent/ui_evidence/spt.yaml
+  team: qa-agents
+tags: [qa, python, playwright, ui]
+targets:
+  # Same colocated Service; Traefik /ui-test strip → app root
+  dev: "https://am-dev.asrax.in/ui-test"
+  preprod: "https://am-preprod.asrax.in/ui-test"
+  prod: "https://am.asrax.in/ui-test"
+openapi:
+  path: /openapi.json

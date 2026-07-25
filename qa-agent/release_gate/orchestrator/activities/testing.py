@@ -50,14 +50,40 @@ async def activity_build_test_matrix(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 @activity.defn
+async def activity_ensure_catalog_ready(payload: dict[str, Any]) -> dict[str, Any]:
+    """Block SPT until service is visible in Specs catalog (register → ready race guard)."""
+    from adapters.catalog_ready import requires_spt_catalog, wait_for_catalog_service
+
+    tracking_id = str(payload.get("tracking_id") or "")
+    service = payload.get("service")
+    environment = payload.get("environment")
+    if not requires_spt_catalog(str(service) if service else None):
+        out = {
+            "ready": True,
+            "skipped": True,
+            "reason": "ui_only_or_no_service",
+            "service": service,
+        }
+        if tracking_id:
+            get_ledger().upsert_step(tracking_id, "ensure_catalog_ready", out)
+        return out
+
+    out = await wait_for_catalog_service(str(service), environment=environment)
+    if tracking_id:
+        get_ledger().upsert_step(tracking_id, "ensure_catalog_ready", out)
+    return out
+
+
+@activity.defn
 async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
     """
     Run scheduled matrix layers via specialists.
 
-    API layer always runs live HTTP load against LoadContext.fin services
-    (health_smoke + contract_smoke). UI via ui-test-agent when available.
+    API layer: Specs SPT execute (50 iters default) + live HTTP health/contract load.
+    UI via ui-test-agent when available. Skips SPT when catalog_ready.ready is false.
     """
     from adapters.api_load import run_api_scenarios
+    from adapters.spt_specs import execute_spt_for_services
 
     tracking_id = str(payload["tracking_id"])
     load_context = payload.get("load_context") or {}
@@ -66,6 +92,7 @@ async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
     classified = payload.get("classified") or {}
     index = payload.get("index") or {}
     fin_prep = payload.get("fin_prep") or {}
+    catalog_ready = payload.get("catalog_ready") or {}
 
     ui = load_context.get("ui") or {}
     profile = plan.get("ui_profile") or ui.get("profile") or "SMOKE"
@@ -91,6 +118,11 @@ async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
         **ui_result,
         "profile": profile,
         "specification": plan.get("specification"),
+        "screenshots": ui_result.get("screenshots")
+        or ui_result.get("screenshot_urls")
+        or ui_result.get("artifacts")
+        or [],
+        "reportUrl": ui_result.get("reportUrl") or ui_result.get("report_url"),
         "matrix_item_ids": [
             i["id"] for i in (matrix.get("items") or []) if i.get("layer") == "ui" and i.get("tier") in {"P0", "P1"}
         ],
@@ -110,15 +142,49 @@ async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
         or ["health_smoke", "contract_smoke"]
     )
 
-    api_run = await run_api_scenarios(
-        services=services_for_api,
-        scenarios=scenarios,
-        tracking_id=tracking_id,
-        tool_agent_base_url=routing.get("tool_agent_base_url"),
-    )
+    spt_run: dict[str, Any] = {"skipped": True, "reason": "no_api_services"}
+    service_names = [
+        str(s.get("name"))
+        for s in services_for_api
+        if isinstance(s, dict) and s.get("name")
+    ]
+    if catalog_ready.get("ready") is False:
+        spt_run = {
+            "ok": False,
+            "skipped": True,
+            "reason": "catalog_not_ready",
+            "catalog_ready": catalog_ready,
+        }
+        api_run = {
+            "status": "FAILED",
+            "mode": "catalog_not_ready",
+            "tracking_id": tracking_id,
+            "services": [],
+            "passed": [],
+            "failed": service_names,
+            "load": {},
+            "spt": spt_run,
+            "note": "SPT/API skipped — catalog registration not ready",
+        }
+    else:
+        if service_names:
+            spt_run = await execute_spt_for_services(
+                service_names,
+                environment=load_context.get("environment") or payload.get("environment"),
+                tracking_id=tracking_id,
+            )
+        api_run = await run_api_scenarios(
+            services=services_for_api,
+            scenarios=scenarios,
+            tracking_id=tracking_id,
+            tool_agent_base_url=routing.get("tool_agent_base_url"),
+        )
+        api_run = {**api_run, "spt_specs": spt_run}
     api_layer = {
         **api_run,
         "fin_prep": fin_prep,
+        "spt_specs": spt_run,
+        "catalog_ready": catalog_ready,
         "matrix_item_ids": [
             i["id"] for i in (matrix.get("items") or []) if i.get("layer") == "api" and i.get("tier") in {"P0", "P1"}
         ],
@@ -190,6 +256,8 @@ async def activity_execute_matrix(payload: dict[str, Any]) -> dict[str, Any]:
             "api_passed": api_run.get("passed"),
             "api_failed": api_run.get("failed"),
             "api_load": api_run.get("load"),
+            "spt_specs_status": spt_run.get("status") if isinstance(spt_run, dict) else None,
+            "spt_specs_failed": spt_run.get("failed") if isinstance(spt_run, dict) else None,
             "p0_failed": out["p0_failed"],
             "plan": plan,
         },

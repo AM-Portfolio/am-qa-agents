@@ -1,39 +1,40 @@
+# amctl-compatible deploy → am-apps-{dev|preprod|prod}
+# Inputs match amctl dispatch_direct_deploy: service, environment, image_tag
+
 name: Deploy — qa-agent
 
 on:
   workflow_dispatch:
     inputs:
-      image_tag:
-        description: "Select Image Tag"
-        required: true
-        default: "latest"
-        type: choice
-        options:
-          - latest
-          - custom
-      custom_tag:
-        description: "If 'custom' selected, enter tag here"
+      service:
+        description: "Service / release name (amctl)"
         required: false
+        default: "am-qa-agents"
         type: string
       environment:
-        description: "Target Environment"
+        description: "Target environment"
         required: true
-        default: "preprod"
+        default: "dev"
         type: choice
         options:
           - dev
           - preprod
           - prod
+      image_tag:
+        description: "Docker image tag (e.g. local-abc1234 or latest)"
+        required: true
+        default: "latest"
+        type: string
 
 jobs:
   deploy:
     name: Deploy qa-agent → ${{ github.event.inputs.environment }}
     uses: AM-Portfolio/am-pipelines/.github/workflows/central-deploy.yml@main
     with:
-      service_name: "am-qa-agents"
+      service_name: ${{ github.event.inputs.service || 'am-qa-agents' }}
       working_directory: "qa-agent"
       language: "python"
       environment: ${{ github.event.inputs.environment }}
-      image_tag: ${{ github.event.inputs.image_tag == 'custom' && github.event.inputs.custom_tag || github.event.inputs.image_tag }}
+      image_tag: ${{ github.event.inputs.image_tag }}
       namespace: ${{ github.event.inputs.environment == 'prod' && 'am-apps-prod' || (github.event.inputs.environment == 'dev' && 'am-apps-dev' || 'am-apps-preprod') }}
     secrets: inherit

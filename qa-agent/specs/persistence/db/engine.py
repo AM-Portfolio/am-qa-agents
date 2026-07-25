@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from spt.config import settings
+from specs.config import settings
 
 StoreMode = Literal["json", "dual", "db"]
 
@@ -80,7 +80,7 @@ def get_session() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     """Create tables (Alembic-compatible Base). Safe to call repeatedly."""
-    from spt.db.models import Base
+    from specs.persistence.db.models import Base
 
     engine = get_engine()
     Base.metadata.create_all(bind=engine, checkfirst=True)

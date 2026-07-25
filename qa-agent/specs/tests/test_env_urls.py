@@ -1,7 +1,7 @@
 """Tests for APP_ENV → public / infra URL resolver."""
 from __future__ import annotations
 
-from spt import env_urls
+from specs import env_urls
 
 
 def test_public_hosts():

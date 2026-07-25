@@ -7,8 +7,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from spt.config import settings
-from spt.ui_flow_catalog import (
+from specs.config import settings
+from specs.ui_bridge.ui_flow_catalog import (
     DEFAULT_FLOW_IDS,
     RELEASE_GATE_PROFILES,
     SMOKE_SUITE_PROFILES,

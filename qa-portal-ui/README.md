@@ -26,7 +26,7 @@ Operator portal for **api-load** — Flutter operator UI (design system + featur
 ```powershell
 # Terminal A — unified qa-agent backend
 cd ..\..
-$env:PYTHONPATH = "$(Get-Location)\qa-agent"
+$env:PYTHONPATH = "$(Get-Location)\qa-agent;$(Get-Location)\qa-agent\release_gate"
 $env:QA_AGENT_WORKER_ENABLED = "0"
 python -m composition.main   # http://localhost:8150
 

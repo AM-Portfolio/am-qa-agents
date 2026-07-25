@@ -1,7 +1,24 @@
-# CI merge allowlist (pilot). default deny for trigger_kind=ci_master_merge.
-# Manual / webhook triggers are not gated by this file.
+# CI merge allowlist for trigger_kind=ci_master_merge.
+# Override via QA_AGENT_CONFIG_DIR mount in cluster if needed.
 default: deny
 repos:
   - name: am-core-services
     branches: [master, main]
-    services: [am-analysis]
+    services:
+      - am-analysis
+      - am-gateway
+      - am-mcp-server
+  - name: AM-Portfolio/am-core-services
+    branches: [master, main]
+    services:
+      - am-analysis
+      - am-gateway
+      - am-mcp-server
+  - name: am-modern-ui
+    branches: [master, main]
+    services:
+      - am-modern-ui
+  - name: AM-Portfolio/am-modern-ui
+    branches: [master, main]
+    services:
+      - am-modern-ui

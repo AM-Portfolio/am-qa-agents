@@ -171,13 +171,16 @@ class UiTestClient:
                 "note": "Advisory MCP only — replace with ui-test-agent when Vault secrets exist",
             }
 
+        gnx_args: dict[str, Any] = {
+            "search_query": f"ui auth login smoke {profile} {target_url}",
+            "limit": 4,
+        }
+        ui_repo = (os.getenv("QA_AGENT_UI_REPO") or "").strip()
+        if ui_repo:
+            gnx_args["repo"] = ui_repo
         gnx = await gnx_mcp_call(
             tool="query",
-            arguments={
-                "search_query": f"ui auth login smoke {profile} {target_url}",
-                "repo": "am-modern-ui",
-                "limit": 4,
-            },
+            arguments=gnx_args,
             base_url=gnx_mcp_url,
         )
         if gnx.get("ok"):

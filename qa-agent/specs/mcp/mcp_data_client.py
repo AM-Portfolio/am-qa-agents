@@ -5,8 +5,8 @@ import logging
 import time
 from typing import Any
 
-from spt.config import settings
-from spt.mcp_sse_client import call_mcp_tool
+from specs.config import settings
+from specs.mcp.mcp_sse_client import call_mcp_tool
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +121,7 @@ def fetch_prep_context(*, force: bool = False) -> dict[str, Any]:
 
     token: str | None = None
     try:
-        from spt.catalog_loader import platform_bearer_token
+        from specs.catalog.catalog_loader import platform_bearer_token
 
         token = platform_bearer_token()
     except Exception as exc:

@@ -4,8 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from spt.config import settings
-from spt.mcp_client import RemoteMcpClient
+from specs.config import settings
+from specs.mcp.mcp_client import RemoteMcpClient
 
 
 class McpCallRequest(BaseModel):

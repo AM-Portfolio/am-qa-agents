@@ -12,8 +12,8 @@ from typing import Any
 import httpx
 import yaml
 
-from spt.config import settings
-from spt.openapi_import import (
+from specs.config import settings
+from specs.catalog.openapi_import import (
     default_openapi_path,
     fetch_openapi_sync,
     openapi_to_apis,
@@ -22,7 +22,8 @@ from spt.openapi_import import (
 
 logger = logging.getLogger(__name__)
 
-_CATALOG_ROOT = Path(__file__).resolve().parents[1] / "catalog"
+# specs/catalog/*.py → specs/resources/catalog (YAML playbooks + baked apis)
+_CATALOG_ROOT = Path(__file__).resolve().parents[1] / "resources" / "catalog"
 _SERVICES_FILE = _CATALOG_ROOT / "services.yaml"
 
 
@@ -209,7 +210,7 @@ def build_registration_trace(service: str, reg: dict[str, Any] | None = None) ->
         or file_mtime
     )
 
-    repo = source.get("repo") or ("am-core-services" if path and "am-core-services" in str(path) else None)
+    repo = source.get("repo") or None
     rel_path = source.get("path")
     if not rel_path and path:
         rel_path = git.get("git_path") or str(path)
@@ -264,7 +265,7 @@ def list_registration_files() -> list[Path]:
         found.append(path)
     for path in sorted(root.glob("*.yaml")):
         if path.name != "spt.yaml" and path not in found:
-            # flat ConfigMap mount style: /catalog-external/am-analysis.yaml
+            # flat ConfigMap mount style: /catalog-external/<service>.yaml
             found.append(path)
     return found
 
@@ -366,13 +367,7 @@ def service_meta(service: str) -> dict[str, Any]:
 
 
 def default_target_for_service(service: str, environment: str = "dev") -> str:
-    """Resolve base URL — prefer public HTTPS (am-dev / am.asrax.in) over cluster DNS.
-
-    Product targets go via ingress domains so laptop and in-cluster SPT hit the
-    same paths users use.
-    """
-    from spt import env_urls
-
+    """Resolve base URL from registration / service meta / POC override."""
     env = (environment or "dev").lower()
 
     reg = load_registration(service) or {}
@@ -405,15 +400,13 @@ def default_target_for_service(service: str, environment: str = "dev") -> str:
     if private and ".svc.cluster.local" not in private:
         return private
 
-    if service == "am-analysis" and settings.poc_target_url:
+    # Prefer explicit POC / public override; never hardcode a product service name.
+    if settings.poc_target_url:
         poc = str(settings.poc_target_url).rstrip("/")
         if poc and ".svc.cluster.local" not in poc:
             return poc
 
-    if service == "am-modern-ui":
-        return env_urls.product_url(env, "modern_ui")
-
-    return (settings.poc_target_url or env_urls.product_url(env, "analysis")).rstrip("/")
+    return (settings.poc_target_url or "").rstrip("/")
 
 
 def reachable_target_for_service(service: str, environment: str, current: str | None = None) -> str:
@@ -675,7 +668,7 @@ async def proxy_try_request(
 
 
 def _try_base_candidates(service: str, environment: str, reg: dict[str, Any]) -> list[str]:
-    """Bases for browser Try-it-out. Prefer public_* path prefix from spt.yaml (e.g. …/analysis)."""
+    """Bases for browser Try-it-out. Prefer public_* path prefix from specs.yaml (e.g. …/analysis)."""
     env = (environment or "dev").lower()
     targets = reg.get("targets") if isinstance(reg.get("targets"), dict) else {}
     bases: list[str] = []
@@ -699,7 +692,7 @@ def _try_base_candidates(service: str, environment: str, reg: dict[str, Any]) ->
     add(targets.get(f"public_{env}"))
     add(targets.get("public"))
 
-    if env == "dev" and service == "am-analysis" and settings.poc_target_url:
+    if env == "dev" and settings.poc_target_url:
         add(settings.poc_target_url)
 
     if not _running_in_cluster():
@@ -743,7 +736,7 @@ def _apis_from_openapi_registration(
             try:
                 doc = fetch_openapi_sync(url, headers=headers, timeout=12.0)
                 try:
-                    from spt.openapi_overlay import merge_effective_document
+                    from specs.catalog.openapi_overlay import merge_effective_document
 
                     doc, _ov = merge_effective_document(doc, service, environment)
                 except Exception:
@@ -812,7 +805,7 @@ def _openapi_base_candidates(service: str, environment: str, reg: dict[str, Any]
     # Only this env's public_* (do not fall back to public_dev for preprod/prod)
     add(targets.get(f"public_{env}"))
     add(targets.get("public"))
-    if env == "dev" and service == "am-analysis" and settings.poc_target_url:
+    if env == "dev" and settings.poc_target_url:
         add(settings.poc_target_url)
     if _running_in_cluster():
         pass
@@ -1176,7 +1169,7 @@ def apis_for_config(
     run_id: str = "",
     api_ids: list[str] | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
-    service = config.get("service") or "am-analysis"
+    service = config.get("service") or settings.default_service or ""
     environment = config.get("environment") or settings.default_environment
     catalog = load_service_apis(service, environment)
     payloads = config.get("payloads") or {}

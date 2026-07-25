@@ -39,7 +39,7 @@ class FinAgentClient:
         """
         Prepare API test targets from LoadContext.fin.
 
-        Prefer live URL probe against service base_urls (always works for am-analysis).
+        Prefer live URL probe against service base_urls from LoadContext.
         Optional fin-agent meta routes when present; MCP only as last resort.
         """
         services = load_fin.get("services") or []
@@ -148,7 +148,7 @@ class FinAgentClient:
                 "note": "SPT prepare fallback; prefer live URL probe",
             }
 
-        short = (repo or "").split("/")[-1] or "am-core-services"
+        short = (repo or "").split("/")[-1] or "unknown-repo"
         gnx = await gnx_mcp_call(
             tool="query",
             arguments={

@@ -169,7 +169,7 @@ async def collect_comparison_pack(
         return pack
 
     # 2) GitNexus MCP — service/impact context when Grafana observe is unavailable
-    short = (repo or "").split("/")[-1] or "am-core-services"
+    short = (repo or "").split("/")[-1] or "unknown-repo"
     gnx = await gnx_mcp_call(
         tool="query",
         arguments={

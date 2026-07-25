@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from spt.config import settings
+from specs.config import settings
 
 logger = logging.getLogger(__name__)
 

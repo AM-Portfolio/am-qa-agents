@@ -3,9 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
 
-from spt import load_ops
-from spt.assets import scripts_bundle
-from spt.catalog_loader import (
+from specs.load import load_ops
+from specs.load.assets import scripts_bundle
+from specs.catalog.catalog_loader import (
     clear_platform_caches,
     default_target_for_service,
     list_registered_services,
@@ -18,10 +18,10 @@ from spt.catalog_loader import (
     proxy_try_request,
     reachable_target_for_service,
 )
-from spt.config import settings
-from spt.openapi_overlay import load_overlay, merge_effective_document
-from spt.payload_pipeline import build_payload, ensure_working_payload, prepare_mcp_payloads, prepare_mcp_payloads_for_service
-from spt.schemas import PayloadBuildRequest, PayloadEnsureRequest, PayloadPrepareMcpRequest
+from specs.config import settings
+from specs.catalog.openapi_overlay import load_overlay, merge_effective_document
+from specs.payloads.payload_pipeline import build_payload, ensure_working_payload, prepare_mcp_payloads, prepare_mcp_payloads_for_service
+from specs.schemas import PayloadBuildRequest, PayloadEnsureRequest, PayloadPrepareMcpRequest
 
 router = APIRouter(tags=["platform"])
 
@@ -30,7 +30,7 @@ _TRY_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
 
 @router.get("/health")
 async def health() -> dict:
-    from spt.services import health as svc_health
+    from specs.services import health as svc_health
 
     return svc_health()
 
@@ -38,7 +38,7 @@ async def health() -> dict:
 @router.get("/ready")
 async def ready() -> dict:
     h = await load_ops.platform_health()
-    from spt.db.engine import db_health, store_mode
+    from specs.persistence.db.engine import db_health, store_mode
 
     return {"status": "ready", "platform": h, "store": store_mode(), "db": db_health()}
 
@@ -206,11 +206,11 @@ async def api_payloads_prepare_mcp(body: PayloadPrepareMcpRequest) -> dict:
     """Scan registered OpenAPI ops and MCP-fill portfolioId / PORTFOLIO {id} placeholders.
 
     Writes overlays + payload-set entries so Swagger Try and k6 picks up real IDs.
-    Pass service=am-analysis or omit to process all catalog services.
+    Pass service=<id> or omit to process all catalog services.
     """
     import asyncio
 
-    from spt.payload_pipeline import prepare_mcp_payloads, prepare_mcp_payloads_for_service
+    from specs.payloads.payload_pipeline import prepare_mcp_payloads, prepare_mcp_payloads_for_service
 
     services = body.services
     if body.service:
@@ -311,7 +311,7 @@ async def api_scripts() -> dict:
 
 @router.get("/config")
 async def config_preview() -> dict:
-    from spt.db.engine import store_mode
+    from specs.persistence.db.engine import store_mode
 
     return {
         "poc_target_url": settings.poc_target_url,

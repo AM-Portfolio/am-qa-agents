@@ -1,33 +1,56 @@
-# One Deployment / one container — SPT + UI evidence + release-gate + Temporal worker
-replicaCount: 1
+# Base values for am-pipelines universal-chart (central-deploy).
+# Env overlays: values.dev.yaml | values.preprod.yaml | values.prod.yaml
+# Secrets: vault-mappings.yaml (keys only — values in Vault).
+
+global:
+  image:
+    registry: ghcr.io/am-portfolio
+    pullPolicy: Always
+    imagePullSecrets:
+      - name: regcred
+  vault:
+    enabled: true
+    role: "am-backend-role"
+    authPath: "auth/kubernetes"
+    serviceAccountName: "am-backend-sa"
 
 image:
-  repository: ghcr.io/am-portfolio/am-qa-agents
-  tag: "latest"
-  pullPolicy: IfNotPresent
+  repository: am-qa-agents
+
+replicaCount: 1
+language: python
+port: 8150
 
 service:
-  type: ClusterIP
   port: 8150
 
-# Traefik: point BOTH /spt-poc and /ui-test at this Service (strip prefixes).
-# QA_AGENT_BASE_URL should also target this Service for /v2/* notify.
+# composition.main — HTTP + Temporal worker in one process
+entrypoint: "exec am-qa-agents"
+
+security:
+  automountServiceAccountToken: true
+
+config: {}
 
 env:
-  QA_AGENT_ENV: "preprod"
-  APP_ENV: "preprod"
+  APP_NAME: am-qa-agents
   APP_PORT: "8150"
   QA_AGENT_PORT: "8150"
   QA_AGENT_COLOCATED: "1"
   QA_AGENT_WORKER_ENABLED: "1"
+  LOG_LEVEL: INFO
+  LOG_FORMAT: json
+  TZ: Asia/Kolkata
   ROOT_PATH: "/spt-poc"
+  # Writable path (universal-chart has no PVC by default)
+  DATA_DIR: "/tmp/qa-agent-data"
+  REPORT_DIR: "/tmp/qa-agent-data/reports/ui-test"
+  SPT_STORE: "db"
+  QA_AGENT_STORE: "sqlite"
   TEMPORAL_TASK_QUEUE: "qa-agent-release-v1"
   TEMPORAL_HOST: "temporal-frontend.temporal.svc.cluster.local:7233"
   TEMPORAL_NAMESPACE: "qa-agent"
-  QA_AGENT_STORE: "sqlite"
-  QA_AGENT_LLM_ENABLED: "false"
-  QA_AGENT_HITL_AUTO_APPROVE: "false"
-  # Loopback — same container
+  # Colocated loopback
   SPT_UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_BASE_URL: "http://127.0.0.1:8150"
@@ -35,45 +58,80 @@ env:
   TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-ai.svc.cluster.local:8141"
   GNX_MCP_URL: "http://gitnexus-mcp.am-ai.svc.cluster.local:4747"
   LLM_ROUTING: "gateway"
+  LITELLM_BASE_URL: "http://litellm.am-ai.svc.cluster.local:4000"
   HEADLESS: "true"
-  REPORT_DIR: "/data/reports/ui-test"
-  DATA_DIR: "/data/spt"
+  QA_AGENT_LLM_ENABLED: "false"
+  QA_AGENT_HITL_AUTO_APPROVE: "false"
+  SPT_PORTAL_FLUTTER: "false"
+  SPT_CATALOG_EXTERNAL: "/catalog-external"
+  QA_AGENT_API_LOAD_VUS: "1"
+  QA_AGENT_API_LOAD_ITERATIONS: "50"
+  QA_AGENT_SPT_VUS: "1"
+  QA_AGENT_SPT_ITERATIONS: "50"
+  QA_AGENT_UI_ONLY_SERVICES: "am-modern-ui"
+  QA_AGENT_CATALOG_READY_TIMEOUT_SEC: "180"
   OTEL_SERVICE_NAME: "am-qa-agents"
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://otel-collector.monitoring.svc.cluster.local:4318/v1/traces"
   PYTHONDONTWRITEBYTECODE: "1"
+
+probes:
+  port: 8150
+  startup:
+    path: /health
+    failureThreshold: 36
+    periodSeconds: 10
+  liveness:
+    path: /health
+  readiness:
+    path: /unified/health
+
+resources:
+  limits:
+    cpu: "2"
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
 
 podAnnotations:
   prometheus.io/scrape: "true"
   prometheus.io/path: "/metrics"
   prometheus.io/port: "8150"
 
-existingSecret: qa-agent-gateway
-secretKeys:
-  apiToken: QA_AGENT_GATEWAY_TOKEN
-  githubToken: GITHUB_TOKEN
-  githubWebhookSecret: GITHUB_WEBHOOK_SECRET
-  databaseUrl: QA_AGENT_DATABASE_URL
-  langfusePublicKey: LANGFUSE_PUBLIC_KEY
-  langfuseSecretKey: LANGFUSE_SECRET_KEY
+# Projected SPT catalogs (ConfigMaps published by am-core-services publish-spt-catalogs)
+extraVolumeMounts:
+  - name: catalog-external
+    mountPath: /catalog-external
+    readOnly: true
 
-persistence:
-  enabled: true
-  size: 10Gi
-  storageClassName: ""
-  mountPath: /data
+extraVolumes:
+  - name: catalog-external
+    projected:
+      defaultMode: 0444
+      sources:
+        - configMap:
+            name: spt-catalog-am-analysis
+            optional: true
+            items:
+              - key: spt.yaml
+                path: am-analysis/spt.yaml
+        - configMap:
+            name: spt-catalog-am-gateway
+            optional: true
+            items:
+              - key: spt.yaml
+                path: am-gateway/spt.yaml
+        - configMap:
+            name: spt-catalog-am-mcp-server
+            optional: true
+            items:
+              - key: spt.yaml
+                path: am-mcp-server/spt.yaml
 
-resources:
-  requests:
-    cpu: 500m
-    memory: 1Gi
-  limits:
-    cpu: "2"
-    memory: 4Gi
-
-# Worker runs inside the same container via composition.main (not a second Deployment)
-worker:
-  enabled: false
-
-rbac:
-  releaseApproverRoles:
-    - release-approver
-    - platform-admin

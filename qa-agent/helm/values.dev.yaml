@@ -1,0 +1,49 @@
+# Dev — am-qa-agents (am-apps-dev)
+# One pod serves Specs (/spt-poc) + UI evidence (/ui-test).
+# Vault: reuse existing paths until apps/data/dev/services/am-qa-agents is seeded.
+environment: dev
+replicaCount: 1
+
+vault:
+  enabled: true
+  secretPaths:
+    otel:
+      path: "apps/data/dev/infra/observability"
+    observability:
+      path: "apps/data/dev/services/am-agents-mcp-gateway"
+    llm-api-keys:
+      path: "apps/data/dev/services/am-agents-mcp-gateway"
+    identity-oidc:
+      path: "apps/data/dev/services/am-identity"
+    qa-agent:
+      path: "apps/data/dev/services/am-ui-test-agent"
+
+ingress:
+  annotations:
+    traefik.ingress.kubernetes.io/router.priority: "100"
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-dev-dev-global-cors@kubernetescrd,
+      am-apps-dev-dev-strip-prefix@kubernetescrd
+  hosts:
+    - host: am-dev.asrax.in
+      paths:
+        - path: /spt-poc
+          pathType: Prefix
+        - path: /ui-test
+          pathType: Prefix
+
+env:
+  APP_ENV: dev
+  QA_AGENT_ENV: dev
+  APP_NAME: am-qa-agents
+  DEFAULT_ENVIRONMENT: dev
+  ROOT_PATH: /spt-poc
+  LOG_LEVEL: INFO
+  TEMPORAL_NAMESPACE: qa-agent-dev
+  FIN_AGENT_BASE_URL: "http://am-fin-agent.am-ai.svc.cluster.local:8100"
+  TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-apps-dev.svc.cluster.local:8141"
+  GNX_MCP_URL: "http://gitnexus-mcp.am-ai.svc.cluster.local:4747"
+  SPT_PUBLIC_BASE_URL: "https://am-dev.asrax.in/spt-poc"
+  SPT_UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
+  UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
+  UI_TEST_AGENT_BASE_URL: "http://127.0.0.1:8150"

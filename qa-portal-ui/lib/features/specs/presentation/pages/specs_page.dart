@@ -1128,7 +1128,7 @@ class _SpecsViewState extends State<_SpecsView> with SingleTickerProviderStateMi
                       if (state.targetUrl != null)
                         Flexible(
                           child: Text(
-                            '${state.environment} · ${state.targetUrl}',
+                            '${state.environment} Â· ${state.targetUrl}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(

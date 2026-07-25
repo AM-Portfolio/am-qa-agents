@@ -4,9 +4,9 @@ from typing import Any, Callable
 
 import httpx
 
-from spt.config import settings
-from spt.config_builder import snapshot_for_run
-from spt.load_runner import run_k6_local
+from specs.config import settings
+from specs.load.config_builder import snapshot_for_run
+from specs.load.load_runner import run_k6_local
 
 ProgressCb = Callable[[dict[str, Any]], None]
 

@@ -11,9 +11,9 @@ import argparse
 import sys
 from typing import Any
 
-from spt.db.engine import init_db, store_mode
-from spt.stores import db_backend as db
-from spt.stores import json_backend as jb
+from specs.persistence.db.engine import init_db, store_mode
+from specs.persistence.stores import db_backend as db
+from specs.persistence.stores import json_backend as jb
 
 HOT_COMPARE = (
     "id",

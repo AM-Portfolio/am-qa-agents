@@ -32,11 +32,12 @@ _HEALTH_PATHS = (
 
 
 def _vus() -> int:
-    return max(1, int(os.getenv("QA_AGENT_API_LOAD_VUS") or "5"))
+    return max(1, int(os.getenv("QA_AGENT_API_LOAD_VUS") or "1"))
 
 
 def _iterations() -> int:
-    return max(1, int(os.getenv("QA_AGENT_API_LOAD_ITERATIONS") or "8"))
+    # Default 50 requests (aligned with release-gate SPT payload load).
+    return max(1, int(os.getenv("QA_AGENT_API_LOAD_ITERATIONS") or "50"))
 
 
 def _timeout() -> float:

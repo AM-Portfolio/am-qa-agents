@@ -30,6 +30,12 @@ def post_test_verify(
     blockers: list[str] = []
     clean_pol = pol.get("clean_feature") or {}
 
+    # Catalog registration race — SPT must not run against missing registration
+    api = (matrix_results or smoke or {}).get("api") or {}
+    catalog_ready = api.get("catalog_ready") or {}
+    if catalog_ready.get("ready") is False and not catalog_ready.get("skipped"):
+        blockers.append("catalog_not_ready")
+
     # UI / smoke (also used as matrix UI layer status)
     st = str(smoke.get("status") or "").lower()
     skipped = bool(smoke.get("skipped"))

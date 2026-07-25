@@ -82,6 +82,7 @@ async def run_release_readiness_inline(args: dict[str, Any]) -> dict[str, Any]:
         activity_collect_comparisons,
         activity_dev_handoff_ticket,
         activity_evaluate_learning,
+        activity_ensure_catalog_ready,
         activity_execute_matrix,
         activity_fin_data_prep,
         activity_ingest_hitl_feedback,
@@ -201,6 +202,13 @@ async def run_release_readiness_inline(args: dict[str, Any]) -> dict[str, Any]:
         fin_prep = await activity_fin_data_prep(
             {"tracking_id": tracking_id, "load_context": load_context, "index": index}
         )
+        catalog_ready = await activity_ensure_catalog_ready(
+            {
+                "tracking_id": tracking_id,
+                "service": args.get("service") or load_context.get("service"),
+                "environment": args.get("environment") or load_context.get("environment"),
+            }
+        )
         smoke = await activity_execute_matrix(
             {
                 "tracking_id": tracking_id,
@@ -209,9 +217,11 @@ async def run_release_readiness_inline(args: dict[str, Any]) -> dict[str, Any]:
                 "index": index,
                 "matrix": matrix,
                 "fin_prep": fin_prep,
+                "catalog_ready": catalog_ready,
                 "callback_url": args.get("callback_url"),
                 "head_sha": classified.get("head_sha"),
                 "branch": classified.get("branch"),
+                "environment": args.get("environment") or load_context.get("environment"),
             }
         )
         comparisons = await activity_collect_comparisons(

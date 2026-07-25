@@ -10,9 +10,9 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from spt import load_ops
-from spt.acl import Caller, allows_multi_load, enforce_execute_load
-from spt.catalog_loader import (
+from specs.load import load_ops
+from specs.security.acl import Caller, allows_multi_load, enforce_execute_load
+from specs.catalog.catalog_loader import (
     apply_preset,
     apply_run_profile,
     apis_for_config,
@@ -20,12 +20,12 @@ from spt.catalog_loader import (
     load_service_apis,
     reachable_target_for_service,
 )
-from spt.config import settings
-from spt.config_builder import config_from_request, ensure_default_config
-from spt.db.engine import store_mode
-from spt.load_runner import _planned_api_rows
-from spt.payload_store import apply_payload_refs, apply_payload_set
-from spt.run_store import (
+from specs.config import settings
+from specs.load.config_builder import config_from_request, ensure_default_config
+from specs.persistence.db.engine import store_mode
+from specs.load.load_runner import _planned_api_rows
+from specs.payloads.payload_store import apply_payload_refs, apply_payload_set
+from specs.persistence.run_store import (
     count_running,
     get_config,
     get_run,
@@ -34,7 +34,7 @@ from spt.run_store import (
     save_run,
     update_run,
 )
-from spt.schemas import RunExecuteRequest
+from specs.schemas import RunExecuteRequest
 
 
 async def execute_run(
@@ -46,7 +46,7 @@ async def execute_run(
     caller = caller or Caller(role="developer")
 
     if idempotency_key and store_mode() != "json":
-        from spt.stores import db_backend as db
+        from specs.persistence.stores import db_backend as db
 
         existing = db.get_idempotency(idempotency_key)
         if existing:
@@ -112,7 +112,7 @@ async def execute_run(
     if body.environment:
         cfg["environment"] = body.environment
         cfg["target_url"] = default_target_for_service(
-            cfg.get("service") or "am-analysis", body.environment
+            cfg.get("service") or settings.default_service or "", body.environment
         )
     if body.openapi_version is not None:
         cfg["openapi_version"] = body.openapi_version
@@ -158,15 +158,12 @@ async def execute_run(
         cfg["target_url"] = body.config.target_url
 
     test_type = str(cfg.get("test_type") or "k6").lower()
-    if test_type == "playwright" and not cfg.get("service"):
-        cfg["service"] = "am-modern-ui"
-    if test_type == "playwright" and (cfg.get("service") in (None, "", "am-core-services", "am-analysis")):
-        # Prefer UI shell when running Playwright unless user already set a UI service
-        if not body.service and not (body.config and body.config.service):
-            cfg["service"] = "am-modern-ui"
+    # Do not invent a product service name — require request/config/registration.
+    if not cfg.get("service"):
+        cfg["service"] = settings.default_service or ""
 
     if test_type in ("playwright", "mixed") and (cfg.get("ui_profile") or cfg.get("ui_suite")):
-        from spt.ui_catalog_store import resolve_ui_run
+        from specs.ui_bridge.ui_catalog_store import resolve_ui_run
 
         cfg = resolve_ui_run(cfg)
 
@@ -207,7 +204,7 @@ async def execute_run(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     cfg["target_url"] = reachable_target_for_service(
-        cfg.get("service") or ("am-modern-ui" if test_type == "playwright" else "am-analysis"),
+        cfg.get("service") or settings.default_service or "",
         cfg.get("environment") or settings.default_environment,
         cfg.get("target_url"),
     )
@@ -250,7 +247,7 @@ async def execute_run(
         record.update(audit)
         save_run(record)
         if idempotency_key and store_mode() != "json":
-            from spt.stores import db_backend as db
+            from specs.persistence.stores import db_backend as db
 
             db.put_idempotency(idempotency_key, str(record.get("id")))
         return record
@@ -276,7 +273,7 @@ async def execute_run(
             ]
             if not cfg.get("openapi_version"):
                 cat = load_service_apis(
-                    cfg.get("service") or "am-analysis",
+                    cfg.get("service") or settings.default_service or "",
                     cfg.get("environment") or settings.default_environment,
                 )
                 if cat.get("openapi_version"):
@@ -285,7 +282,7 @@ async def execute_run(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception:
             try:
-                raw = (load_service_apis(cfg.get("service") or "am-analysis").get("apis") or [])
+                raw = (load_service_apis(cfg.get("service") or settings.default_service or "").get("apis") or [])
                 planned_rows = _planned_api_rows(raw)
                 apis_tested = [
                     {"id": a.get("id"), "name": a.get("name"), "method": a.get("method"), "path": a.get("path")}
@@ -321,7 +318,7 @@ async def execute_run(
         "run_profile": cfg.get("run_profile") or "load",
         "config_id": cfg.get("id"),
         "config_name": cfg.get("name", "unnamed"),
-        "service": cfg.get("service", "am-analysis"),
+        "service": cfg.get("service") or settings.default_service or "",
         "environment": cfg.get("environment", settings.default_environment),
         "openapi_version": cfg.get("openapi_version"),
         "test_type": cfg.get("test_type", "k6"),
@@ -376,7 +373,7 @@ async def execute_run(
     }
     save_run(placeholder)
     if idempotency_key and store_mode() != "json":
-        from spt.stores import db_backend as db
+        from specs.persistence.stores import db_backend as db
 
         db.put_idempotency(idempotency_key, run_id)
 

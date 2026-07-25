@@ -6,8 +6,8 @@ from pathlib import Path
 
 
 def _repo_root_from_app() -> Path:
-    # qa-agent/spt → monorepo root (parents[2])
-    return Path(__file__).resolve().parents[2]
+    # qa-agent/specs/portal → monorepo root (parents[3])
+    return Path(__file__).resolve().parents[3]
 
 
 def portal_ui_root() -> Path:

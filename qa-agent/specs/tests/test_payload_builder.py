@@ -1,8 +1,8 @@
 """Unit tests for schema-first payload builder (no network)."""
 from __future__ import annotations
 
-from spt.payload_builder import build_request_from_operation, example_from_param, example_from_schema
-from spt.openapi_overlay import apply_overlay_to_document
+from specs.payloads.payload_builder import build_request_from_operation, example_from_param, example_from_schema
+from specs.catalog.openapi_overlay import apply_overlay_to_document
 
 
 SAMPLE_DOC = {
