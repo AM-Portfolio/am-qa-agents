@@ -58,7 +58,8 @@ env:
   UI_TEST_AGENT_BASE_URL: "http://127.0.0.1:8150"
   FIN_AGENT_BASE_URL: "http://am-fin-agent.am-ai.svc.cluster.local:8100"
   TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-ai.svc.cluster.local:8141"
-  GNX_MCP_URL: "http://gitnexus-mcp.am-ai.svc.cluster.local:4747"
+  # Empty while GitNexus is offline (gnx_mcp_call no-ops)
+  GNX_MCP_URL: ""
   LLM_ROUTING: "gateway"
   LITELLM_BASE_URL: "http://litellm.am-ai.svc.cluster.local:4000"
   HEADLESS: "true"

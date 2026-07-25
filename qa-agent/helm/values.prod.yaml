@@ -40,5 +40,5 @@ env:
   QA_AGENT_HITL_AUTO_APPROVE: "false"
   QA_AGENT_LLM_ENABLED: "false"
   TEMPORAL_NAMESPACE: qa-agent
-  GNX_MCP_URL: "http://gitnexus-mcp.am-ai.svc.cluster.local:4747"
+  GNX_MCP_URL: ""
   SPT_PUBLIC_BASE_URL: "https://am.asrax.in/spt-poc"

@@ -45,7 +45,13 @@ env:
   QA_AGENT_WORKER_ENABLED: "1"
   FIN_AGENT_BASE_URL: "http://am-fin-agent.am-ai.svc.cluster.local:8100"
   TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-apps-dev.svc.cluster.local:8141"
-  GNX_MCP_URL: "http://gitnexus-mcp.am-ai.svc.cluster.local:4747"
+  # GitNexus currently down — empty disables GNX fallback (no hang on dead host)
+  GNX_MCP_URL: ""
+  # Until image with gnx_disabled lands: skip observe→GNX hang (tool-agent/template only)
+  QA_AGENT_SKIP_OBSERVE: "true"
+  QA_AGENT_OBSERVE_FORCE_TEMPLATE: "true"
+  # MCP gateway client_credentials (must match Vault AM_MCP_CLIENT_SECRET realm)
+  KEYCLOAK_TOKEN_URL: "http://auth.munish.org/auth/realms/am-dev-realm/protocol/openid-connect/token"
   SPT_PUBLIC_BASE_URL: "https://am-dev.asrax.in/spt-poc"
   SPT_UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_URL: "http://127.0.0.1:8150"

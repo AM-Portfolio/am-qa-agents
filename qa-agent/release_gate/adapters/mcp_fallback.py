@@ -37,7 +37,9 @@ def tool_agent_base(explicit: str | None = None) -> str:
 
 
 def gnx_mcp_base(explicit: str | None = None) -> str:
-    return (explicit or os.getenv("GNX_MCP_URL") or "http://127.0.0.1:4747").rstrip("/")
+    """Return GNX MCP base URL, or empty when GitNexus is disabled/unset."""
+    raw = (explicit if explicit is not None else os.getenv("GNX_MCP_URL")) or ""
+    return raw.strip().rstrip("/")
 
 
 def _split_capability(capability: str) -> tuple[str, str]:
@@ -184,6 +186,13 @@ async def gnx_mcp_call(
 ) -> dict[str, Any]:
     """JSON-RPC tools/call against GitNexus MCP HTTP (`/api/mcp`)."""
     base = gnx_mcp_base(base_url)
+    if not base:
+        return {
+            "ok": False,
+            "error": "gnx_disabled",
+            "via": "gnx_mcp",
+            "skipped": True,
+        }
     mcp_url = f"{base}/api/mcp"
     headers = {
         "Accept": _MCP_ACCEPT,
