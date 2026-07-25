@@ -115,17 +115,17 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Build & push image (includes k6 + portal)
         working-directory: am-qa-agents
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
         run: |
           docker build -f qa-agent/Dockerfile \
-            -t "ghcr.io/am-portfolio/am-qa-agents:${{ steps.meta.outputs.tag }}" \
-            -t "ghcr.io/am-portfolio/am-qa-agents:latest" \
+            -t "ghcr.io/am-portfolio/am-qa-agents:${TAG}" \
             .
-          docker push "ghcr.io/am-portfolio/am-qa-agents:${{ steps.meta.outputs.tag }}"
-          docker push "ghcr.io/am-portfolio/am-qa-agents:latest"
+          docker push "ghcr.io/am-portfolio/am-qa-agents:${TAG}"
 
   deploy-dev:
     name: Deploy qa-agent → dev
