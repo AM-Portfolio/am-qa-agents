@@ -7,17 +7,25 @@ import json
 from typing import Any, Optional
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 from specs import services
 from specs.load.config_builder import config_from_request, ensure_default_config
 from specs.persistence.run_store import delete_config, get_run, save_config
 from specs.schemas import TestConfigIn
 
+# streamable_http_path="/" so FastAPI mount("/mcp", …) serves at /mcp (not /mcp/mcp).
+# stateless_http=True: works under uvicorn without merging FastMCP lifespan.
 mcp = FastMCP(
     "am-test-agent",
     instructions=(
         "AM Test Agent control plane — list profiles, execute API/UI/mixed runs, "
         "poll live progress, inspect traces. Prefer spt_get_run_live for polling. Lists are slim."
+    ),
+    streamable_http_path="/",
+    stateless_http=True,
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=False,
     ),
 )
 
@@ -343,20 +351,68 @@ def prompt_dev_load() -> str:
 
 
 def mount_mcp(app: Any) -> None:
-    """Mount streamable HTTP MCP under /mcp."""
+    """Expose Control MCP at /mcp (public URL: {ROOT_PATH}/mcp).
+
+    Starlette ``Mount("/mcp")`` only matches ``/mcp/...`` (regex requires a slash).
+    Default ``redirect_slashes`` turns bare ``/mcp`` into ``307 Location: /mcp/``,
+    which drops Traefik ``ROOT_PATH`` (``/qa``) and steals traffic to finance
+    ``am-mcp-server``. Serve ``/mcp`` and ``/mcp/...`` via a custom route with
+    no redirect.
+    """
     import logging
 
+    from starlette.routing import BaseRoute, Match, NoMatchFound, get_route_path
+    from starlette.types import ASGIApp, Receive, Scope, Send
+
     log = logging.getLogger("specs.mcp")
+
+    class _McpRoute(BaseRoute):
+        def __init__(self, asgi: ASGIApp, *, name: str) -> None:
+            self.app = asgi
+            self.name = name
+
+        def matches(self, scope: Scope) -> tuple[Match, dict[str, Any]]:
+            if scope["type"] not in ("http", "websocket"):
+                return Match.NONE, {}
+            path = get_route_path(scope)
+            if path == "/mcp" or path.startswith("/mcp/"):
+                return Match.FULL, {"endpoint": self.app}
+            return Match.NONE, {}
+
+        async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
+            scope = dict(scope)
+            path = get_route_path(scope)
+            rest = path[len("/mcp") :] or "/"
+            if not rest.startswith("/"):
+                rest = "/" + rest
+            # Child FastMCP routes at "/"; clear root_path so get_route_path == rest.
+            scope["path"] = rest
+            scope["root_path"] = ""
+            if "raw_path" in scope:
+                scope["raw_path"] = rest.encode("utf-8")
+            await self.app(scope, receive, send)
+
+        def url_path_for(self, name: str, /, **path_params: Any) -> Any:
+            raise NoMatchFound(name, path_params)
+
+    def _attach(mcp_app: ASGIApp, name: str) -> None:
+        # Insert ahead of API routes so /mcp is not shadowed.
+        app.router.routes.insert(0, _McpRoute(mcp_app, name=name))
+
     try:
         mcp_app = mcp.streamable_http_app()
-        app.mount("/mcp", mcp_app)
-        log.info("Control MCP mounted at /mcp (streamable HTTP)")
+        _attach(mcp_app, "control_mcp")
+        log.info(
+            "Control MCP at /mcp (no slash-redirect, path=%s, stateless=%s)",
+            getattr(mcp.settings, "streamable_http_path", "?"),
+            getattr(mcp.settings, "stateless_http", "?"),
+        )
         return
     except Exception as exc:
         log.warning("streamable MCP mount failed: %s", exc)
     try:
         mcp_app = mcp.sse_app()  # type: ignore[attr-defined]
-        app.mount("/mcp", mcp_app)
-        log.info("Control MCP mounted at /mcp (SSE fallback)")
+        _attach(mcp_app, "control_mcp_sse")
+        log.info("Control MCP at /mcp (SSE fallback, no slash-redirect)")
     except Exception as exc:
         log.exception("Control MCP failed to mount — /mcp will be unavailable: %s", exc)

@@ -15,7 +15,7 @@ dockerfile: qa-agent/Dockerfile
 context: ..
 image: ghcr.io/am-portfolio/am-qa-agents
 components:
-  - specs          # SPT / load / catalog  → public /spt-poc
+  - specs          # SPT / load / catalog  → public /qa
   - ui_evidence    # Playwright UI tests   → public /ui-test (same pod)
   - release_gate   # Temporal go/no-go
 github:

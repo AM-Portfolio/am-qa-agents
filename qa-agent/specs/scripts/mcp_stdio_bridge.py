@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Stdio MCP bridge: Cursor mcp.json -> qa Specs REST API (/spt-poc).
+"""Stdio MCP bridge: Cursor mcp.json -> qa Specs REST API (/qa).
 
-Native /mcp is not reliably reachable via public ingress today; this bridge
-uses the same REST surface the portal uses.
+Prefer remote MCP when live: `"url": "https://am-dev.asrax.in/qa/mcp"`.
+This bridge is a fallback that uses the same REST surface the portal uses.
 """
 
 from __future__ import annotations

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, AsyncIterator
 
 from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +25,7 @@ from specs.load.load_runner import (
     get_run_trace_at,
     list_run_traces,
 )
+from specs.mcp.control import mcp as control_mcp
 from specs.mcp.control import mount_mcp
 from specs.payloads.payload_store import (
     create_payload_set,
@@ -73,6 +75,14 @@ from specs.services import compare_runs, previous_for_profile
 from specs.services import execute_svc
 from specs.persistence.trace_store import filter_api_index
 
+
+@asynccontextmanager
+async def _app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Run FastMCP streamable HTTP session manager (required for /mcp)."""
+    async with control_mcp.session_manager.run():
+        yield
+
+
 app = FastAPI(
     title="AM Test Agent",
     version="1.0.0",
@@ -81,6 +91,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=_app_lifespan,
+    # Mount("/mcp") would 307 → /mcp/ and drop ROOT_PATH (/qa), stealing traffic to am-mcp-server.
+    redirect_slashes=False,
 )
 
 _STATIC_DIR = portal_static_dir()

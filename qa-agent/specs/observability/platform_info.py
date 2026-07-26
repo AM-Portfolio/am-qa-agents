@@ -48,7 +48,7 @@ PLATFORM_INFO = {
             "name": "am-spt-poc (this app)",
             "status": "orchestrator only",
             "supports": ["Script preview", "MCP trigger", "Sample payloads", "Smoke orchestration"],
-            "ui_url": "/spt-poc/ui",
+            "ui_url": "/qa/ui",
             "metrics_ui": "Results tab — raw JSON from last run",
         },
     ],

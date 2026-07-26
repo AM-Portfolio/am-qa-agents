@@ -85,9 +85,9 @@ jobs:
         run: |
           flutter pub get
           flutter build web --release \
-            --base-href=/spt-poc/ui/ \
-            --dart-define=API_BASE=/spt-poc \
-            --dart-define=ROOT_PATH=/spt-poc \
+            --base-href=/qa/ui/ \
+            --dart-define=API_BASE=/qa \
+            --dart-define=ROOT_PATH=/qa \
             --no-wasm-dry-run
           test -f build/web/index.html
           echo "built=true" >> "$GITHUB_OUTPUT"

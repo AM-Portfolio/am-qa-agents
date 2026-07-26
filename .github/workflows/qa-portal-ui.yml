@@ -44,7 +44,7 @@ jobs:
 
       - name: Build web
         working-directory: am-qa-agents/qa-portal-ui
-        run: flutter build web --release --base-href=/spt-poc/ui/
+        run: flutter build web --release --base-href=/qa/ui/
 
       - name: Upload web artifact
         uses: actions/upload-artifact@v4

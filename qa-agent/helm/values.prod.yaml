@@ -26,6 +26,8 @@ ingress:
   hosts:
     - host: am.asrax.in
       paths:
+        - path: /qa
+          pathType: Prefix
         - path: /spt-poc
           pathType: Prefix
         - path: /ui-test
@@ -35,10 +37,10 @@ env:
   APP_ENV: prod
   QA_AGENT_ENV: prod
   DEFAULT_ENVIRONMENT: prod
-  ROOT_PATH: /spt-poc
+  ROOT_PATH: /qa
   LOG_LEVEL: WARN
   QA_AGENT_HITL_AUTO_APPROVE: "false"
   QA_AGENT_LLM_ENABLED: "false"
   TEMPORAL_NAMESPACE: qa-agent
   GNX_MCP_URL: ""
-  SPT_PUBLIC_BASE_URL: "https://am.asrax.in/spt-poc"
+  SPT_PUBLIC_BASE_URL: "https://am.asrax.in/qa"

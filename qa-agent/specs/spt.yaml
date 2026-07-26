@@ -12,8 +12,8 @@ source:
   team: qa-agents
 tags: [qa, python, fastapi, load]
 targets:
-  dev: "https://am-dev.asrax.in/spt-poc"
-  preprod: "https://am-preprod.asrax.in/spt-poc"
-  prod: "https://am.asrax.in/spt-poc"
+  dev: "https://am-dev.asrax.in/qa"
+  preprod: "https://am-preprod.asrax.in/qa"
+  prod: "https://am.asrax.in/qa"
 openapi:
   path: /openapi.json

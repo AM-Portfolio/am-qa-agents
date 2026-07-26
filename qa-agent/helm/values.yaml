@@ -41,7 +41,7 @@ env:
   LOG_LEVEL: INFO
   LOG_FORMAT: json
   TZ: Asia/Kolkata
-  ROOT_PATH: "/spt-poc"
+  ROOT_PATH: "/qa"
   # Writable path for reports/PDF (ledger lives in shared Postgres)
   DATA_DIR: "/tmp/qa-agent-data"
   REPORT_DIR: "/tmp/qa-agent-data/reports/ui-test"

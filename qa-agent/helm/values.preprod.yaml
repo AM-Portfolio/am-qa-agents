@@ -25,6 +25,8 @@ ingress:
   hosts:
     - host: am.asrax.in
       paths:
+        - path: /qa
+          pathType: Prefix
         - path: /spt-poc
           pathType: Prefix
         - path: /ui-test
@@ -34,11 +36,11 @@ env:
   APP_ENV: preprod
   QA_AGENT_ENV: preprod
   DEFAULT_ENVIRONMENT: preprod
-  ROOT_PATH: /spt-poc
+  ROOT_PATH: /qa
   LOG_LEVEL: INFO
   TEMPORAL_NAMESPACE: qa-agent
   FIN_AGENT_BASE_URL: "http://am-fin-agent.am-ai.svc.cluster.local:8100"
   TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-apps-preprod.svc.cluster.local:8141"
   GNX_MCP_URL: ""
   KEYCLOAK_TOKEN_URL: "http://auth.munish.org/auth/realms/am-preprod-realm/protocol/openid-connect/token"
-  SPT_PUBLIC_BASE_URL: "https://am.asrax.in/spt-poc"
+  SPT_PUBLIC_BASE_URL: "https://am.asrax.in/qa"

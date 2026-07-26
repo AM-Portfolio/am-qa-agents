@@ -28,7 +28,7 @@ _PRODUCT_PATH: dict[ProductSurface, str] = {
     "analysis": "/analysis",
     "identity": "/identity",
     "ui_test": "/ui-test",
-    "spt": "/spt-poc",
+    "spt": "/qa",
 }
 
 

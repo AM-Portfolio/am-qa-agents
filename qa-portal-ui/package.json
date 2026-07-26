@@ -9,11 +9,11 @@
     "test": "flutter test",
     "run": "npm run run:local",
     "run:local": "flutter run -d chrome --web-port=8151 --dart-define=API_BASE=http://localhost:8150",
-    "run:dev": "flutter run -d chrome --web-port=8151 --dart-define=API_BASE=https://am-dev.asrax.in/spt-poc --dart-define=ROOT_PATH=/spt-poc",
-    "run:cluster": "flutter run -d chrome --web-port=8151 --dart-define=API_BASE=https://am.asrax.in/spt-poc --dart-define=ROOT_PATH=/spt-poc",
+    "run:dev": "flutter run -d chrome --web-port=8151 --dart-define=API_BASE=https://am-dev.asrax.in/qa --dart-define=ROOT_PATH=/qa",
+    "run:cluster": "flutter run -d chrome --web-port=8151 --dart-define=API_BASE=https://am.asrax.in/qa --dart-define=ROOT_PATH=/qa",
     "build": "npm run build:local",
     "build:local": "flutter build web --release --base-href=/ui/",
-    "build:cluster": "flutter build web --release --base-href=/spt-poc/ui/ --dart-define=API_BASE=/spt-poc --dart-define=ROOT_PATH=/spt-poc",
+    "build:cluster": "flutter build web --release --base-href=/qa/ui/ --dart-define=API_BASE=/qa --dart-define=ROOT_PATH=/qa",
     "clean": "flutter clean"
   }
 }

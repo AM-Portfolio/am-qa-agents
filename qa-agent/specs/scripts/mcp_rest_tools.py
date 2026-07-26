@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 
 import httpx
 
-DEFAULT_BASE_URL = "https://am-dev.asrax.in/spt-poc"
+DEFAULT_BASE_URL = "https://am-dev.asrax.in/qa"
 TIMEOUT_SECONDS = 120.0
 
 

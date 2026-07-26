@@ -1,5 +1,5 @@
 # Dev — am-qa-agents (am-apps-dev)
-# One pod serves Specs (/spt-poc) + UI evidence (/ui-test).
+# One pod serves Specs (/qa) + UI evidence (/ui-test). Legacy /spt-poc kept as ingress alias.
 # Vault: domain path runtime/modules/qa (not per-service). Legacy services/* untouched.
 #
 # IMPORTANT: secretPaths must include mappings here (not only in vault-mappings.yaml).
@@ -49,6 +49,8 @@ ingress:
   hosts:
     - host: am-dev.asrax.in
       paths:
+        - path: /qa
+          pathType: Prefix
         - path: /spt-poc
           pathType: Prefix
         - path: /ui-test
@@ -59,7 +61,7 @@ env:
   QA_AGENT_ENV: dev
   APP_NAME: am-qa-agents
   DEFAULT_ENVIRONMENT: dev
-  ROOT_PATH: /spt-poc
+  ROOT_PATH: /qa
   LOG_LEVEL: INFO
   # Must exist in Temporal cluster (create qa-agent-dev before switching back)
   TEMPORAL_NAMESPACE: qa-agent
@@ -74,7 +76,7 @@ env:
   # MCP gateway client_credentials (must match Vault AM_MCP_CLIENT_SECRET realm)
   KEYCLOAK_TOKEN_URL: "http://auth.munish.org/auth/realms/am-dev-realm/protocol/openid-connect/token"
   AM_MCP_CLIENT_ID: "am-mcp-service"
-  SPT_PUBLIC_BASE_URL: "https://am-dev.asrax.in/spt-poc"
+  SPT_PUBLIC_BASE_URL: "https://am-dev.asrax.in/qa"
   SPT_UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_BASE_URL: "http://127.0.0.1:8150"
