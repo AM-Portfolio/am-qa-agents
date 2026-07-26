@@ -173,6 +173,8 @@ function doRequest(api) {{
   const params = {{
     headers: api.headers || {{}},
     tags,
+    // Fail hung backends before k6's 60s default so release smoke finishes faster.
+    timeout: '30s',
   }};
   const start = Date.now();
   let res;

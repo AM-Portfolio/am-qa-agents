@@ -21,7 +21,11 @@ from specs.catalog.catalog_loader import (
     reachable_target_for_service,
 )
 from specs.config import settings
-from specs.load.config_builder import config_from_request, ensure_default_config
+from specs.load.config_builder import (
+    compose_run_display_name,
+    config_from_request,
+    ensure_default_config,
+)
 from specs.persistence.db.engine import store_mode
 from specs.load.load_runner import _planned_api_rows
 from specs.payloads.payload_store import apply_payload_refs, apply_payload_set
@@ -69,13 +73,35 @@ async def execute_run(
         cfg = config_from_request(body.config)
     elif body.audience:
         service = body.service or (body.config.service if body.config else None)
-        matches = list_configs(service=service, audience=body.audience)
+        matches = list_configs(service=service, audience=body.audience) if service else []
+        if not matches:
+            # Seed templates are service-agnostic (empty service); bind service after.
+            matches = list_configs(audience=body.audience)
+            if service:
+                matches = [
+                    m for m in matches
+                    if not (m.get("service") or "").strip() or m.get("service") == service
+                ]
+        if not matches:
+            # Ensure seeds exist, then retry audience-only.
+            ensure_default_config()
+            matches = list_configs(audience=body.audience)
+            if service:
+                matches = [
+                    m for m in matches
+                    if not (m.get("service") or "").strip() or m.get("service") == service
+                ]
         if not matches:
             raise HTTPException(
                 status_code=404,
                 detail=f"No profile for audience={body.audience}"
                 + (f" service={service}" if service else ""),
             )
+        if len(matches) > 1 and service:
+            # Prefer exact service match if present; else empty-service templates.
+            exact = [m for m in matches if m.get("service") == service]
+            blank = [m for m in matches if not (m.get("service") or "").strip()]
+            matches = exact or blank or matches
         if len(matches) > 1 and not service:
             raise HTTPException(
                 status_code=409,
@@ -86,23 +112,22 @@ async def execute_run(
                 },
             )
         if len(matches) > 1:
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "message": f"Multiple profiles for audience={body.audience} service={service}; pass config_id",
-                    "config_ids": [m.get("id") for m in matches],
-                    "names": [m.get("name") for m in matches],
-                },
-            )
+            # Prefer template-ci / known seed names over ad-hoc duplicates.
+            preferred = [m for m in matches if str(m.get("name") or "").startswith("template-")]
+            matches = preferred or matches
+            if len(matches) > 1:
+                matches = [matches[0]]
         cfg = matches[0]
     else:
         cfg = ensure_default_config()
 
     # Never mutate the stored seed profile in-place; bind request service/env first.
-    # Without this, POST {service: am-analysis} kept empty default-smoke → api_count=0.
+    # Without this, POST {service: am-analysis} kept empty template → api_count=0.
     cfg = dict(cfg)
     if body.service:
         cfg["service"] = body.service
+    if body.audience:
+        cfg["audience"] = body.audience
 
     audience = str(cfg.get("audience") or "developer").lower()
     enforce_execute_load(
@@ -177,6 +202,14 @@ async def execute_run(
     # Do not invent a product service name — require request/config/registration.
     if not cfg.get("service"):
         cfg["service"] = settings.default_service or ""
+
+    # Run label is service-scoped; seed templates stay generic (template-*).
+    cfg["name"] = compose_run_display_name(
+        service=str(cfg.get("service") or ""),
+        environment=str(cfg.get("environment") or settings.default_environment),
+        test_type=test_type,
+        audience=audience,
+    )
 
     if test_type in ("playwright", "mixed") and (cfg.get("ui_profile") or cfg.get("ui_suite")):
         from specs.ui_bridge.ui_catalog_store import resolve_ui_run

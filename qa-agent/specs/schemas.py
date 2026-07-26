@@ -18,7 +18,7 @@ class PayloadBundle(BaseModel):
 
 
 class TestConfigIn(BaseModel):
-    name: str = "default-smoke"
+    name: str = "template-dev-k6"
     description: str = ""
     service: str = ""
     environment: str = "dev"

@@ -76,6 +76,7 @@ async def execute_spt_for_service(
     body: dict[str, Any] = {
         "service": service,
         "environment": env,
+        "audience": "ci",
         "vus": vus,
         "iterations": iterations,
         "test_type": resolved_type,

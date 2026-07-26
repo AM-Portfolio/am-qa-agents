@@ -191,18 +191,34 @@ async def root() -> RedirectResponse:
 @app.get("/ui", include_in_schema=False)
 async def dashboard_ui():
     # Flutter StaticFiles is mounted at /ui when enabled + build present.
-    if settings.spt_portal_flutter and flutter_portal_available():
-        prefix = settings.root_path.rstrip("/") if settings.root_path else ""
-        return RedirectResponse(url=f"{prefix}/ui/")
+    if settings.spt_portal_flutter:
+        if flutter_portal_available():
+            prefix = settings.root_path.rstrip("/") if settings.root_path else ""
+            return RedirectResponse(url=f"{prefix}/ui/")
+        # Cluster/flag on: never fall back to legacy HTML — surface a clear error.
+        return HTMLResponse(
+            "<!doctype html><html><head><meta charset=utf-8><title>Portal unavailable</title></head>"
+            "<body style='font-family:system-ui;margin:2rem'>"
+            "<h1>Flutter portal not baked</h1>"
+            "<p>SPT_PORTAL_FLUTTER is enabled but <code>qa-portal-ui/build/web</code> "
+            "(or SPT_PORTAL_FLUTTER_DIR) is missing from this image.</p>"
+            "<p>Rebuild am-qa-agents with a successful Flutter portal bake.</p>"
+            "<p><a href='../api/portal/mode'>/api/portal/mode</a></p>"
+            "</body></html>",
+            status_code=503,
+        )
     return HTMLResponse(render_portal())
 
 
 @app.get("/api/portal/mode", include_in_schema=False)
 async def portal_mode() -> dict[str, Any]:
+    available = flutter_portal_available()
     return {
         "flutter_enabled": bool(settings.spt_portal_flutter),
-        "flutter_available": flutter_portal_available(),
+        "flutter_available": available,
         "flutter_dir": str(portal_flutter_web_dir() or ""),
+        "legacy_fallback": bool(not settings.spt_portal_flutter),
+        "ok": bool(available) if settings.spt_portal_flutter else True,
     }
 
 

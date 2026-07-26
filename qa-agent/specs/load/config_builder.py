@@ -9,12 +9,34 @@ from specs.config import settings
 from specs.persistence.run_store import save_config
 from specs.schemas import TestConfigIn
 
-# Seed profile names (generic — not product-specific)
-DEV_SMOKE = "default-smoke"
-AGENT_SMOKE = "agent-smoke"
-CI_SMOKE = "ci-smoke"
-UI_SMOKE = "ui-playwright-smoke"
-MIXED_SMOKE = "mixed-smoke"
+# Seed template names (generic — not product-specific). Run display names are composed at execute.
+DEV_SMOKE = "template-dev-k6"
+AGENT_SMOKE = "template-agent-k6"
+CI_SMOKE = "template-ci-k6"
+UI_SMOKE = "template-dev-playwright"
+MIXED_SMOKE = "template-dev-mixed"
+
+# Historical seed names still accepted once, then refreshed under template-* names.
+_LEGACY_DEV_NAMES = ("default-smoke", "am-analysis-dev-smoke", "template-dev-k6")
+_LEGACY_AGENT_NAMES = ("agent-smoke", "am-analysis-agent-smoke", "template-agent-k6")
+_LEGACY_CI_NAMES = ("ci-smoke", "am-analysis-ci-smoke", "template-ci-k6")
+_LEGACY_UI_NAMES = ("ui-playwright-smoke", "am-modern-ui-playwright-smoke", "template-dev-playwright")
+_LEGACY_MIXED_NAMES = ("mixed-smoke", "am-modern-ui-mixed-smoke", "template-dev-mixed")
+
+
+def compose_run_display_name(
+    *,
+    service: str | None,
+    environment: str | None,
+    test_type: str | None,
+    audience: str | None,
+) -> str:
+    """Human-readable run label: one template covers many services."""
+    svc = (service or "service").strip() or "service"
+    env = (environment or "dev").strip() or "dev"
+    tt = (test_type or "k6").strip() or "k6"
+    aud = (audience or "developer").strip() or "developer"
+    return f"{svc}-{env}-{tt}-{aud}"
 
 
 def _default_service() -> str:
@@ -162,6 +184,13 @@ def _refresh_profile(c: dict[str, Any]) -> dict[str, Any]:
     return save_config(c)
 
 
+def _first_by_names(by_name: dict[str, Any], names: tuple[str, ...]) -> dict[str, Any] | None:
+    for n in names:
+        if by_name.get(n):
+            return by_name[n]
+    return None
+
+
 def ensure_default_config() -> dict[str, Any]:
     """Ensure developer + agent seed profiles exist; return the developer profile."""
     from specs.persistence.run_store import list_configs
@@ -169,8 +198,8 @@ def ensure_default_config() -> dict[str, Any]:
     configs = list_configs()
     by_name = {c.get("name"): c for c in configs}
 
-    # Accept legacy seed names once, then refresh under generic names
-    legacy_dev = by_name.get(DEV_SMOKE) or by_name.get("am-analysis-dev-smoke") or by_name.get("default-smoke")
+    # Accept legacy seed names once, then refresh under template-* names
+    legacy_dev = _first_by_names(by_name, _LEGACY_DEV_NAMES)
     if legacy_dev:
         if legacy_dev.get("name") != DEV_SMOKE:
             legacy_dev = dict(legacy_dev)
@@ -180,27 +209,18 @@ def ensure_default_config() -> dict[str, Any]:
     else:
         developer = save_config(default_config_dict())
 
-    for name, factory in (
-        (AGENT_SMOKE, agent_config_dict),
-        (CI_SMOKE, ci_config_dict),
-        (UI_SMOKE, playwright_ui_config_dict),
-        (MIXED_SMOKE, mixed_ui_api_config_dict),
+    for name, factory, aliases in (
+        (AGENT_SMOKE, agent_config_dict, _LEGACY_AGENT_NAMES),
+        (CI_SMOKE, ci_config_dict, _LEGACY_CI_NAMES),
+        (UI_SMOKE, playwright_ui_config_dict, _LEGACY_UI_NAMES),
+        (MIXED_SMOKE, mixed_ui_api_config_dict, _LEGACY_MIXED_NAMES),
     ):
-        legacy_aliases = {
-            AGENT_SMOKE: ("am-analysis-agent-smoke",),
-            CI_SMOKE: ("am-analysis-ci-smoke",),
-            UI_SMOKE: ("am-modern-ui-playwright-smoke",),
-            MIXED_SMOKE: ("am-modern-ui-mixed-smoke",),
-        }
-        existing = by_name.get(name)
-        if not existing:
-            for alias in legacy_aliases.get(name, ()):
-                if by_name.get(alias):
-                    existing = dict(by_name[alias])
-                    existing["name"] = name
-                    existing.pop("id", None)
-                    break
+        existing = _first_by_names(by_name, aliases)
         if existing:
+            if existing.get("name") != name:
+                existing = dict(existing)
+                existing["name"] = name
+                existing.pop("id", None)
             _refresh_profile(existing)
         else:
             save_config(factory())

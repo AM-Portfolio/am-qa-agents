@@ -338,6 +338,16 @@ class ReleaseReadinessWorkflow:
                     "degraded_banner": index.get("gnx_mode") == "degraded",
                 },
             )
+            # Do not park Temporal for 24h when verify already failed — auto-reject.
+            if verification.get("releasable") is False and not self._hitl.satisfied():
+                self._hitl.apply_signal(
+                    SIGNAL_REJECT_RELEASE,
+                    {
+                        "actor": "auto",
+                        "notes": "auto_reject: not releasable",
+                        "blockers": verification.get("blockers") or [],
+                    },
+                )
             hitl_timeout = timedelta(seconds=int(args.get("hitl_timeout_seconds") or 86400))
             try:
                 await workflow.wait_condition(
