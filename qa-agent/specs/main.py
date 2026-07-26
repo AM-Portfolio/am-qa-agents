@@ -866,26 +866,41 @@ async def api_run_artifacts(run_id: str) -> dict:
     row = get_run(run_id)
     if not row:
         raise HTTPException(status_code=404, detail="Run not found")
-    from specs.persistence.artifact_store import artifact_dir
+    from specs.persistence.artifact_store import artifact_dir, portal_artifact_url
 
     art_dir = artifact_dir(run_id)
-    files: list[dict[str, Any]] = []
     known = {str(a.get("name")): a for a in (row.get("artifacts") or []) if a.get("name")}
+    on_disk: dict[str, Path] = {}
     if art_dir.is_dir():
-        for path in sorted(art_dir.iterdir()):
-            if not path.is_file():
-                continue
-            name = path.name
-            meta = known.get(name) or {}
-            files.append(
-                {
-                    "name": name,
-                    "size": path.stat().st_size,
-                    "url": f"/api/runs/{run_id}/artifacts/{name}",
-                    "minio_url": meta.get("minio_url"),
-                    "kind": _artifact_kind(name),
-                }
-            )
+        for path in art_dir.iterdir():
+            if path.is_file():
+                on_disk[path.name] = path
+
+    names = set(on_disk) | set(known)
+    # Virtual durable report when DB has ui_report but disk/MinIO lost the HTML
+    if row.get("ui_report") and "ui-report.html" not in names:
+        names.add("ui-report.html")
+    if row.get("ui_report") and "ui-report.json" not in names:
+        names.add("ui-report.json")
+
+    files: list[dict[str, Any]] = []
+    for name in sorted(names):
+        meta = known.get(name) or {}
+        path = on_disk.get(name)
+        size = path.stat().st_size if path is not None else meta.get("size")
+        available = path is not None or bool(meta.get("minio_key")) or (
+            name in ("ui-report.html", "ui-report.json") and bool(row.get("ui_report"))
+        )
+        files.append(
+            {
+                "name": name,
+                "size": size,
+                "url": portal_artifact_url(run_id, name),
+                "minio_url": meta.get("minio_url"),
+                "kind": _artifact_kind(name),
+                "available": available,
+            }
+        )
     return {"run_id": run_id, "artifacts": files, "count": len(files)}
 
 
@@ -904,9 +919,26 @@ def _artifact_kind(name: str) -> str:
     return "file"
 
 
+def _artifact_media(name: str) -> str:
+    if name.endswith(".html"):
+        return "text/html"
+    if name.endswith(".json"):
+        return "application/json"
+    if name.endswith(".pdf"):
+        return "application/pdf"
+    if name.endswith(".zip"):
+        return "application/zip"
+    if name.endswith(".png"):
+        return "image/png"
+    return "application/octet-stream"
+
+
 @app.get("/api/runs/{run_id}/artifacts/{name}")
 async def api_run_artifact_file(run_id: str, name: str):
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, Response
+
+    from specs.persistence.artifact_store import download_from_minio
+    from specs.persistence.ui_report_html import render_ui_report_html
 
     row = get_run(run_id)
     if not row:
@@ -916,20 +948,55 @@ async def api_run_artifact_file(run_id: str, name: str):
     if safe != name or ".." in name or "/" in name or "\\" in name:
         raise HTTPException(status_code=400, detail="Invalid artifact name")
     path = Path(settings.data_dir) / "artifacts" / run_id / safe
-    if not path.is_file():
-        raise HTTPException(status_code=404, detail="Artifact not found")
-    media = "application/octet-stream"
-    if safe.endswith(".html"):
-        media = "text/html"
-    elif safe.endswith(".json"):
-        media = "application/json"
-    elif safe.endswith(".pdf"):
-        media = "application/pdf"
-    elif safe.endswith(".zip"):
-        media = "application/zip"
-    elif safe.endswith(".png"):
-        media = "image/png"
-    return FileResponse(path, media_type=media, filename=safe)
+    media = _artifact_media(safe)
+    if path.is_file():
+        return FileResponse(path, media_type=media, filename=safe)
+
+    # MinIO fallback (when credentials + key were recorded at persist time)
+    known = {str(a.get("name")): a for a in (row.get("artifacts") or []) if a.get("name")}
+    meta = known.get(safe) or {}
+    minio_key = meta.get("minio_key")
+    if minio_key:
+        blob = await download_from_minio(str(minio_key))
+        if blob:
+            return Response(content=blob, media_type=media, headers={
+                "Content-Disposition": f'inline; filename="{safe}"',
+            })
+
+    # Durable JSON / HTML from run metadata (survives ephemeral DATA_DIR)
+    if safe == "ui-report.json" and row.get("ui_report"):
+        body = json.dumps(row["ui_report"], indent=2, default=str).encode("utf-8")
+        return Response(content=body, media_type="application/json")
+    if safe == "ui-report.html" and row.get("ui_report"):
+        traces: list[dict[str, Any]] = []
+        try:
+            rows, _total = list_run_traces(run_id, limit=200)
+            traces = list(rows or [])
+        except Exception:
+            traces = []
+        if not traces and isinstance(row.get("api_summary"), list):
+            # Disk wiped — fall back to api_summary rows stored in Postgres
+            traces = [
+                {
+                    "kind": "ui_step" if str(a.get("method") or "").upper() in ("STEP", "FLOW", "UI") else "http",
+                    "call_index": i + 1,
+                    "api_id": a.get("api_id") or a.get("id"),
+                    "name": a.get("name") or a.get("api_id"),
+                    "checks_passed": a.get("checks_passed") if a.get("checks_passed") is not None else a.get("passed"),
+                    "timings": {"duration_ms": a.get("avg_ms") or a.get("duration_ms")},
+                }
+                for i, a in enumerate(row["api_summary"])
+            ]
+        html_body = render_ui_report_html(
+            run_id,
+            ui_report=row.get("ui_report") if isinstance(row.get("ui_report"), dict) else None,
+            status=str(row.get("status") or ""),
+            service=str(row.get("service") or ""),
+            traces=traces,
+        ).encode("utf-8")
+        return Response(content=html_body, media_type="text/html; charset=utf-8")
+
+    raise HTTPException(status_code=404, detail="Artifact not found")
 
 
 @app.get("/api/runs/{run_id}/playwright-trace")

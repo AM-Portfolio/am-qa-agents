@@ -286,8 +286,16 @@ class _RunDetailView extends StatelessWidget {
   final String runId;
 
   String _absUrl(PortalConfig cfg, String url) {
-    if (url.startsWith('http')) return url;
-    return '${cfg.apiBase}$url';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    var path = url.startsWith('/') ? url : '/$url';
+    final base = cfg.apiBase.replaceAll(RegExp(r'/$'), '');
+    // Avoid /spt-poc + /spt-poc/api/... when server stored ROOT_PATH-prefixed paths
+    final basePath = Uri.tryParse(base)?.path ?? '';
+    if (basePath.isNotEmpty && basePath != '/' && path.startsWith(basePath)) {
+      path = path.substring(basePath.length);
+      if (!path.startsWith('/')) path = '/$path';
+    }
+    return '$base$path';
   }
 
   Future<void> _saveAsConfigDialog(BuildContext context) async {
@@ -625,6 +633,7 @@ class _RunDetailView extends StatelessWidget {
                               results: results,
                               baseline: state.baseline,
                               apis: state.apis,
+                              absUrl: (u) => _absUrl(cfg, u),
                             ),
                             _InspectorTab(
                               traces: state.traces.isEmpty ? state.apis : state.traces,
@@ -742,12 +751,14 @@ class _OverviewTab extends StatelessWidget {
     this.results,
     this.baseline,
     this.apis = const [],
+    required this.absUrl,
   });
 
   final Map<String, dynamic> run;
   final Object? results;
   final Map<String, dynamic>? baseline;
   final List<Map<String, dynamic>> apis;
+  final String Function(String) absUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -955,6 +966,38 @@ class _OverviewTab extends StatelessWidget {
               ],
             ],
           ),
+        ),
+        Builder(
+          builder: (context) {
+            final runId = '${run['id'] ?? run['run_id'] ?? ''}'.trim();
+            final reportUrl = '${run['ui_report_html_url'] ?? ''}'.trim();
+            final hasUi = run['ui_report'] != null || reportUrl.isNotEmpty;
+            if (!hasUi || runId.isEmpty) return const SizedBox.shrink();
+            final href = reportUrl.isNotEmpty
+                ? absUrl(reportUrl)
+                : absUrl('/api/runs/$runId/artifacts/ui-report.html');
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: GlassCard(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Playwright report', style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FilledButton.tonalIcon(
+                        onPressed: () => launchUrl(Uri.parse(href)),
+                        icon: const Icon(Icons.language, size: 18),
+                        label: const Text('Open UI report'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
         if (baseline != null && baseline!.isNotEmpty) ...[
           const SizedBox(height: 8),

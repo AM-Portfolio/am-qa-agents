@@ -76,7 +76,26 @@ def normalize_run_view(row: dict[str, Any] | None) -> dict[str, Any] | None:
                     st["status"] = "fail" if status in {"cancelled", "failed", "error"} else "pass"
                 fixed.append(st)
             out["steps"] = fixed
+    # Strip ROOT_PATH from portal-relative artifact URLs (apiBase already has /spt-poc)
+    rid = str(out.get("id") or "")
+    if rid:
+        out["ui_report_html_url"] = _portal_rel_artifact_url(out.get("ui_report_html_url"), rid)
+        out["ui_report_pdf_url"] = _portal_rel_artifact_url(out.get("ui_report_pdf_url"), rid)
     return out
+
+
+def _portal_rel_artifact_url(url: Any, run_id: str) -> Any:
+    if not isinstance(url, str) or not url:
+        return url
+    # Absolute agent URLs stay as-is
+    if url.startswith("http") and "/api/runs/" not in url:
+        return url
+    # /spt-poc/api/runs/... or full https://.../spt-poc/api/runs/... → /api/runs/...
+    marker = f"/api/runs/{run_id}/"
+    idx = url.find(marker)
+    if idx >= 0:
+        return url[idx:]
+    return url
 
 
 def save_run(record: dict[str, Any]) -> dict[str, Any]:

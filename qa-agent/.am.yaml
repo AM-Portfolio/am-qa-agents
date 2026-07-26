@@ -11,7 +11,7 @@ name: am-qa-agents
 release: am-qa-agents
 runtime: python
 language: python
-dockerfile: Dockerfile
+dockerfile: qa-agent/Dockerfile
 context: ..
 image: ghcr.io/am-portfolio/am-qa-agents
 components:

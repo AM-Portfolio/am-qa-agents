@@ -428,7 +428,9 @@ async def _run_ui_test_agent(
     art_dir.mkdir(parents=True, exist_ok=True)
 
     # Copy per-step screenshots into SPT artifacts and rewrite URLs for the portal.
-    root = (settings.root_path or "").rstrip("/")
+    # Use paths without ROOT_PATH — portal apiBase already includes /spt-poc.
+    from specs.persistence.artifact_store import portal_artifact_url
+
     for t in traces:
         if t.get("kind") != "ui_step":
             continue
@@ -444,7 +446,7 @@ async def _run_ui_test_agent(
         # Defer writing via artifact_files below
         t["_screenshot_bytes"] = png
         t["_screenshot_name"] = local_name
-        t["screenshot_url"] = f"{root}/api/runs/{run_id}/artifacts/{local_name}"
+        t["screenshot_url"] = portal_artifact_url(run_id, local_name)
 
     traces_path = art_dir / "traces.json"
     index_path = art_dir / "api-index.json"
@@ -475,6 +477,17 @@ async def _run_ui_test_agent(
     html_bytes = await fetch_report_html(test_id)
     if html_bytes:
         artifact_files["ui-report.html"] = html_bytes
+    elif ui_summary:
+        # Durable compact HTML so the portal report survives ephemeral DATA_DIR wipes
+        from specs.persistence.ui_report_html import render_ui_report_html
+
+        artifact_files["ui-report.html"] = render_ui_report_html(
+            run_id,
+            ui_report=ui_summary if isinstance(ui_summary, dict) else None,
+            status=str(status.get("status") or ""),
+            service=str(config.get("service") or ""),
+            traces=traces,
+        ).encode("utf-8")
     pdf_bytes = await fetch_report_pdf(test_id)
     if pdf_bytes:
         artifact_files["ui-report.pdf"] = pdf_bytes
@@ -496,15 +509,16 @@ async def _run_ui_test_agent(
             f"{len(failed_steps)} UI step(s) failed" if failed_steps else "UI test failed"
         )
 
-    # Prefer SPT-hosted HTML so attachments work even when agent is down later
+    # Prefer SPT-hosted HTML so attachments work even when agent is down later.
+    # Relative paths (no ROOT_PATH) — portal apiBase already includes /spt-poc.
     report_html_url = None
     report_pdf_url = None
-    if html_bytes:
-        report_html_url = f"{root}/api/runs/{run_id}/artifacts/ui-report.html"
+    if artifact_files.get("ui-report.html"):
+        report_html_url = portal_artifact_url(run_id, "ui-report.html")
     else:
         report_html_url = agent_report_html_url(test_id)
     if pdf_bytes:
-        report_pdf_url = f"{root}/api/runs/{run_id}/artifacts/ui-report.pdf"
+        report_pdf_url = portal_artifact_url(run_id, "ui-report.pdf")
 
     return {
         "step": {
