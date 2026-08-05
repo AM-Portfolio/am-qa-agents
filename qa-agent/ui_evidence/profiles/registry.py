@@ -18,7 +18,10 @@ from ui_evidence.profiles.modern_ui.doc_intel_flow import (
     doc_intel_verification_checklist,
 )
 from ui_evidence.profiles.modern_ui.market_flow import (
+    build_market_dev_flow_steps,
     build_market_flow_steps,
+    build_market_gate_flow_steps,
+    build_market_user_flow_steps,
     market_verification_checklist,
 )
 from ui_evidence.profiles.modern_ui.portfolio_flow import (
@@ -34,6 +37,7 @@ from ui_evidence.profiles.modern_ui.profile_flow import (
 )
 from ui_evidence.profiles.modern_ui.trade_flow import (
     build_trade_flow_steps,
+    build_trade_tabs_flow_steps,
     trade_verification_checklist,
 )
 
@@ -47,7 +51,11 @@ PROFILE_BUILDERS: dict[str, Callable[..., list[dict[str, Any]]]] = {
     "PORTFOLIO_SMOKE_FLOW": build_portfolio_flow_steps,
     "PORTFOLIO_TABS_FLOW": build_portfolio_tabs_flow_steps,
     "MARKET_SMOKE_FLOW": build_market_flow_steps,
+    "MARKET_USER_FLOW": build_market_user_flow_steps,
+    "MARKET_DEV_FLOW": build_market_dev_flow_steps,
+    "MARKET_GATE_FLOW": build_market_gate_flow_steps,
     "TRADE_SMOKE_FLOW": build_trade_flow_steps,
+    "TRADE_TABS_FLOW": build_trade_tabs_flow_steps,
     "DOC_INTEL_SMOKE_FLOW": build_doc_intel_flow_steps,
     "DOC_UPLOAD_FLOW": build_doc_upload_flow_steps,
     "PROFILE_SMOKE_FLOW": build_profile_flow_steps,
@@ -63,7 +71,11 @@ CHECKLIST_BUILDERS: dict[str, Callable[..., list[dict[str, str]]]] = {
     "PORTFOLIO_SMOKE_FLOW": portfolio_verification_checklist,
     "PORTFOLIO_TABS_FLOW": portfolio_verification_checklist,
     "MARKET_SMOKE_FLOW": market_verification_checklist,
+    "MARKET_USER_FLOW": market_verification_checklist,
+    "MARKET_DEV_FLOW": market_verification_checklist,
+    "MARKET_GATE_FLOW": market_verification_checklist,
     "TRADE_SMOKE_FLOW": trade_verification_checklist,
+    "TRADE_TABS_FLOW": trade_verification_checklist,
     "DOC_INTEL_SMOKE_FLOW": doc_intel_verification_checklist,
     "DOC_UPLOAD_FLOW": doc_intel_verification_checklist,
     "PROFILE_SMOKE_FLOW": profile_verification_checklist,
@@ -71,14 +83,42 @@ CHECKLIST_BUILDERS: dict[str, Callable[..., list[dict[str, str]]]] = {
     "ADMIN_GATE_FLOW": profile_verification_checklist,
 }
 
+SMOKE_SUITE_PROFILES = (
+    "AUTH_FLOW_MAIN",
+    "DASHBOARD_SMOKE_FLOW",
+    "PORTFOLIO_SMOKE_FLOW",
+)
+
 RELEASE_GATE_PROFILES = (
     "AUTH_FLOW_MAIN",
     "DASHBOARD_SMOKE_FLOW",
     "PORTFOLIO_SMOKE_FLOW",
-    "MARKET_SMOKE_FLOW",
+    "MARKET_USER_FLOW",
     "TRADE_SMOKE_FLOW",
     "DOC_INTEL_SMOKE_FLOW",
 )
+
+# Prod read-only full UI: credentials login, all live sidebars, no upload / Add Trade / market admin.
+PROD_UI_FULL_PROFILES = (
+    "AUTH_FLOW_MAIN",
+    "DASHBOARD_SMOKE_FLOW",
+    "PORTFOLIO_SMOKE_FLOW",
+    "PORTFOLIO_TABS_FLOW",
+    "TRADE_SMOKE_FLOW",
+    "TRADE_TABS_FLOW",
+    "MARKET_USER_FLOW",
+    "MARKET_GATE_FLOW",
+    "DOC_INTEL_SMOKE_FLOW",
+    "PROFILE_SMOKE_FLOW",
+    "SUBSCRIPTION_SMOKE_FLOW",
+    "ADMIN_GATE_FLOW",
+)
+
+SUITE_PROFILES: dict[str, tuple[str, ...]] = {
+    "smoke": SMOKE_SUITE_PROFILES,
+    "release_gate": RELEASE_GATE_PROFILES,
+    "prod_ui_full": PROD_UI_FULL_PROFILES,
+}
 
 DETERMINISTIC_PROFILES = frozenset(PROFILE_BUILDERS.keys()) | AUTH_PROFILES
 
@@ -93,6 +133,13 @@ def is_auth_profile(profile: str) -> bool:
 
 def is_deterministic_profile(profile: str) -> bool:
     return profile in DETERMINISTIC_PROFILES
+
+
+def suite_profiles(suite: str) -> tuple[str, ...]:
+    profiles = SUITE_PROFILES.get(suite)
+    if profiles is None:
+        raise ValueError(f"Unknown suite: {suite}")
+    return profiles
 
 
 def build_profile_steps(

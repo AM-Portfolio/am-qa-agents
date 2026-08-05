@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-# Keep in sync with ui-test-agent PROFILE_BUILDERS / RELEASE_GATE / smoke suite defaults.
+# Keep in sync with ui-test-agent PROFILE_BUILDERS / suite defaults.
 # `steps` / `verifications` are documentation for the SPT UI explorer (not executed here).
 UI_FLOW_META: dict[str, dict[str, Any]] = {
     "AUTH_FLOW": {
@@ -75,7 +75,7 @@ UI_FLOW_META: dict[str, dict[str, Any]] = {
     "PORTFOLIO_SMOKE_FLOW": {
         "label": "Portfolio overview",
         "group": "Portfolio",
-        "summary": "Deep-link /app/portfolio overview (not analysis API)",
+        "summary": "Deep-link /app/portfolio overview",
         "steps": [
             "Auth prefix (login session)",
             "Deep-link portfolio overview",
@@ -84,19 +84,19 @@ UI_FLOW_META: dict[str, dict[str, Any]] = {
         ],
         "verifications": [
             "URL matches portfolio overview",
-            "Overview / holdings chrome present (soft)",
+            "Overview chrome present (soft)",
             "No error banner (soft)",
         ],
     },
     "PORTFOLIO_TABS_FLOW": {
-        "label": "Portfolio tabs",
+        "label": "Portfolio sidebar tabs",
         "group": "Portfolio",
-        "summary": "Sweep overview / holdings / analysis / heatmap / baskets",
+        "summary": "Sweep live sidebar: overview / holdings / heatmap / baskets",
         "steps": [
             "Auth prefix",
             "Open portfolio overview",
+            "Soft-assert sidebar labels",
             "Visit holdings tab",
-            "Visit analysis tab",
             "Visit heatmap tab",
             "Visit baskets tab",
             "Screenshot each surface",
@@ -105,22 +105,69 @@ UI_FLOW_META: dict[str, dict[str, Any]] = {
             "Each tab URL/path updates",
             "Tab content mounts without hard failure",
             "No error banner across sweep (soft)",
+            "Never clicks New Trade or basket creator",
         ],
     },
     "MARKET_SMOKE_FLOW": {
-        "label": "Market smoke",
+        "label": "Market smoke (user)",
         "group": "Market",
-        "summary": "Open market module",
+        "summary": "Alias of MARKET_USER_FLOW: dashboard + market-analysis",
         "steps": [
             "Auth prefix",
-            "Deep-link market module",
-            "Wait for market shell",
-            "Screenshot market",
+            "Deep-link /app/market/dashboard",
+            "Deep-link /app/market/market-analysis",
+            "Screenshot each",
         ],
         "verifications": [
             "Market URL/path present",
-            "Market chrome visible (soft)",
             "No error banner (soft)",
+        ],
+    },
+    "MARKET_USER_FLOW": {
+        "label": "Market user sidebar",
+        "group": "Market",
+        "summary": "Non-admin Market nav: dashboard + market-analysis",
+        "steps": [
+            "Auth prefix",
+            "Deep-link market dashboard",
+            "Wait for market module",
+            "Deep-link market-analysis",
+            "Screenshot each",
+        ],
+        "verifications": [
+            "Dashboard and market-analysis URLs present",
+            "No error banner (soft)",
+        ],
+    },
+    "MARKET_DEV_FLOW": {
+        "label": "Market developer explorers",
+        "group": "Market",
+        "summary": "Admin view-only: all-indices, streamer, instrument/security/etf explorers",
+        "steps": [
+            "Auth prefix (admin persona)",
+            "Deep-link all-indices",
+            "Visit streamer / instrument / security / etf explorers",
+            "Screenshot each (no start/stop)",
+        ],
+        "verifications": [
+            "Each explorer slug in URL",
+            "Skips price-test, admin, developer-dashboard",
+            "No mutating scheduler actions",
+        ],
+    },
+    "MARKET_GATE_FLOW": {
+        "label": "Market non-admin gate",
+        "group": "Market",
+        "summary": "Non-admin deep-links to admin/streamer redirect to dashboard",
+        "steps": [
+            "Auth prefix",
+            "Deep-link /app/market/admin",
+            "Assert redirect to dashboard",
+            "Deep-link /app/market/streamer",
+            "Assert redirect to dashboard",
+        ],
+        "verifications": [
+            "URL contains dashboard after gated deep-links",
         ],
     },
     "TRADE_SMOKE_FLOW": {
@@ -137,6 +184,23 @@ UI_FLOW_META: dict[str, dict[str, Any]] = {
             "Trade discovery URL present",
             "Trade list/shell visible (soft)",
             "No error banner (soft)",
+        ],
+    },
+    "TRADE_TABS_FLOW": {
+        "label": "Trade view tabs",
+        "group": "Trade",
+        "summary": "Sweep all Trade view tabs (sidebar + deep-link); never Add Trade",
+        "steps": [
+            "Auth prefix",
+            "Open trade discovery",
+            "Visit holdings / calendar / trades / journal / analysis",
+            "Deep-link market-analysis / report / unified / metrics / templates",
+            "Screenshot each",
+        ],
+        "verifications": [
+            "Each tab slug in URL",
+            "No error banner (soft)",
+            "Never clicks Add / Edit / Delete Trade",
         ],
     },
     "DOC_INTEL_SMOKE_FLOW": {
@@ -158,7 +222,7 @@ UI_FLOW_META: dict[str, dict[str, Any]] = {
     "DOC_UPLOAD_FLOW": {
         "label": "Doc upload",
         "group": "Docs",
-        "summary": "Document upload path",
+        "summary": "Document upload path (skip on prod)",
         "steps": [
             "Doc intelligence smoke prefix",
             "Open upload control",
@@ -206,16 +270,16 @@ UI_FLOW_META: dict[str, dict[str, Any]] = {
     "ADMIN_GATE_FLOW": {
         "label": "Admin gate",
         "group": "Account",
-        "summary": "Admin-only gate check",
+        "summary": "Admin-only gate check (analysis / ai-chat / lab)",
         "steps": [
             "Auth prefix",
-            "Deep-link admin gate route",
-            "Observe allow or deny UI",
-            "Screenshot gate result",
+            "Deep-link analysis and ai-chat",
+            "Deep-link lab (always blocked)",
+            "Screenshot gate results",
         ],
         "verifications": [
-            "Gate route resolves (allow or blocked)",
-            "Expected admin affordance when role allows",
+            "Non-admin redirected to dashboard",
+            "Lab always redirected to dashboard",
             "No unexpected crash banner",
         ],
     },
@@ -227,8 +291,12 @@ DEFAULT_FLOW_IDS = [
     "DASHBOARD_SMOKE_FLOW",
     "PORTFOLIO_SMOKE_FLOW",
     "PORTFOLIO_TABS_FLOW",
+    "MARKET_USER_FLOW",
     "MARKET_SMOKE_FLOW",
+    "MARKET_DEV_FLOW",
+    "MARKET_GATE_FLOW",
     "TRADE_SMOKE_FLOW",
+    "TRADE_TABS_FLOW",
     "DOC_INTEL_SMOKE_FLOW",
     "DOC_UPLOAD_FLOW",
     "PROFILE_SMOKE_FLOW",
@@ -246,9 +314,24 @@ RELEASE_GATE_PROFILES = [
     "AUTH_FLOW_MAIN",
     "DASHBOARD_SMOKE_FLOW",
     "PORTFOLIO_SMOKE_FLOW",
-    "MARKET_SMOKE_FLOW",
+    "MARKET_USER_FLOW",
     "TRADE_SMOKE_FLOW",
     "DOC_INTEL_SMOKE_FLOW",
+]
+
+PROD_UI_FULL_PROFILES = [
+    "AUTH_FLOW_MAIN",
+    "DASHBOARD_SMOKE_FLOW",
+    "PORTFOLIO_SMOKE_FLOW",
+    "PORTFOLIO_TABS_FLOW",
+    "TRADE_SMOKE_FLOW",
+    "TRADE_TABS_FLOW",
+    "MARKET_USER_FLOW",
+    "MARKET_GATE_FLOW",
+    "DOC_INTEL_SMOKE_FLOW",
+    "PROFILE_SMOKE_FLOW",
+    "SUBSCRIPTION_SMOKE_FLOW",
+    "ADMIN_GATE_FLOW",
 ]
 
 SUITE_META = [
@@ -261,8 +344,14 @@ SUITE_META = [
     {
         "id": "release_gate",
         "label": "Release gate",
-        "summary": "Full release checklist across main modules",
+        "summary": "Module smoke across auth / dashboard / portfolio / market / trade / docs",
         "profiles": RELEASE_GATE_PROFILES,
+    },
+    {
+        "id": "prod_ui_full",
+        "label": "Prod UI full (read-only)",
+        "summary": "Credentials login; all live Portfolio/Trade/Market sidebars; no upload or mutate",
+        "profiles": PROD_UI_FULL_PROFILES,
     },
 ]
 
@@ -289,7 +378,6 @@ def build_ui_flow_catalog(
     error: str | None = None,
 ) -> dict[str, Any]:
     ids = list(deterministic or DEFAULT_FLOW_IDS)
-    # Prefer known order; append unknowns from agent
     ordered: list[str] = []
     seen: set[str] = set()
     for fid in DEFAULT_FLOW_IDS + ids:
@@ -299,12 +387,11 @@ def build_ui_flow_catalog(
     flows = [_flow_entry(fid) for fid in ordered]
 
     rg = list(release_gate or RELEASE_GATE_PROFILES)
-    suite_ids = list(suites or ["smoke", "release_gate"])
+    suite_ids = list(suites or ["smoke", "release_gate", "prod_ui_full"])
     suite_rows = []
     for s in SUITE_META:
         if s["id"] in suite_ids:
             suite_rows.append(dict(s))
-    # If agent sent release_gate list, reflect it on that suite
     for row in suite_rows:
         if row["id"] == "release_gate" and rg:
             row["profiles"] = rg
@@ -319,6 +406,7 @@ def build_ui_flow_catalog(
         "suites": suite_rows,
         "deterministic": ordered,
         "release_gate": rg,
+        "prod_ui_full": list(PROD_UI_FULL_PROFILES),
         "default_flow": "AUTH_FLOW_MAIN",
         "default_suite": "smoke",
     }

@@ -112,6 +112,176 @@ async def start_release_readiness(
     return handle.id
 
 
+async def start_asrax_release_ops(
+    *,
+    workflow_id: str,
+    args: dict[str, Any],
+) -> str:
+    """Start AsraxReleaseOpsWorkflow (T0 UI pack → soak → score → publish → Cliq)."""
+    from temporalio.common import WorkflowIDReusePolicy
+
+    queue = assert_safe_task_queue()
+    namespace = resolve_namespace()
+    host = os.getenv("TEMPORAL_HOST", "localhost:7233")
+    tracking_id = str(args.get("tracking_id") or "")
+    LOG.info(
+        "temporal.start AsraxReleaseOpsWorkflow workflow_id=%s queue=%s",
+        workflow_id,
+        queue,
+        extra={
+            "event": "temporal.start",
+            "domain": "release_ops",
+            "flow": "release_ops.start",
+            "workflow_id": workflow_id,
+            "tracking_id": tracking_id,
+            "target": f"{host}/{namespace}/{queue}",
+        },
+    )
+    client = await get_temporal_client()
+    handle = await client.start_workflow(
+        "AsraxReleaseOpsWorkflow",
+        {**args, "workflow_id": workflow_id},
+        id=workflow_id,
+        task_queue=queue,
+        id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
+    )
+    LOG.info(
+        "temporal.started AsraxReleaseOpsWorkflow workflow_id=%s",
+        handle.id,
+        extra={
+            "event": "temporal.started",
+            "domain": "release_ops",
+            "flow": "release_ops.started",
+            "workflow_id": handle.id,
+            "tracking_id": tracking_id,
+        },
+    )
+    return handle.id
+
+
+async def run_asrax_release_ops_inline(args: dict[str, Any]) -> dict[str, Any]:
+    """Local path without Temporal worker (same activity order as the workflow)."""
+    from orchestrator.activities.release_ops import (
+        activity_release_ops_cliq_final,
+        activity_release_ops_complete,
+        activity_release_ops_init,
+        activity_release_ops_pack_t0,
+        activity_release_ops_publish_drive,
+        activity_release_ops_publish_sheet,
+        activity_release_ops_stability_score,
+        activity_release_ops_ui_suite,
+    )
+    from common.observability.domain_flow import emit_flow_phase
+
+    soak_min = int(args.get("soak_min") or 0)
+    emit_flow_phase(phase="release_ops_init", detail="inline")
+    init = await activity_release_ops_init(args)
+    tracking_id = init["tracking_id"]
+    release_id = init["release_id"]
+    pack_path = init["pack_path"]
+
+    emit_flow_phase(phase="release_ops_ui_suite", tracking_id=tracking_id)
+    ui = await activity_release_ops_ui_suite(
+        {
+            "tracking_id": tracking_id,
+            "release_id": release_id,
+            "pack_path": pack_path,
+            "suite": args.get("suite") or "prod_ui_full",
+            "target_url": args.get("target_url") or args.get("url"),
+            "login_mode": args.get("login_mode") or "credentials",
+            "portfolio_id": args.get("portfolio_id"),
+            "skip_ui": bool(args.get("skip_ui")),
+        }
+    )
+
+    emit_flow_phase(phase="release_ops_pack_t0", tracking_id=tracking_id)
+    pack_t0 = await activity_release_ops_pack_t0(
+        {
+            "tracking_id": tracking_id,
+            "release_id": release_id,
+            "pack_path": pack_path,
+            "skip_sheet": bool(args.get("skip_sheet")),
+            "sheet_id": args.get("sheet_id"),
+        }
+    )
+
+    if soak_min > 0 and not args.get("skip_soak"):
+        import asyncio
+
+        emit_flow_phase(phase="release_ops_soak", tracking_id=tracking_id, detail=f"minutes={soak_min}")
+        await asyncio.sleep(soak_min * 60)
+
+    emit_flow_phase(phase="release_ops_stability_score", tracking_id=tracking_id)
+    stability = await activity_release_ops_stability_score(
+        {
+            "tracking_id": tracking_id,
+            "release_id": release_id,
+            "pack_path": pack_path,
+            "soak_min": soak_min,
+            "fixtures": bool(args.get("fixtures")),
+            "allow_unavailable_stable": bool(args.get("allow_unavailable_stable")),
+        }
+    )
+
+    emit_flow_phase(phase="release_ops_publish_sheet", tracking_id=tracking_id)
+    sheet = await activity_release_ops_publish_sheet(
+        {
+            "tracking_id": tracking_id,
+            "stability": stability,
+            "skip_sheet": bool(args.get("skip_sheet")),
+            "sheet_id": args.get("sheet_id"),
+        }
+    )
+
+    emit_flow_phase(phase="release_ops_publish_drive", tracking_id=tracking_id)
+    drive = await activity_release_ops_publish_drive(
+        {
+            "tracking_id": tracking_id,
+            "release_id": release_id,
+            "pack_path": pack_path,
+            "skip_drive": bool(args.get("skip_drive")),
+        }
+    )
+
+    emit_flow_phase(phase="release_ops_cliq_final", tracking_id=tracking_id)
+    cliq = await activity_release_ops_cliq_final(
+        {
+            "tracking_id": tracking_id,
+            "release_id": release_id,
+            "release_name": args.get("release_name") or release_id,
+            "pack_path": pack_path,
+            "stability": stability,
+            "drive": drive,
+            "ui": ui,
+            "skip_cliq": bool(args.get("skip_cliq")),
+        }
+    )
+
+    emit_flow_phase(phase="release_ops_complete", tracking_id=tracking_id)
+    complete = await activity_release_ops_complete(
+        {
+            "tracking_id": tracking_id,
+            "release_id": release_id,
+            "pack_path": pack_path,
+            "stability": stability,
+        }
+    )
+    return {
+        "tracking_id": tracking_id,
+        "release_id": release_id,
+        "pack_path": pack_path,
+        "ui": ui,
+        "pack_t0": pack_t0,
+        "stability": stability,
+        "sheet": sheet,
+        "drive": drive,
+        "cliq": {k: v for k, v in cliq.items() if k != "body"},
+        "complete": complete,
+        "system_stable": bool(stability.get("system_stable")),
+        "mode": "inline",
+    }
+
+
 async def signal_release_hitl(
     *,
     workflow_id: str,

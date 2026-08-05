@@ -41,6 +41,15 @@ _STEP_DOMAIN: dict[str, str] = {
     "github_check_run": "governance",
     "notify": "notify",
     "complete": "workflow",
+    "release_ops_init": "release_ops",
+    "release_ops_ui_suite": "release_ops",
+    "release_ops_pack_t0": "release_ops",
+    "release_ops_soak": "release_ops",
+    "release_ops_stability_score": "release_ops",
+    "release_ops_publish_sheet": "release_ops",
+    "release_ops_publish_drive": "release_ops",
+    "release_ops_cliq_final": "release_ops",
+    "release_ops_complete": "release_ops",
 }
 
 _ACTIVITY_DOMAIN: dict[str, str] = {
@@ -66,6 +75,14 @@ _ACTIVITY_DOMAIN: dict[str, str] = {
     "activity_record_promotion": "governance",
     "activity_github_check_run": "governance",
     "activity_notify": "notify",
+    "activity_release_ops_init": "release_ops",
+    "activity_release_ops_ui_suite": "release_ops",
+    "activity_release_ops_pack_t0": "release_ops",
+    "activity_release_ops_stability_score": "release_ops",
+    "activity_release_ops_publish_sheet": "release_ops",
+    "activity_release_ops_publish_drive": "release_ops",
+    "activity_release_ops_cliq_final": "release_ops",
+    "activity_release_ops_complete": "release_ops",
 }
 
 # Workflow phase markers (human flow order)

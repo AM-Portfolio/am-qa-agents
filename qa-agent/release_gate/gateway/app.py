@@ -91,6 +91,169 @@ class PromotionBody(BaseModel):
     actor: str = "operator"
 
 
+class ReleaseOpsRequestBody(BaseModel):
+    """Ask Cliq for single-admin approval before starting AsraxReleaseOpsWorkflow."""
+
+    release_id: str | None = None
+    release_name: str | None = None
+    env: str = "prod"
+    suite: str = "prod_ui_full"
+    target_url: str = "https://am.asrax.in"
+    login_mode: str = "credentials"
+    soak_min: int = 30
+    requested_by: str = ""
+    skip_ui: bool = False
+    skip_sheet: bool = False
+    skip_drive: bool = False
+    skip_cliq: bool = False
+    fixtures: bool = False
+    use_temporal: bool = True
+    post_cliq: bool = True
+
+
+async def _start_asrax_from_request(req: Any) -> dict[str, Any]:
+    """Start Temporal (or inline) AsraxReleaseOpsWorkflow from a pending request."""
+    from intelligence.cliq_release_gate import get_pending_store
+
+    args = req.workflow_args()
+    tracking_id = args["tracking_id"]
+    release_key = req.release_id or req.request_id
+    workflow_id = f"asrax-release-ops-{release_key}"
+    get_ledger().create_run(
+        tracking_id=tracking_id,
+        workflow_id=workflow_id,
+        meta={"request_id": req.request_id, "source": "cliq_approval"},
+    )
+
+    if req.use_temporal and os.getenv("QA_AGENT_FORCE_INLINE", "").lower() not in {"1", "true", "yes"}:
+        try:
+            wf_id = await tapi.start_asrax_release_ops(workflow_id=workflow_id, args=args)
+            get_pending_store().update(
+                req.request_id,
+                status="started",
+                workflow_id=wf_id,
+                tracking_id=tracking_id,
+            )
+            return {"mode": "temporal", "workflow_id": wf_id, "tracking_id": tracking_id}
+        except Exception as exc:  # noqa: BLE001
+            LOG.warning("asrax.temporal_fallback error=%s", exc, extra={"event": "asrax.temporal_fallback"})
+            outcome = await tapi.run_asrax_release_ops_inline(args)
+            get_pending_store().update(
+                req.request_id,
+                status="started",
+                workflow_id=workflow_id,
+                tracking_id=tracking_id,
+                error=f"temporal_fallback:{exc}",
+            )
+            return {
+                "mode": "inline_fallback",
+                "workflow_id": workflow_id,
+                "tracking_id": tracking_id,
+                "temporal_error": str(exc),
+                "outcome": outcome,
+            }
+
+    outcome = await tapi.run_asrax_release_ops_inline(args)
+    get_pending_store().update(
+        req.request_id,
+        status="started",
+        workflow_id=workflow_id,
+        tracking_id=tracking_id,
+    )
+    return {
+        "mode": "inline",
+        "workflow_id": workflow_id,
+        "tracking_id": tracking_id,
+        "outcome": outcome,
+    }
+
+
+async def _apply_release_decision(
+    *,
+    request_id: str,
+    action: str,
+    actor: str,
+    token: str = "",
+    notes: str = "",
+    require_token: bool = True,
+) -> dict[str, Any]:
+    from adapters.specialists import NotifyClient
+    from intelligence.cliq_release_gate import (
+        build_cliq_started_body,
+        get_pending_store,
+        is_release_admin,
+        verify_token,
+    )
+
+    store = get_pending_store()
+    req = store.get(request_id)
+    if not req:
+        raise HTTPException(404, f"unknown request_id={request_id}")
+    if req.status in {"started", "approved"} and action == "approve":
+        return {
+            "request_id": request_id,
+            "status": req.status,
+            "workflow_id": req.workflow_id,
+            "tracking_id": req.tracking_id,
+            "deduplicated": True,
+        }
+    if req.status == "rejected" and action == "reject":
+        return {"request_id": request_id, "status": "rejected", "deduplicated": True}
+
+    if token:
+        if not verify_token(request_id, action, token):
+            raise HTTPException(403, "invalid approval token")
+    elif require_token:
+        raise HTTPException(403, "approval token required")
+
+    if not is_release_admin(actor):
+        raise HTTPException(
+            403,
+            f"only release admin may {action} (actor={actor or 'missing'}; set QA_AGENT_RELEASE_ADMIN)",
+        )
+
+    if action == "reject":
+        store.update(
+            request_id,
+            status="rejected",
+            decision_actor=actor,
+            decision_notes=notes,
+        )
+        try:
+            await NotifyClient().send_cliq_card(
+                title=f"Asrax RELEASE REJECTED — {req.release_name or request_id}",
+                body=f"rejected_by: {actor}\nrequest_id: {request_id}\nnotes: {notes}",
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        return {"request_id": request_id, "status": "rejected", "actor": actor}
+
+    if action != "approve":
+        raise HTTPException(400, f"unsupported action={action}")
+
+    store.update(
+        request_id,
+        status="approved",
+        decision_actor=actor,
+        decision_notes=notes,
+    )
+    started = await _start_asrax_from_request(store.get(request_id))
+    req2 = store.get(request_id)
+    try:
+        await NotifyClient().send_cliq_card(
+            title=f"Asrax RELEASE STARTED — {req2.release_name or request_id}",
+            body=build_cliq_started_body(req2),
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return {
+        "request_id": request_id,
+        "status": "started",
+        "actor": actor,
+        **started,
+    }
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "agent": AGENT_ID, "version": __version__}
@@ -363,6 +526,160 @@ async def promote_candidate(
         human_approved=body.human_approved,
         offline_eval_passed=body.offline_eval_passed,
         actor=body.actor,
+    )
+
+
+@app.post("/v2/releases/request")
+async def request_release_ops(
+    body: ReleaseOpsRequestBody,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Post Cliq approval card; workflow starts only after single admin confirms."""
+    _require_token(authorization)
+    from adapters.specialists import NotifyClient
+    from intelligence.cliq_release_gate import (
+        build_cliq_approval_body,
+        get_pending_store,
+        release_admin,
+    )
+
+    admin = release_admin()
+    if not admin and (os.getenv("QA_AGENT_ENV") or "local").lower() not in {"local", "dev", "test"}:
+        raise HTTPException(503, "QA_AGENT_RELEASE_ADMIN must be set (single Cliq approver)")
+
+    store = get_pending_store()
+    req = store.create(
+        release_id=body.release_id or "",
+        release_name=body.release_name or body.release_id or "",
+        env=body.env,
+        suite=body.suite,
+        target_url=body.target_url,
+        login_mode=body.login_mode,
+        soak_min=body.soak_min,
+        requested_by=body.requested_by,
+        skip_ui=body.skip_ui,
+        skip_sheet=body.skip_sheet,
+        skip_drive=body.skip_drive,
+        skip_cliq=body.skip_cliq,
+        fixtures=body.fixtures,
+        use_temporal=body.use_temporal,
+    )
+    card_body = build_cliq_approval_body(req)
+    cliq_out: dict[str, Any] = {"skipped": True}
+    if body.post_cliq:
+        cliq_out = await NotifyClient().send_cliq_card(
+            title=f"Asrax RELEASE APPROVAL — {req.release_name or req.request_id}",
+            body=card_body,
+            meta={"request_id": req.request_id, "admin": admin},
+        )
+    get_ledger().create_run(
+        tracking_id=req.tracking_id,
+        workflow_id=f"pending-{req.request_id}",
+        meta={"request_id": req.request_id, "status": "pending_cliq_approval"},
+    )
+    get_ledger().upsert_step(
+        req.tracking_id,
+        "cliq_release_request",
+        {"request_id": req.request_id, "admin": admin, "cliq": cliq_out},
+    )
+    LOG.info(
+        "release.request request_id=%s admin=%s",
+        req.request_id,
+        admin,
+        extra={"event": "release.cliq_request", "tracking_id": req.tracking_id},
+    )
+    return {
+        "request_id": req.request_id,
+        "tracking_id": req.tracking_id,
+        "status": "pending",
+        "admin": admin,
+        "cliq": cliq_out,
+        "approval_body": card_body,
+        "hint": "Wait for QA_AGENT_RELEASE_ADMIN to APPROVE in Cliq (link or chat reply)",
+    }
+
+
+@app.get("/v2/releases/{request_id}")
+def get_release_request(request_id: str) -> dict[str, Any]:
+    from intelligence.cliq_release_gate import get_pending_store
+
+    req = get_pending_store().get(request_id)
+    if not req:
+        raise HTTPException(404, "not found")
+    return req.to_dict()
+
+
+@app.get("/v2/releases/{request_id}/approve")
+async def approve_release_link(
+    request_id: str,
+    token: str = "",
+    actor: str = "",
+    notes: str = "",
+) -> dict[str, Any]:
+    """Cliq APPROVE link target (browser GET). Only QA_AGENT_RELEASE_ADMIN."""
+    return await _apply_release_decision(
+        request_id=request_id,
+        action="approve",
+        actor=actor,
+        token=token,
+        notes=notes or "approved_via_link",
+        require_token=True,
+    )
+
+
+@app.get("/v2/releases/{request_id}/reject")
+async def reject_release_link(
+    request_id: str,
+    token: str = "",
+    actor: str = "",
+    notes: str = "",
+) -> dict[str, Any]:
+    return await _apply_release_decision(
+        request_id=request_id,
+        action="reject",
+        actor=actor,
+        token=token,
+        notes=notes or "rejected_via_link",
+        require_token=True,
+    )
+
+
+@app.post("/webhooks/cliq/release")
+async def cliq_release_webhook(
+    request: Request,
+    x_cliq_token: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Inbound Cliq bot / Deluge: chat message or button → approve/reject → start workflow.
+
+    Expected JSON (flexible):
+      {"action":"approve","request_id":"relreq-...","actor":"admin@...","token":"..."}
+    or chat text: "approve relreq-abc123" with actor from Cliq user fields.
+    """
+    shared = (os.getenv("QA_AGENT_CLIQ_INBOUND_TOKEN") or os.getenv("QA_AGENT_GATEWAY_TOKEN") or "").strip()
+    if shared:
+        provided = (x_cliq_token or "").strip()
+        auth = request.headers.get("authorization") or ""
+        bearer = auth.split(" ", 1)[1].strip() if auth.lower().startswith("bearer ") else ""
+        if provided != shared and bearer != shared:
+            raise HTTPException(403, "invalid Cliq inbound token")
+
+    from intelligence.cliq_release_gate import parse_cliq_chat_message
+
+    data = await request.json()
+    parsed = parse_cliq_chat_message(data if isinstance(data, dict) else {})
+    if not parsed.get("request_id"):
+        raise HTTPException(400, "request_id required (or include relreq-... in message)")
+    if not parsed.get("action"):
+        raise HTTPException(400, "action required (approve|reject) or say approve/reject in message")
+    # Chat path may omit HMAC token; admin identity is enforced
+    require_token = bool(parsed.get("token"))
+    return await _apply_release_decision(
+        request_id=parsed["request_id"],
+        action=parsed["action"],
+        actor=parsed.get("actor") or "",
+        token=parsed.get("token") or "",
+        notes=parsed.get("notes") or "",
+        require_token=require_token,
     )
 
 

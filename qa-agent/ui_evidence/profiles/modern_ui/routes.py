@@ -1,4 +1,8 @@
-"""Route constants mirrored from am-modern-ui am_app/lib/core/router/app_routes.dart."""
+"""Route constants mirrored from am-modern-ui am_app/lib/core/router/app_routes.dart.
+
+Live sidebar tab sets (Portfolio/Trade/Market) track the module screens, not stale
+standalone sidebar widgets. Route-constant lists may be wider than live nav.
+"""
 from __future__ import annotations
 
 from urllib.parse import urljoin
@@ -26,7 +30,11 @@ TERMS_OF_SERVICE = "/app/terms-of-service"
 SUBSCRIPTION = "/app/subscription"
 
 DOC_INTEL_TABS = ("doc-processor", "email-extractor")
-PORTFOLIO_TABS = ("overview", "holdings", "analysis", "heatmap", "baskets")
+
+# Live Portfolio sidebar (portfolio_web_screen). Orphan route `analysis` is not swept.
+PORTFOLIO_TABS = ("overview", "holdings", "heatmap", "baskets")
+
+# Trade view tabs (sidebar + deep-link/swipe). Add Trade is mutating — never swept.
 TRADE_TABS = (
     "portfolios",
     "holdings",
@@ -40,17 +48,29 @@ TRADE_TABS = (
     "metrics",
     "templates",
 )
-MARKET_STATIC_SLUGS = (
+TRADE_WEB_SIDEBAR_TABS = (
+    "portfolios",
+    "holdings",
+    "calendar",
+    "trades",
+    "journal",
+    "analysis",
+)
+
+# Market user-mode (non-admin) vs developer-mode (admin) nav.
+MARKET_USER_SLUGS = ("dashboard", "market-analysis")
+MARKET_DEV_SLUGS = (
     "all-indices",
     "streamer",
     "instrument-explorer",
     "security-explorer",
     "etf-explorer",
-    "price-test",
-    "market-analysis",
-    "admin",
-    "developer-dashboard",
-    "dashboard",
+)
+MARKET_PROD_SKIP_SLUGS = ("price-test", "admin", "developer-dashboard")
+MARKET_STATIC_SLUGS = (
+    *MARKET_USER_SLUGS,
+    *MARKET_DEV_SLUGS,
+    *MARKET_PROD_SKIP_SLUGS,
     "heatmap-explorer",
 )
 
@@ -95,7 +115,7 @@ def trade_path(portfolio_id: str, tab: str = "portfolios") -> str:
     return f"/app/trade/{portfolio_id}/{tab}"
 
 
-def market_path(tab: str = "all-indices") -> str:
+def market_path(tab: str = "dashboard") -> str:
     return f"/app/market/{tab}"
 
 

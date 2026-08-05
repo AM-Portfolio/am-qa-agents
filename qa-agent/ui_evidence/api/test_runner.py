@@ -11,8 +11,11 @@ from pydantic import BaseModel, Field
 from ui_evidence.config import settings
 from ui_evidence.profiles.registry import (
     DETERMINISTIC_PROFILES,
+    PROD_UI_FULL_PROFILES,
     RELEASE_GATE_PROFILES,
+    SUITE_PROFILES,
     is_deterministic_profile,
+    suite_profiles,
 )
 from ui_evidence.runner import execute_ui_test
 
@@ -65,7 +68,7 @@ class ProfileTestRunRequest(BaseModel):
 
 
 class SuiteTestRunRequest(BaseModel):
-    suite: str = Field(default="release_gate", description="release_gate")
+    suite: str = Field(default="release_gate", description="smoke | release_gate | prod_ui_full")
     targetUrl: Optional[str] = Field(default=None)
     environment: Optional[str] = Field(default=None)
     portfolioId: Optional[str] = Field(default=None)
@@ -122,9 +125,17 @@ async def _execute_agent_task_inner(test_id: str, payload: Dict[str, Any]) -> No
 
 
 async def _execute_suite(suite_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Run release-gate profiles sequentially (login each run for isolation via API)."""
-    profiles = payload.get("profiles") or list(RELEASE_GATE_PROFILES)
+    """Run suite profiles sequentially (login each run for isolation via API)."""
+    suite_name = payload.get("suite") or "release_gate"
+    try:
+        default_profiles = list(suite_profiles(suite_name))
+    except ValueError:
+        default_profiles = list(RELEASE_GATE_PROFILES)
+    profiles = payload.get("profiles") or default_profiles
     target = payload.get("targetUrl") or settings.MODERN_UI_MAIN_URL
+    login_mode = payload.get("loginMode") or "demo"
+    if suite_name == "prod_ui_full" and login_mode == "demo":
+        login_mode = "credentials"
     results: list[dict[str, Any]] = []
     hard_fail = 0
     soft_fail = 0
@@ -137,12 +148,11 @@ async def _execute_suite(suite_id: str, payload: Dict[str, Any]) -> Dict[str, An
             "commitSha": payload.get("commitSha"),
             "branch": payload.get("branch", "main"),
             "portfolioId": payload.get("portfolioId"),
-            "loginMode": payload.get("loginMode") or "demo",
+            "loginMode": login_mode,
             "designReviewEnabled": payload.get("designReviewEnabled", False),
             "selfHealEnabled": False,
             "baselineMode": payload.get("baselineMode"),
         }
-        # Design review only on last / auth if enabled for suite
         if payload.get("designReviewEnabled") and profile == profiles[-1]:
             child_payload["designReviewEnabled"] = True
         logger.info("Suite %s → profile %s", suite_id, profile)
@@ -175,8 +185,9 @@ async def _execute_suite(suite_id: str, payload: Dict[str, Any]) -> Dict[str, An
     return {
         "testId": suite_id,
         "status": status,
-        "suite": payload.get("suite", "release_gate"),
+        "suite": suite_name,
         "decision": decision,
+        "loginMode": login_mode,
         "results": results,
         "hard_fail_count": hard_fail,
         "soft_fail_count": soft_fail,
@@ -265,24 +276,24 @@ async def run_profile_test(request: ProfileTestRunRequest, background_tasks: Bac
 
 @router.post("/run/suite", response_model=TestRunResponse, status_code=status.HTTP_202_ACCEPTED)
 async def run_suite_test(request: SuiteTestRunRequest, background_tasks: BackgroundTasks):
-    if request.suite not in ("release_gate", "smoke"):
-        raise HTTPException(status_code=400, detail="suite must be release_gate or smoke")
+    if request.suite not in SUITE_PROFILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"suite must be one of: {', '.join(sorted(SUITE_PROFILES))}",
+        )
     target = request.targetUrl or settings.MODERN_UI_MAIN_URL
     profiles = request.profiles
-    if request.suite == "smoke" and not profiles:
-        profiles = [
-            "DASHBOARD_SMOKE_FLOW",
-            "PORTFOLIO_SMOKE_FLOW",
-            "MARKET_SMOKE_FLOW",
-            "TRADE_SMOKE_FLOW",
-            "DOC_INTEL_SMOKE_FLOW",
-        ]
+    if not profiles:
+        profiles = list(suite_profiles(request.suite))
+    login_mode = request.loginMode
+    if request.suite == "prod_ui_full" and (not login_mode or login_mode == "demo"):
+        login_mode = "credentials"
     payload = {
         "suite": request.suite,
         "targetUrl": target,
         "profiles": profiles,
         "portfolioId": request.portfolioId or settings.TEST_PORTFOLIO_ID,
-        "loginMode": request.loginMode,
+        "loginMode": login_mode,
         "commitSha": request.commitSha,
         "branch": request.branch,
         "designReviewEnabled": request.designReviewEnabled,
@@ -294,7 +305,7 @@ async def run_suite_test(request: SuiteTestRunRequest, background_tasks: Backgro
     return TestRunResponse(
         testId=test_id,
         status="QUEUED",
-        message=f"Suite {request.suite} queued → {target} ({len(profiles or RELEASE_GATE_PROFILES)} profiles)",
+        message=f"Suite {request.suite} queued → {target} ({len(profiles)} profiles)",
     )
 
 
@@ -355,7 +366,8 @@ async def list_profiles():
     return {
         "deterministic": sorted(DETERMINISTIC_PROFILES),
         "release_gate": list(RELEASE_GATE_PROFILES),
-        "suites": ["smoke", "release_gate"],
+        "prod_ui_full": list(PROD_UI_FULL_PROFILES),
+        "suites": sorted(SUITE_PROFILES.keys()),
         "flows": flows,
     }
 

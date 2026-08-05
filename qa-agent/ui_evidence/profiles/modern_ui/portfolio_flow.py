@@ -1,4 +1,4 @@
-"""Portfolio smoke + tab-sweep — deep-link first."""
+"""Portfolio smoke + live-sidebar tab-sweep — deep-link first."""
 from __future__ import annotations
 
 from typing import Any
@@ -11,6 +11,12 @@ def _portfolio_entry_path(portfolio_id: str | None) -> str:
     if portfolio_id:
         return R.portfolio_path(portfolio_id, "overview")
     return R.portfolio_legacy_tab_path("overview")
+
+
+def _tab_path(portfolio_id: str | None, tab: str) -> str:
+    if portfolio_id:
+        return R.portfolio_path(portfolio_id, tab)
+    return R.portfolio_legacy_tab_path(tab)
 
 
 def build_portfolio_flow_steps(
@@ -69,6 +75,7 @@ def build_portfolio_tabs_flow_steps(
     portfolio_id: str | None = None,
     **_kwargs: Any,
 ) -> list[dict[str, Any]]:
+    """Sweep live Portfolio sidebar: overview, holdings, heatmap, baskets."""
     steps = build_portfolio_flow_steps(
         target_url=target_url,
         email=email,
@@ -76,15 +83,21 @@ def build_portfolio_tabs_flow_steps(
         login_mode=login_mode,
         portfolio_id=portfolio_id,
     )
+    steps.extend(
+        [
+            {
+                "action": "assert_text_visible",
+                "texts": ["Overview", "Holdings", "Heatmap", "Baskets"],
+                "soft": True,
+                "name": f"{len(steps) + 1}. Soft-assert portfolio sidebar labels",
+            }
+        ]
+    )
     n = len(steps) + 1
     for tab in R.PORTFOLIO_TABS:
         if tab == "overview":
             continue
-        path = (
-            R.portfolio_path(portfolio_id, tab)
-            if portfolio_id
-            else R.portfolio_legacy_tab_path(tab)
-        )
+        path = _tab_path(portfolio_id, tab)
         steps.extend(
             [
                 {
@@ -103,10 +116,15 @@ def build_portfolio_tabs_flow_steps(
                     "pattern": tab,
                     "name": f"{n + 2}. Assert tab {tab} in URL",
                 },
-                {"action": "screenshot", "name": f"{n + 3}. Screenshot — portfolio/{tab}"},
+                {
+                    "action": "assert_no_error_banner",
+                    "soft": True,
+                    "name": f"{n + 3}. Soft-assert no error on {tab}",
+                },
+                {"action": "screenshot", "name": f"{n + 4}. Screenshot — portfolio/{tab}"},
             ]
         )
-        n += 4
+        n += 5
     return steps
 
 
