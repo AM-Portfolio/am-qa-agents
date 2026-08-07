@@ -19,6 +19,7 @@ htmlcov/
 **/data/
 **/artifacts/
 *.log
+/ui-reports/
 **/vendor/bin/
 *.exe
 

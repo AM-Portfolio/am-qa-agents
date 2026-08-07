@@ -32,10 +32,36 @@ async def reporter_node(state: AutonomousAgentState, config: RunnableConfig) -> 
 
     screenshots = state.get("screenshot_history") or []
     labels = state.get("screenshot_labels") or []
+    prefix = (ctx.profile or "ui").split("_")[0].lower()
+    try:
+        from ui_evidence.browser.evidence_paths import profile_evidence_prefix
+
+        prefix = profile_evidence_prefix(ctx.profile)
+    except Exception:
+        pass
+    evidence_dir = ctx.evidence_dirname or ""
     img_html = ""
+    if evidence_dir:
+        img_html += (
+            f'<p><strong>Screenshot folder:</strong> '
+            f'<code>screenshots/{html.escape(evidence_dir)}</code></p>'
+        )
     for i, shot in enumerate(screenshots):
         label = html.escape(labels[i] if i < len(labels) else f"Screenshot {i + 1}")
-        img_html += f'<h3>{label}</h3><img src="data:image/png;base64,{shot}"/>'
+        timing = next(
+            (t for t in ctx.step_timings if t.get("index") == i + 1),
+            None,
+        )
+        file_hint = ""
+        if timing and timing.get("screenshot_file"):
+            file_hint = Path(str(timing["screenshot_file"])).name
+        heading = f"[{html.escape(prefix)}] {label}"
+        if file_hint:
+            heading = (
+                f"{heading} "
+                f"<span style='color:#64748b;font-weight:normal'>({html.escape(file_hint)})</span>"
+            )
+        img_html += f"<h3>{heading}</h3><img src=\"data:image/png;base64,{shot}\"/>"
 
     document = build_report_document(
         ctx=ctx,

@@ -31,6 +31,12 @@ def _safe_mean(values: list[float]) -> float | None:
 
 
 def build_environment_info(ctx: TestRunContext) -> dict[str, Any]:
+    evidence = getattr(ctx, "evidence_dirname", "") or ""
+    shot_dir = (
+        str((Path(settings.REPORT_DIR) / "screenshots" / evidence).resolve())
+        if evidence
+        else str((Path(settings.REPORT_DIR) / "screenshots" / ctx.test_id).resolve())
+    )
     return {
         "app_env": settings.APP_ENV,
         "llm_routing": settings.llm_routing,
@@ -40,6 +46,9 @@ def build_environment_info(ctx: TestRunContext) -> dict[str, Any]:
         "auth_login_mode": settings.AUTH_LOGIN_MODE,
         "browser_viewport": f"{settings.BROWSER_VIEWPORT_WIDTH}x{settings.BROWSER_VIEWPORT_HEIGHT}",
         "report_dir": settings.REPORT_DIR,
+        "screenshot_folder": evidence or ctx.test_id,
+        "screenshot_dir": shot_dir,
+        "profile": ctx.profile,
         "qdrant_host": settings.QDRANT_HOST,
         "qdrant_https": settings.QDRANT_HTTPS,
         "branch": ctx.branch,

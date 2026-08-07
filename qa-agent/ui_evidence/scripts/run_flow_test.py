@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT.parent))
 
 
 def _open_report(report: str | None) -> None:
@@ -31,7 +32,10 @@ def _resolve_target(args) -> tuple[str, str, str | None, str]:
     login_mode = args.login_mode or "demo"
 
     if args.target_file:
-        from app.target_loader import get_target_config
+        try:
+            from ui_evidence.target_loader import get_target_config
+        except ImportError:
+            from app.target_loader import get_target_config
 
         tf = Path(args.target_file).resolve()
         env_file = Path(args.env_file).resolve() if args.env_file else None
@@ -58,7 +62,10 @@ def _resolve_target(args) -> tuple[str, str, str | None, str]:
 
 
 async def _run_inprocess(args) -> int:
-    from app.runner import execute_ui_test
+    try:
+        from ui_evidence.runner import execute_ui_test
+    except ImportError:
+        from app.runner import execute_ui_test
 
     target_url, profile, portfolio_id, login_mode = _resolve_target(args)
     test_id = str(uuid.uuid4())

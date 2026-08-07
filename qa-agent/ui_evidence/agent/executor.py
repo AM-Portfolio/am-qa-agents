@@ -29,6 +29,9 @@ async def _capture_step_evidence(
             page,
             test_id=ctx.test_id,
             index=idx,
+            step_name=step_name,
+            evidence_dirname=getattr(ctx, "evidence_dirname", None) or None,
+            profile=ctx.profile,
         )
         screenshot_history.append(shot)
         screenshot_labels.append(step_name)

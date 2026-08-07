@@ -424,12 +424,29 @@ async def get_test_trace_zip(testId: str):
 @router.get("/screenshot/{testId}/{filename}")
 async def get_step_screenshot(testId: str, filename: str):
     """Serve per-step browser evidence PNG captured during execution."""
+    from ui_evidence.browser.evidence_paths import resolve_screenshot_dir
+
     safe = Path(filename).name
     if safe != filename or ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="Invalid screenshot name")
     if not safe.lower().endswith(".png"):
         raise HTTPException(status_code=400, detail="Only PNG screenshots are served")
-    path = Path(settings.REPORT_DIR) / "screenshots" / testId / safe
+    dest_dir = resolve_screenshot_dir(Path(settings.REPORT_DIR), test_id=testId)
+    path = dest_dir / safe
+    if not path.is_file():
+        # Filename may have changed; try matching by step index prefix (001-*.png)
+        prefix = safe.split("-", 1)[0] if safe.startswith("step_") is False else ""
+        if safe.startswith("step_"):
+            # legacy step_001.png -> find 001-*.png
+            try:
+                n = int(safe.replace("step_", "").replace(".png", ""))
+                prefix = f"{n:03d}"
+            except ValueError:
+                prefix = ""
+        if prefix.isdigit() and dest_dir.is_dir():
+            matches = sorted(dest_dir.glob(f"{prefix}-*.png"))
+            if matches:
+                path = matches[0]
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Screenshot not found")
-    return FileResponse(path, media_type="image/png", filename=safe)
+    return FileResponse(path, media_type="image/png", filename=path.name)

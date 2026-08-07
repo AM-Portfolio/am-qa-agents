@@ -157,6 +157,44 @@ async def _assert_no_error_banner(page) -> None:
             continue
 
 
+async def _fill_labeled_input(page, label: str, text: str) -> None:
+    """Fill Flutter/web labeled fields.
+
+    Playwright locator.fill() often focuses Flutter semantics nodes without updating
+    TextEditingController (especially obscure Password). Click + keyboard typing works.
+    """
+    if text is None or str(text) == "":
+        raise RuntimeError(
+            f"fill_label {label!r}: empty text (set TEST_USER_PASSWORD / pass credentials)"
+        )
+    await _enable_flutter_accessibility(page)
+    candidates = [
+        page.get_by_label(label, exact=True),
+        page.get_by_label(re.compile(rf"^{re.escape(label)}$", re.I)),
+        page.get_by_placeholder(re.compile(rf"Enter your {re.escape(label)}", re.I)),
+        page.get_by_role("textbox", name=re.compile(rf"^{re.escape(label)}$", re.I)),
+    ]
+    if label.lower() == "password":
+        candidates.insert(2, page.get_by_placeholder("Enter your password"))
+
+    last_error: Exception | None = None
+    for locator in candidates:
+        try:
+            target = locator.first
+            if await target.count() == 0:
+                continue
+            await target.wait_for(state="visible", timeout=8000)
+            await target.click(timeout=8000)
+            await page.keyboard.press("Control+A")
+            await page.keyboard.press("Backspace")
+            await page.keyboard.type(str(text), delay=20)
+            return
+        except Exception as exc:
+            last_error = exc
+            continue
+    raise RuntimeError(f"Could not fill label {label!r}: {last_error}")
+
+
 async def run_browser_action(page, step: dict[str, Any], ctx) -> None:
     action = step.get("action")
     name = step.get("name", action)
@@ -247,9 +285,9 @@ async def _run_browser_action_once(page, step: dict[str, Any], ctx, action: str,
     elif action == "fill_label":
         label = step["label"]
         text = step["text"]
-        logger.info("[%s] Fill label %r", name, label)
-        await page.get_by_label(label).first.fill(text, timeout=15000)
-        ctx.log_action("fill_label", step=name, label=label)
+        logger.info("[%s] Fill label %r (len=%d)", name, label, len(str(text or "")))
+        await _fill_labeled_input(page, label, text)
+        ctx.log_action("fill_label", step=name, label=label, text_len=len(str(text or "")))
 
     elif action == "click_button":
         name_match = step.get("name_match", step.get("text", ""))

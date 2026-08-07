@@ -28,12 +28,17 @@ class TestRunContext:
     step_timings: list[dict[str, Any]] = field(default_factory=list)
     started_at_iso: str = ""
     finished_at_iso: str = ""
+    evidence_dirname: str = ""
     _started_at_monotonic: float = 0.0
     trace_path: str | None = None
 
     def mark_run_start(self) -> None:
+        from ui_evidence.browser.evidence_paths import evidence_run_dirname
+
         self._started_at_monotonic = time.perf_counter()
+        now = datetime.now()
         self.started_at_iso = datetime.now(timezone.utc).isoformat()
+        self.evidence_dirname = evidence_run_dirname(self.profile, self.test_id, now)
 
     def total_duration_ms(self) -> float | None:
         if not self._started_at_monotonic:
