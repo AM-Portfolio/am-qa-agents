@@ -170,6 +170,7 @@ async def run_asrax_release_ops_inline(args: dict[str, Any]) -> dict[str, Any]:
         activity_release_ops_publish_sheet,
         activity_release_ops_stability_score,
         activity_release_ops_ui_suite,
+        activity_release_ops_wait_deploy_healthy,
     )
     from common.observability.domain_flow import emit_flow_phase
 
@@ -179,6 +180,19 @@ async def run_asrax_release_ops_inline(args: dict[str, Any]) -> dict[str, Any]:
     tracking_id = init["tracking_id"]
     release_id = init["release_id"]
     pack_path = init["pack_path"]
+
+    emit_flow_phase(phase="release_ops_wait_deploy_healthy", tracking_id=tracking_id)
+    await activity_release_ops_wait_deploy_healthy(
+        {
+            "tracking_id": tracking_id,
+            "pack_path": pack_path,
+            "target_url": args.get("target_url") or args.get("url"),
+            "ui_test_base": args.get("ui_test_base"),
+            "qa_base": args.get("qa_base"),
+            "fixtures": bool(args.get("fixtures")),
+            "skip_wait_healthy": bool(args.get("skip_wait_healthy")),
+        }
+    )
 
     emit_flow_phase(phase="release_ops_ui_suite", tracking_id=tracking_id)
     ui = await activity_release_ops_ui_suite(

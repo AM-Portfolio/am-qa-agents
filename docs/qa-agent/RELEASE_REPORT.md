@@ -4,6 +4,49 @@ End-to-end Asrax release evidence: UI suite + dossier pack + Google Sheet + 30m 
 
 Manual phase checklist (MCP + gate + Temporal): [MANUAL_VERIFICATION_CHECKLIST.md](./MANUAL_VERIFICATION_CHECKLIST.md)
 
+## How to generate a report
+
+From `am-qa-agents` (`f:\am-repos\am-repos\am-qa-agents`). Do **not** start a new plan for the daily Drive pack — use the command below.
+
+| Kind | Command | What you get |
+|------|---------|----------------|
+| **Daily Drive pack** (no UI, no soak) | `npm run release:ops:drive` | Local pack + Google Drive folder. Does **not** claim STABLE. **No Cliq.** Optional GitHub open `feature/*` PR list in the pack. |
+| **Full release evidence** | Cliq approve → Temporal, or `npm run release:ops:prod` / `npm run release:all:prod` | Playwright on https://am.asrax.in + 30m soak + Sheet + Drive + Cliq FINAL |
+| **Per-PR / feature-branch gate** | GitHub webhook → `ReleaseReadinessWorkflow` | SHA compare + dossier PDF. **Not** the Drive pack. |
+
+Daily Drive pack (repeatable):
+
+```powershell
+cd f:\am-repos\am-repos\am-qa-agents
+npm run release:ops:drive -- --release-name "YYYY-MM-DD drive pack"
+```
+
+**n8n (one trigger → entire AsraxReleaseOps):** workflow JSON lives in **`am-n8n-workflows`** (sibling repo, not always in the Cursor workspace). Path: [`packages/support/workflows/qa-release-ops.json`](../../../am-n8n-workflows/packages/support/workflows/qa-release-ops.json).
+
+- Add folder `f:\am-repos\am-repos\am-n8n-workflows` to the workspace (File → Add Folder to Workspace).
+- n8n UI: [preprod](https://n8n-preprod.asrax.in) → open **qa-release-ops** → Execute, or `POST` webhook `/webhook/qa-release-ops`.
+- Calls `POST /qa/v2/releases/ops/start` (Bearer `QA_AGENT_GATEWAY_TOKEN`). Defaults = Drive pack. Full UI+soak: body `{ "skip_ui": false, "soak_min": 30 }`.
+- Import: `.\scripts\import.ps1 -Target preprod -Pack support` from `am-n8n-workflows`.
+
+Equivalent flags: `--inline --skip-ui --skip-soak --skip-cliq --soak-min 0 --env prod`.
+
+**Prereqs**
+
+- `GOOGLE_APPLICATION_CREDENTIALS` (or `GOOGLE_DRIVE_CREDENTIALS`) → service-account JSON with Drive + Sheets scope. amctl: `am creds` / `~/.asrax/secrets/`.
+- Helper: [`am-infra/scripts/lib/asrax_release_sheet.py`](../../../am-infra/scripts/lib/asrax_release_sheet.py)
+- Sheet id: `ASRAX_RELEASE_SHEET_ID` (default [Asrax Release 01](https://docs.google.com/spreadsheets/d/1Ruzmdj7oZJloIkG7ImIX2595v_H6RLOvIc-sCo9jHIc))
+
+**Where files go**
+
+| Place | Path |
+|-------|------|
+| Local pack | `artifacts/asrax-release-ops/{YYYY-MM-DD}/{release_id}/` |
+| Google Drive | `QA-Agent / Asrax-Release-Ops / {year} / {YYYY-MM-DD} / {release_id}` (not `Asrax/Releases`) |
+| Google Sheet | append-only QA Evidence + Stability tabs |
+| Temporal | namespace `qa-agent`, `WorkflowType = "AsraxReleaseOpsWorkflow"` (daily pack uses `--inline`, so no Temporal run) |
+
+Do not pass `--fixtures` on a real day's pack (that fakes STABLE). Lab dry-run: `npm run release:ops:inline`.
+
 ## Ownership
 
 | Concern | Repo |
@@ -60,7 +103,7 @@ init → ui_suite → pack_t0 → soak → stability_score
 Activity names (filter in Temporal UI): `activity_release_ops_*`
 
 ```powershell
-cd A:\InfraCode\AM-Portfolio-grp\am-qa-agents
+cd f:\am-repos\am-repos\am-qa-agents
 
 # Worker must be running (same queue as release-gate)
 # python -m orchestrator.worker_main   # from qa-agent/release_gate with PYTHONPATH
@@ -80,7 +123,7 @@ Inline (no worker): `npm run release:ops -- --inline ...` (same flags as script 
 ## Commands (script path, no Temporal)
 
 ```powershell
-cd A:\InfraCode\AM-Portfolio-grp\am-qa-agents
+cd f:\am-repos\am-repos\am-qa-agents
 
 $env:TEST_USER_EMAIL="..."
 $env:TEST_USER_PASSWORD="..."
@@ -116,6 +159,7 @@ For Asrax Release Pipeline filter: namespace `qa-agent`, `WorkflowType = "AsraxR
 
 | Report | Where |
 |--------|--------|
+| Google Drive pack (ops) | `QA-Agent/Asrax-Release-Ops/{year}/{YYYY-MM-DD}/{release_id}` — master HTML/PDF + `summary.json` |
 | Playwright / UI evidence | Local pack `artifacts/asrax-release-ops/{day}/{release_id}/ui/` (+ screenshots). MinIO under same release prefix |
 | Google Sheet release template | [Asrax Release 01 sheet](https://docs.google.com/spreadsheets/d/1Ruzmdj7oZJloIkG7ImIX2595v_H6RLOvIc-sCo9jHIc) (`ASRAX_RELEASE_SHEET_ID`) — append-only |
 | Grafana after soak | Link in Cliq FINAL via `ASRAX_GRAFANA_SOAK_URL`; score in `final/stability-score.json` |
@@ -131,6 +175,7 @@ MinIO (canonical one instance): bucket `qa-agent` (override `MINIO_BUCKET` / `QA
 
 - `summary.json` — machine index (`phase`: INIT → UI_DONE → T0 → SCORED → FINAL)
 - `master-release-report.html` (+ pdf when xhtml2pdf available)
+- `github-feature-prs.json` — optional open AM-Portfolio `feature/*` PRs (daily Drive pack)
 - `ui/suite-*.json`
 - `final/stability-score.json`, `cliq-message.md`, `final-analysis.html`
 - MinIO also stores `…_pack-manifest.json` listing browser URLs

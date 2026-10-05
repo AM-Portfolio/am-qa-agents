@@ -120,6 +120,38 @@ async def test_request_then_admin_approve_starts_inline(tmp_path: Path, monkeypa
 
 
 @pytest.mark.asyncio
+async def test_ops_start_skips_cliq_and_runs_inline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    pytest.importorskip("temporalio")
+    monkeypatch.setenv("QA_AGENT_ARTIFACT_DIR", str(tmp_path))
+    monkeypatch.setenv("QA_AGENT_ENV", "test")
+    monkeypatch.setenv("QA_AGENT_FORCE_INLINE", "1")
+    import intelligence.cliq_release_gate as gate
+
+    gate._STORE = PendingReleaseStore(path=tmp_path / "pending.json")
+
+    from gateway.app import ReleaseOpsStartBody, start_release_ops_now
+
+    out = await start_release_ops_now(
+        ReleaseOpsStartBody(
+            release_id="asrax-r01-n8n-test",
+            release_name="n8n-test",
+            skip_sheet=True,
+            skip_drive=True,
+            fixtures=True,
+            use_temporal=False,
+        ),
+        authorization=None,
+    )
+    assert out["status"] == "started"
+    assert out.get("tracking_id")
+    req = gate.get_pending_store().get(out["request_id"])
+    assert req is not None
+    assert req.skip_ui is True
+    assert req.soak_min == 0
+    assert req.skip_cliq is True
+
+
+@pytest.mark.asyncio
 async def test_non_admin_cannot_approve(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("QA_AGENT_ARTIFACT_DIR", str(tmp_path))
     monkeypatch.setenv("QA_AGENT_RELEASE_ADMIN", "admin@asrax.in")

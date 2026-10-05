@@ -137,6 +137,126 @@ async def activity_release_ops_init(payload: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _http_json_ok(url: str, *, timeout: float = 15.0) -> dict[str, Any]:
+    """GET url; require JSON body (SPA HTML = fail)."""
+    import httpx
+
+    try:
+        with httpx.Client(timeout=timeout, follow_redirects=True) as client:
+            resp = client.get(url)
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "url": url, "error": str(exc)}
+    ctype = (resp.headers.get("content-type") or "").lower()
+    text = (resp.text or "")[:200]
+    if resp.status_code >= 400:
+        return {"ok": False, "url": url, "status": resp.status_code, "error": "http_error", "snippet": text}
+    if "text/html" in ctype or text.lstrip().startswith("<!"):
+        return {
+            "ok": False,
+            "url": url,
+            "status": resp.status_code,
+            "error": "spa_html_not_json",
+            "snippet": text[:80],
+        }
+    try:
+        body = resp.json()
+    except Exception:  # noqa: BLE001
+        return {"ok": False, "url": url, "status": resp.status_code, "error": "not_json", "snippet": text}
+    return {"ok": True, "url": url, "status": resp.status_code, "body": body}
+
+
+@activity.defn(name="activity_release_ops_wait_deploy_healthy")
+async def activity_release_ops_wait_deploy_healthy(payload: dict[str, Any]) -> dict[str, Any]:
+    """First-check: target app + ui-test + SPT JSON health. Fail closed (no suites if red)."""
+    tracking_id = str(payload.get("tracking_id") or "")
+    target = str(payload.get("target_url") or "https://am.asrax.in").rstrip("/")
+    ui_base = str(
+        payload.get("ui_test_base")
+        or os.getenv("QA_AGENT_UI_TEST_BASE")
+        or f"{target}/ui-test"
+    ).rstrip("/")
+    qa_base = str(
+        payload.get("qa_base")
+        or os.getenv("QA_AGENT_SPT_BASE")
+        or os.getenv("QA_AGENT_PUBLIC_BASE_URL")
+        or f"{target}/qa"
+    ).rstrip("/")
+
+    if bool(payload.get("skip_wait_healthy")) or bool(payload.get("fixtures")):
+        out = {
+            "ok": True,
+            "skipped": True,
+            "pending": [],
+            "blockers": [],
+            "checks": {},
+            "phase": "wait_deploy_healthy",
+        }
+        if tracking_id:
+            get_ledger().upsert_step(tracking_id, "release_ops_wait_deploy_healthy", out)
+        return out
+
+    checks = {
+        "ui_test_health": _http_json_ok(f"{ui_base}/health"),
+        "qa_ready": _http_json_ok(f"{qa_base}/ready"),
+        "qa_health": _http_json_ok(f"{qa_base}/health"),
+    }
+    # App shell may be HTML SPA — only require non-5xx reachability
+    import httpx
+
+    try:
+        with httpx.Client(timeout=15.0, follow_redirects=True) as client:
+            app_resp = client.get(target)
+        checks["app_reachable"] = {
+            "ok": app_resp.status_code < 500,
+            "url": target,
+            "status": app_resp.status_code,
+        }
+    except Exception as exc:  # noqa: BLE001
+        checks["app_reachable"] = {"ok": False, "url": target, "error": str(exc)}
+
+    pending = [name for name, c in checks.items() if not c.get("ok")]
+    blockers = [
+        f"{name}:{c.get('error') or c.get('status')}"
+        for name, c in checks.items()
+        if not c.get("ok")
+    ]
+    out = {
+        "ok": len(pending) == 0,
+        "skipped": False,
+        "pending": pending,
+        "blockers": blockers,
+        "checks": {k: {kk: vv for kk, vv in v.items() if kk != "body"} for k, v in checks.items()},
+        "phase": "wait_deploy_healthy",
+        "target_url": target,
+        "ui_test_base": ui_base,
+        "qa_base": qa_base,
+    }
+    if tracking_id:
+        get_ledger().upsert_step(tracking_id, "release_ops_wait_deploy_healthy", out)
+        # Keep pack summary phase in sync when pack_path present
+        pack = payload.get("pack_path")
+        if pack:
+            summary_path = Path(str(pack)) / "summary.json"
+            if summary_path.is_file():
+                try:
+                    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+                    summary["phase"] = "WAIT_DEPLOY_HEALTHY" if out["ok"] else "WAIT_DEPLOY_FAILED"
+                    summary["first_check"] = out
+                    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+                except Exception:  # noqa: BLE001
+                    pass
+
+    if not out["ok"]:
+        raise RuntimeError(
+            "first_check_failed pending="
+            + ",".join(pending)
+            + " blockers="
+            + ";".join(blockers)
+        )
+    activity.logger.info("release_ops.wait_deploy_healthy ok target=%s", target)
+    return out
+
+
 @activity.defn(name="activity_release_ops_ui_suite")
 async def activity_release_ops_ui_suite(payload: dict[str, Any]) -> dict[str, Any]:
     """Run UI suite (or skip) and attach results to pack."""

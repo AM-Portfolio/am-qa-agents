@@ -111,6 +111,16 @@ class ReleaseOpsRequestBody(BaseModel):
     post_cliq: bool = True
 
 
+class ReleaseOpsStartBody(ReleaseOpsRequestBody):
+    """n8n / operator start — Drive pack defaults (no UI, no soak, no Cliq)."""
+
+    skip_ui: bool = True
+    soak_min: int = 0
+    skip_cliq: bool = True
+    post_cliq: bool = False
+    requested_by: str = "n8n"
+
+
 async def _start_asrax_from_request(req: Any) -> dict[str, Any]:
     """Start Temporal (or inline) AsraxReleaseOpsWorkflow from a pending request."""
     from intelligence.cliq_release_gate import get_pending_store
@@ -529,6 +539,47 @@ async def promote_candidate(
     )
 
 
+@app.post("/v2/releases/ops/start")
+async def start_release_ops_now(
+    body: ReleaseOpsStartBody,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Start AsraxReleaseOpsWorkflow immediately (no Cliq wait). Used by n8n."""
+    _require_token(authorization)
+    from intelligence.cliq_release_gate import get_pending_store
+
+    store = get_pending_store()
+    req = store.create(
+        release_id=body.release_id or "",
+        release_name=body.release_name or body.release_id or "n8n-release-ops",
+        env=body.env,
+        suite=body.suite,
+        target_url=body.target_url,
+        login_mode=body.login_mode,
+        soak_min=body.soak_min,
+        requested_by=body.requested_by or "n8n",
+        skip_ui=body.skip_ui,
+        skip_sheet=body.skip_sheet,
+        skip_drive=body.skip_drive,
+        skip_cliq=body.skip_cliq,
+        fixtures=body.fixtures,
+        use_temporal=body.use_temporal,
+    )
+    started = await _start_asrax_from_request(req)
+    LOG.info(
+        "release.ops_start request_id=%s mode=%s",
+        req.request_id,
+        started.get("mode"),
+        extra={"event": "release.ops_start", "tracking_id": req.tracking_id},
+    )
+    return {
+        "request_id": req.request_id,
+        "status": "started",
+        "hint": "Temporal AsraxReleaseOpsWorkflow (or inline fallback). Drive: QA-Agent/Asrax-Release-Ops/{year}/{date}/{release_id}",
+        **started,
+    }
+
+
 @app.post("/v2/releases/request")
 async def request_release_ops(
     body: ReleaseOpsRequestBody,
@@ -601,12 +652,14 @@ async def request_release_ops(
 
 @app.get("/v2/releases/{request_id}")
 def get_release_request(request_id: str) -> dict[str, Any]:
+    """Release request + Temporal/ledger progress (phase, pending, blockers, ui_pct)."""
     from intelligence.cliq_release_gate import get_pending_store
+    from intelligence.release_progress import enrich_release_view
 
     req = get_pending_store().get(request_id)
     if not req:
         raise HTTPException(404, "not found")
-    return req.to_dict()
+    return enrich_release_view(req.to_dict())
 
 
 @app.get("/v2/releases/{request_id}/approve")

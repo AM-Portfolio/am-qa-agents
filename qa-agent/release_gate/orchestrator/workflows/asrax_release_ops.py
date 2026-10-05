@@ -22,6 +22,7 @@ with workflow.unsafe.imports_passed_through():
         activity_release_ops_publish_sheet,
         activity_release_ops_stability_score,
         activity_release_ops_ui_suite,
+        activity_release_ops_wait_deploy_healthy,
     )
 
 
@@ -54,6 +55,23 @@ class AsraxReleaseOpsWorkflow:
         release_id = init["release_id"]
         pack_path = init["pack_path"]
         _phase("init", f"release_id={release_id} tracking_id={tracking_id}")
+
+        _phase("wait_deploy_healthy")
+        first = await workflow.execute_activity(
+            activity_release_ops_wait_deploy_healthy,
+            {
+                "tracking_id": tracking_id,
+                "pack_path": pack_path,
+                "target_url": args.get("target_url") or args.get("url"),
+                "ui_test_base": args.get("ui_test_base"),
+                "qa_base": args.get("qa_base"),
+                "fixtures": bool(args.get("fixtures")),
+                "skip_wait_healthy": bool(args.get("skip_wait_healthy")),
+            },
+            start_to_close_timeout=short,
+            retry_policy=RetryPolicy(maximum_attempts=2),
+        )
+        _phase("wait_deploy_healthy", f"ok={first.get('ok')} pending={first.get('pending')}")
 
         _phase("ui_suite")
         ui = await workflow.execute_activity(

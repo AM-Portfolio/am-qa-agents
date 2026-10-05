@@ -48,6 +48,7 @@ from orchestrator.activities.release_ops import (
     activity_release_ops_publish_sheet,
     activity_release_ops_stability_score,
     activity_release_ops_ui_suite,
+    activity_release_ops_wait_deploy_healthy,
 )
 
 __all__ = [
@@ -75,6 +76,7 @@ __all__ = [
     "activity_evaluate_learning",
     "activity_record_promotion",
     "activity_release_ops_init",
+    "activity_release_ops_wait_deploy_healthy",
     "activity_release_ops_ui_suite",
     "activity_release_ops_pack_t0",
     "activity_release_ops_stability_score",

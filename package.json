@@ -30,6 +30,7 @@
     "release:sheet": "python scripts/npm_run_log.py release-sheet -- python ../am-infra/scripts/am-refresh-r01-services.py",
     "release:ops": "python scripts/npm_run_log.py release-ops -- python scripts/with_pythonpath.py python qa-agent/scripts/start_release_ops_workflow.py",
     "release:ops:inline": "npm run release:ops -- --inline --skip-ui --skip-soak --skip-sheet --skip-drive --skip-cliq --fixtures --soak-min 0",
+    "release:ops:drive": "npm run release:ops -- --inline --skip-ui --skip-soak --skip-cliq --soak-min 0 --env prod",
     "release:ops:prod": "npm run release:ops -- --env prod --suite prod_ui_full --url https://am.asrax.in --login-mode credentials --soak-min 30",
     "release:request": "python scripts/npm_run_log.py release-request -- python scripts/with_pythonpath.py python qa-agent/scripts/request_release_ops.py",
     "release:request:prod": "npm run release:request -- --env prod --suite prod_ui_full --url https://am.asrax.in --soak-min 30",

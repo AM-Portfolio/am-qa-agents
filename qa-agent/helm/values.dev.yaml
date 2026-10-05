@@ -17,35 +17,38 @@ vault:
       path: "apps/data/dev/infra/observability"
       mappings:
         TRACING_SAMPLING_PROBABILITY: "TRACING_SAMPLING_PROBABILITY"
-    # Live KV still under apps/dev/services/* (apps/data/dev/services/* not seeded)
+    # Fleet CSI mount: apps/data/dev/... (KV v2). Legacy apps/dev/... left untouched.
     observability:
-      path: "apps/dev/services/am-agents-mcp-gateway"
+      path: "apps/data/dev/services/am-agents-mcp-gateway"
       mappings:
         LANGFUSE_PUBLIC_KEY: "LANGFUSE_PUBLIC_KEY"
         LANGFUSE_SECRET_KEY: "LANGFUSE_SECRET_KEY"
     llm-api-keys:
-      path: "apps/dev/services/am-agents-mcp-gateway"
+      path: "apps/data/dev/services/am-agents-mcp-gateway"
       mappings:
         LITELLM_MASTER_KEY: "LITELLM_MASTER_KEY"
     identity-oidc:
-      path: "apps/dev/services/am-identity"
+      path: "apps/data/dev/services/am-identity"
       mappings:
-        # Only identity owns MCP client credentials (am-dev-realm)
+        # Only identity owns MCP client credentials
         AM_MCP_CLIENT_ID: "AM_MCP_CLIENT_ID"
         AM_MCP_CLIENT_SECRET: "AM_MCP_CLIENT_SECRET"
     qa-agent:
-      # Vault UI path: apps / dev / runtime / modules / qa
-      # (KV v2). Do not use apps/data/dev/... as a separate duplicate path.
-      path: "apps/dev/runtime/modules/qa"
-      # Intentionally no mappings: dump all keys from this KV.
+      # Vault UI path: apps / data / dev / runtime / modules / qa (KV v2)
+      path: "apps/data/dev/runtime/modules/qa"
+      mappings:
+        SPT_DATABASE_URL: "SPT_DATABASE_URL"
+        QA_AGENT_DATABASE_URL: "QA_AGENT_DATABASE_URL"
+        SPT_BOOTSTRAP_KEYS: "SPT_BOOTSTRAP_KEYS"
+        SPT_ACL_REQUIRED: "SPT_ACL_REQUIRED"
       # Do NOT store AM_MCP_CLIENT_SECRET here (identity-oidc owns MCP creds).
 
 ingress:
   annotations:
     traefik.ingress.kubernetes.io/router.priority: "100"
+    # CORS only — do NOT strip /qa (ROOT_PATH=/qa; portal is /qa/ui)
     traefik.ingress.kubernetes.io/router.middlewares: >-
-      am-apps-dev-dev-global-cors@kubernetescrd,
-      am-apps-dev-dev-strip-prefix@kubernetescrd
+      am-apps-dev-dev-global-cors@kubernetescrd
   hosts:
     - host: am-dev.asrax.in
       paths:
@@ -55,6 +58,8 @@ ingress:
           pathType: Prefix
         - path: /ui-test
           pathType: Prefix
+        - path: /qa/ui
+          pathType: Prefix
 
 env:
   APP_ENV: dev
@@ -63,18 +68,18 @@ env:
   DEFAULT_ENVIRONMENT: dev
   ROOT_PATH: /qa
   LOG_LEVEL: INFO
-  # Must exist in Temporal cluster (create qa-agent-dev before switching back)
+  # Must exist in Temporal cluster (create qa-agent NS before enabling worker)
   TEMPORAL_NAMESPACE: qa-agent
-  QA_AGENT_WORKER_ENABLED: "1"
-  FIN_AGENT_BASE_URL: "http://am-fin-agent.am-ai.svc.cluster.local:8100"
-  TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-apps-dev.svc.cluster.local:8141"
-  # GitNexus currently down — empty disables GNX fallback (no hang on dead host)
-  GNX_MCP_URL: ""
+  QA_AGENT_WORKER_ENABLED: "0"
+  FIN_AGENT_BASE_URL: "http://am-fin-agent-dev.am-apps-dev.svc.cluster.local:8100"
+  TOOL_AGENT_BASE_URL: "http://am-tool-agent-dev.am-apps-dev.svc.cluster.local:8141"
+  # Team GitNexus MCP (stand-up: kind-fleet-clusters/gitnexus)
+  GNX_MCP_URL: "https://gitnexus.asrax.in"
   # Until image with gnx_disabled lands: skip observe→GNX hang (tool-agent/template only)
   QA_AGENT_SKIP_OBSERVE: "true"
   QA_AGENT_OBSERVE_FORCE_TEMPLATE: "true"
   # MCP gateway client_credentials (must match Vault AM_MCP_CLIENT_SECRET realm)
-  KEYCLOAK_TOKEN_URL: "http://auth.munish.org/auth/realms/am-dev-realm/protocol/openid-connect/token"
+  KEYCLOAK_TOKEN_URL: "https://auth-dev.asrax.in/auth/realms/am-realm/protocol/openid-connect/token"
   AM_MCP_CLIENT_ID: "am-mcp-service"
   SPT_PUBLIC_BASE_URL: "https://am-dev.asrax.in/qa"
   SPT_UI_TEST_AGENT_URL: "http://127.0.0.1:8150"

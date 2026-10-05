@@ -36,24 +36,47 @@ from specs.persistence.run_store import (
 
 
 def health() -> dict[str, Any]:
+    """Probe-safe health: never 500 on missing schema; create tables then sample runs."""
+    from specs.persistence.db.engine import init_db
+
+    if store_mode() != "json":
+        try:
+            init_db()
+        except Exception as exc:
+            return {
+                "status": "degraded",
+                "service": settings.app_name,
+                "store": store_mode(),
+                "db": db_health(),
+                "error": f"init_db failed: {exc}",
+            }
     t0 = time.perf_counter()
-    rows, total = list_runs(limit=10, offset=0)
-    list_ms = (time.perf_counter() - t0) * 1000
-    return {
-        "status": "ok",
-        "service": settings.app_name,
-        "store": store_mode(),
-        "db": db_health(),
-        "running": count_running(),
-        "max_concurrent_runs": settings.spt_max_concurrent_runs,
-        "latency": {
-            "list_10_runs_ms": round(list_ms, 2),
-            "slo_list_ms": 50,
-            "list_ok": list_ms < 50,
-        },
-        "runs_sample": len(rows),
-        "runs_total": total,
-    }
+    try:
+        rows, total = list_runs(limit=10, offset=0)
+        list_ms = (time.perf_counter() - t0) * 1000
+        return {
+            "status": "ok",
+            "service": settings.app_name,
+            "store": store_mode(),
+            "db": db_health(),
+            "running": count_running(),
+            "max_concurrent_runs": settings.spt_max_concurrent_runs,
+            "latency": {
+                "list_10_runs_ms": round(list_ms, 2),
+                "slo_list_ms": 50,
+                "list_ok": list_ms < 50,
+            },
+            "runs_sample": len(rows),
+            "runs_total": total,
+        }
+    except Exception as exc:
+        return {
+            "status": "degraded",
+            "service": settings.app_name,
+            "store": store_mode(),
+            "db": db_health(),
+            "error": str(exc),
+        }
 
 
 def list_services() -> dict[str, Any]:
