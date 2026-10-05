@@ -136,19 +136,6 @@ jobs:
             .
           docker push "ghcr.io/am-portfolio/am-qa-agents:${TAG}"
 
-  deploy-dev:
-    name: Deploy qa-agent → dev
-    needs: publish
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
-      actions: write
-    uses: AM-Portfolio/am-pipelines/.github/workflows/central-deploy.yml@main
-    with:
-      service_name: am-qa-agents
-      working_directory: "qa-agent"
-      language: "python"
-      environment: "dev"
-      image_tag: ${{ needs.publish.outputs.image_tag }}
-      namespace: am-apps-dev
-    secrets: inherit
+  # Deploy via deploy-qa-agent.yml (workflow_dispatch / Contabo pin).
+  # Avoid reusable uses: here — GitHub validates them at startup even when
+  # the job if: is false, which produced org-wide startup_failure on Publish.
