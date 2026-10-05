@@ -637,16 +637,24 @@ async def activity_release_ops_cliq_final(payload: dict[str, Any]) -> dict[str, 
         grafana_url=os.getenv("ASRAX_GRAFANA_SOAK_URL", ""),
         owner=os.getenv("ASRAX_RELEASE_OWNER", ""),
     )
-    (pack / "final" / "cliq-message.md").write_text(body, encoding="utf-8")
+    # Pack dirs are created in init; still mkdir in case of empty/ephemeral volume.
+    final_dir = pack / "final"
+    final_dir.mkdir(parents=True, exist_ok=True)
+    (final_dir / "cliq-message.md").write_text(body, encoding="utf-8")
 
     if payload.get("skip_cliq"):
-        out = {"skipped": True, "body": body}
+        out = {"skipped": True, "ok": True, "body": body}
     else:
-        out = await send_cliq_final(
-            title=f"Asrax FINAL {stability.get('band')} — {stability.get('release_id')}",
-            body=body,
-        )
-        out["body"] = body
+        try:
+            out = await send_cliq_final(
+                title=f"Asrax FINAL {stability.get('band')} — {stability.get('release_id')}",
+                body=body,
+            )
+            out["body"] = body
+            out.setdefault("ok", True)
+        except Exception as exc:  # noqa: BLE001
+            # Soft-fail: pack + Temporal complete even if Cliq webhook is down.
+            out = {"ok": False, "error": str(exc), "body": body}
 
     summary_path = pack / "summary.json"
     if summary_path.is_file():
