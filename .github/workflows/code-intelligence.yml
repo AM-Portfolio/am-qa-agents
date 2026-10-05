@@ -1,5 +1,8 @@
 name: Code Intelligence Verify
 
+# .code-intelligence.yaml has production.ci: false, and am-pipelines does not
+# yet host code-intelligence-verify.yml. Keep a green no-op until that lands.
+
 on:
   push:
     branches: [main]
@@ -9,5 +12,22 @@ on:
 
 jobs:
   verify:
-    uses: AM-Portfolio/am-pipelines/.github/workflows/code-intelligence-verify.yml@main
-    secrets: inherit
+    name: Verify (skipped — ci disabled)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Honor production.ci flag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f .code-intelligence.yaml ]]; then
+            echo "::warning::.code-intelligence.yaml missing"
+            exit 0
+          fi
+          if grep -E '^[[:space:]]*ci:[[:space:]]*false[[:space:]]*$' .code-intelligence.yaml >/dev/null; then
+            echo "production.ci is false — skipping code-intelligence verify"
+            exit 0
+          fi
+          echo "::error::production.ci is true but reusable workflow is not published yet"
+          echo "Add am-pipelines/.github/workflows/code-intelligence-verify.yml from am-scripts/code-intelligence/ci/"
+          exit 1
