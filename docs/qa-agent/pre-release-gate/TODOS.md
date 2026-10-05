@@ -6,10 +6,11 @@ Mark `[x]` only after [VERIFICATION.md](./VERIFICATION.md) MCP rows for that pha
 ## Pre-P0 blockers
 
 - [x] `/qa` and `/ui-test` return **JSON** health on **prod** (`am.asrax.in`) — hotfixed `init_db` in pod 2026-10-05
-- [ ] Dig (`am-dev`) still SPA / no Endpoints — same schema gap; `kubectl exec` blocked (Upgrade request)
-- [ ] Ship lifespan `init_db` + probe-safe health image (local code change; pin not promoted)
-- [ ] Temporal namespace: Contabo uses `default` (not `qa-agent`); worker enable + workflow runnable
-- [ ] `QA_AGENT_GATEWAY_TOKEN` available to `am-modern-ui` GHA secrets
+- [ ] Dig (`am-dev`) still SPA / no Endpoints — awaiting image `p0-a2baa8e` deploy
+- [ ] Ship image with lifespan `init_db` + `ops/start` — PR [#2](https://github.com/AM-Portfolio/am-qa-agents/pull/2); docker build in progress
+- [ ] Temporal worker on Contabo `default` — gitops PR [#86](https://github.com/AM-Portfolio/am-gitops/pull/86) (needs human merge + Contabo sync)
+- [x] `QA_AGENT_GATEWAY_TOKEN` in Vault (prod/dev modules) + `am-modern-ui` GHA secret set
+- [x] Thin GHA PR — [#168](https://github.com/AM-Portfolio/am-modern-ui/pull/168)
 
 ## P0 — Thin GHA → Temporal + prod_ui_full
 
