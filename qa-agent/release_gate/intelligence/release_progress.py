@@ -83,3 +83,47 @@ def enrich_release_view(req_dict: dict[str, Any]) -> dict[str, Any]:
         "first_check_ok": progress.get("first_check_ok"),
         "ui_decision": progress.get("ui_decision"),
     }
+
+
+def resolve_release_view(request_id: str) -> dict[str, Any] | None:
+    """Pending-store first; fall back to ledger by workflow_id / tracking_id.
+
+    Survives in-memory pending loss when DATA_DIR file is missing but ledger
+    still has ``asrax-release-ops-{request_id}`` (ops/start convention).
+    """
+    from intelligence.cliq_release_gate import get_pending_store
+
+    rid = (request_id or "").strip()
+    if not rid:
+        return None
+
+    req = get_pending_store().get(rid)
+    if req:
+        return enrich_release_view(req.to_dict())
+
+    ledger = get_ledger()
+    run = None
+    find_wf = getattr(ledger, "find_by_workflow_id", None)
+    if callable(find_wf):
+        run = find_wf(f"asrax-release-ops-{rid}")
+    if run is None and rid.startswith("qa-"):
+        run = ledger.get(rid)
+    if run is None:
+        return None
+
+    meta = dict(run.meta or {})
+    init = (run.steps or {}).get("release_ops_init") or {}
+    summary = init.get("summary") if isinstance(init.get("summary"), dict) else {}
+    base = {
+        "request_id": str(meta.get("request_id") or rid),
+        "status": run.status or "started",
+        "tracking_id": run.tracking_id,
+        "workflow_id": run.workflow_id,
+        "release_id": str(meta.get("release_id") or summary.get("release_id") or ""),
+        "release_name": str(meta.get("release_name") or summary.get("release_id") or ""),
+        "env": str(summary.get("env") or meta.get("env") or "prod"),
+        "suite": str(summary.get("suite") or meta.get("suite") or "prod_ui_full"),
+        "target_url": str(summary.get("target_url") or meta.get("target_url") or ""),
+        "source": "ledger_fallback",
+    }
+    return enrich_release_view(base)

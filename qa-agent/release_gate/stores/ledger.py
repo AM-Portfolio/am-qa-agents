@@ -90,6 +90,16 @@ class InMemoryWorkflowLedger:
         with self._lock:
             return self._runs.get(tracking_id)
 
+    def find_by_workflow_id(self, workflow_id: str) -> WorkflowRun | None:
+        wid = (workflow_id or "").strip()
+        if not wid:
+            return None
+        with self._lock:
+            for run in self._runs.values():
+                if run.workflow_id == wid:
+                    return run
+            return None
+
     def find_by_idempotency(self, key: str) -> WorkflowRun | None:
         with self._lock:
             tid = self._idem.get(key)

@@ -250,6 +250,25 @@ class PostgresWorkflowLedger:
             with self._engine.connect() as conn:
                 return self._load(conn, tracking_id)
 
+    def find_by_workflow_id(self, workflow_id: str) -> WorkflowRun | None:
+        wid = (workflow_id or "").strip()
+        if not wid:
+            return None
+        with self._lock:
+            with self._engine.connect() as conn:
+                row = conn.execute(
+                    text(
+                        """
+                        SELECT tracking_id FROM qa_agent_runs
+                        WHERE workflow_id=:wid
+                        ORDER BY updated_at DESC
+                        LIMIT 1
+                        """
+                    ),
+                    {"wid": wid},
+                ).mappings().first()
+                return self._load(conn, row["tracking_id"]) if row else None
+
     def find_by_idempotency(self, key: str) -> WorkflowRun | None:
         with self._lock:
             with self._engine.connect() as conn:

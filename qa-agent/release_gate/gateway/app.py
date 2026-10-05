@@ -132,7 +132,16 @@ async def _start_asrax_from_request(req: Any) -> dict[str, Any]:
     get_ledger().create_run(
         tracking_id=tracking_id,
         workflow_id=workflow_id,
-        meta={"request_id": req.request_id, "source": "cliq_approval"},
+        meta={
+            "request_id": req.request_id,
+            "source": "cliq_approval",
+            "release_id": req.release_id or release_key,
+            "release_name": req.release_name,
+            "env": req.env,
+            "suite": req.suite,
+            "target_url": req.target_url,
+            "requested_by": req.requested_by,
+        },
     )
 
     if req.use_temporal and os.getenv("QA_AGENT_FORCE_INLINE", "").lower() not in {"1", "true", "yes"}:
@@ -653,13 +662,12 @@ async def request_release_ops(
 @app.get("/v2/releases/{request_id}")
 def get_release_request(request_id: str) -> dict[str, Any]:
     """Release request + Temporal/ledger progress (phase, pending, blockers, ui_pct)."""
-    from intelligence.cliq_release_gate import get_pending_store
-    from intelligence.release_progress import enrich_release_view
+    from intelligence.release_progress import resolve_release_view
 
-    req = get_pending_store().get(request_id)
-    if not req:
+    view = resolve_release_view(request_id)
+    if not view:
         raise HTTPException(404, "not found")
-    return enrich_release_view(req.to_dict())
+    return view
 
 
 @app.get("/v2/releases/{request_id}/approve")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -186,12 +187,41 @@ class _FlutterNoCacheMiddleware:
         await self.app(scope, receive, send_wrapper if no_cache else send)
 
 
+def _flutter_public_base() -> str:
+    """Public path prefix for Flutter assets (must match Traefik + ROOT_PATH)."""
+    prefix = (settings.root_path or "").rstrip("/")
+    return f"{prefix}/ui/" if prefix else "/ui/"
+
+
+def _flutter_index_html() -> str:
+    """Serve index with base href aligned to ROOT_PATH (fixes stale /spt-poc/ui/ bakes)."""
+    flutter_dir = portal_flutter_web_dir()
+    if flutter_dir is None:
+        raise FileNotFoundError("flutter portal dir missing")
+    raw = (flutter_dir / "index.html").read_text(encoding="utf-8")
+    desired = _flutter_public_base()
+    return re.sub(r'<base\s+href="[^"]*"\s*/?>', f'<base href="{desired}">', raw, count=1)
+
+
 _FLUTTER_DIR = portal_flutter_web_dir() if settings.spt_portal_flutter else None
 if _FLUTTER_DIR is not None:
     app.add_middleware(_FlutterNoCacheMiddleware)
+
+    @app.get("/ui/", include_in_schema=False)
+    @app.get("/ui/index.html", include_in_schema=False)
+    async def flutter_shell() -> HTMLResponse:
+        return HTMLResponse(
+            _flutter_index_html(),
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+            },
+        )
+
+    # html=False: index is served above with rewritten <base href>.
     app.mount(
         "/ui",
-        StaticFiles(directory=str(_FLUTTER_DIR), html=True),
+        StaticFiles(directory=str(_FLUTTER_DIR), html=False),
         name="flutter_ui",
     )
 
@@ -199,7 +229,7 @@ if _FLUTTER_DIR is not None:
 @app.get("/", include_in_schema=False)
 async def root() -> RedirectResponse:
     prefix = settings.root_path.rstrip("/") if settings.root_path else ""
-    return RedirectResponse(url=f"{prefix}/ui")
+    return RedirectResponse(url=f"{prefix}/ui/")
 
 
 @app.get("/ui", include_in_schema=False)

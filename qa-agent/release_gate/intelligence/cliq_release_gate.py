@@ -126,7 +126,13 @@ class PendingReleaseStore:
 
     def __init__(self, path: Path | None = None) -> None:
         self._lock = threading.Lock()
-        base = Path(os.getenv("QA_AGENT_ARTIFACT_DIR") or Path.cwd() / "artifacts" / "releases")
+        # Prefer DATA_DIR (durable local / PVC) over /tmp artifact dir so GET
+        # /v2/releases/{id} survives process restart.
+        base = Path(
+            os.getenv("QA_AGENT_ARTIFACT_DIR")
+            or os.getenv("DATA_DIR")
+            or (Path.cwd() / "artifacts" / "releases")
+        )
         self._path = path or (base / "_pending_cliq_approvals.json")
         self._items: dict[str, PendingReleaseRequest] = {}
         self._load()
