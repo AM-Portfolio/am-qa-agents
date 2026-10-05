@@ -80,13 +80,18 @@ class AsraxReleaseOpsWorkflow:
                 "tracking_id": tracking_id,
                 "release_id": release_id,
                 "pack_path": pack_path,
+                "workflow_id": wf_id,
+                "env": args.get("env") or "prod",
+                "requested_by": args.get("requested_by"),
                 "suite": args.get("suite") or "prod_ui_full",
                 "target_url": args.get("target_url") or args.get("url"),
                 "login_mode": args.get("login_mode") or "credentials",
                 "portfolio_id": args.get("portfolio_id"),
                 "skip_ui": bool(args.get("skip_ui")),
             },
+            # Suite can run ~90m; heartbeats detect recycled workers in ~3m (not 90m).
             start_to_close_timeout=long_ui,
+            heartbeat_timeout=timedelta(minutes=3),
             retry_policy=RetryPolicy(maximum_attempts=2),
         )
         _phase("ui_suite", f"decision={ui.get('decision')}")

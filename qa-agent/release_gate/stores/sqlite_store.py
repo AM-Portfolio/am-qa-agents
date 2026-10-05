@@ -191,6 +191,21 @@ class SqliteWorkflowLedger:
             finally:
                 conn.close()
 
+    def find_by_workflow_id(self, workflow_id: str) -> WorkflowRun | None:
+        wid = (workflow_id or "").strip()
+        if not wid:
+            return None
+        with self._lock:
+            conn = self._conn()
+            try:
+                row = conn.execute(
+                    "SELECT tracking_id FROM runs WHERE workflow_id=? ORDER BY updated_at DESC LIMIT 1",
+                    (wid,),
+                ).fetchone()
+                return self._load(conn, row["tracking_id"]) if row else None
+            finally:
+                conn.close()
+
     def find_by_idempotency(self, key: str) -> WorkflowRun | None:
         with self._lock:
             conn = self._conn()

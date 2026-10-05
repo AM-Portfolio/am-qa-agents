@@ -114,3 +114,36 @@ def test_workflow_registered_name():
 
     defn = WfDef.must_from_class(AsraxReleaseOpsWorkflow)
     assert defn.name == "AsraxReleaseOpsWorkflow"
+
+
+def test_ui_suite_heartbeat_timeout_wired():
+    """Recycled pods must fail ui_suite via heartbeat, not wait out 90m start_to_close."""
+    src = (
+        Path(__file__).resolve().parents[1]
+        / "orchestrator"
+        / "workflows"
+        / "asrax_release_ops.py"
+    ).read_text(encoding="utf-8")
+    assert "activity_release_ops_ui_suite" in src
+    assert "heartbeat_timeout=timedelta(minutes=3)" in src
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_while_cancels_pulse(monkeypatch: pytest.MonkeyPatch):
+    from orchestrator.activities import release_ops as ro
+
+    beats: list[object] = []
+
+    def _hb(details=None):  # noqa: ANN001
+        beats.append(details)
+
+    monkeypatch.setattr(ro.activity, "heartbeat", _hb)
+    monkeypatch.setattr(ro, "_UI_SUITE_HEARTBEAT_SEC", 0.01)
+
+    async def _work() -> str:
+        await asyncio.sleep(0.05)
+        return "ok"
+
+    out = await ro._heartbeat_while(_work(), {"phase": "ui_suite"})
+    assert out == "ok"
+    assert len(beats) >= 2

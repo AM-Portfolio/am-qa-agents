@@ -23,7 +23,8 @@ def main() -> None:
     from composition.runtime import apply_colocated_defaults
     from common.observability.logging_setup import configure_logging
 
-    load_env()
+    # Local .env wins over stale shell/IDE Ambient Temporal vars (e.g. dig qa-agent ns).
+    load_env(override=True)
     apply_colocated_defaults()
     configure_logging()
 

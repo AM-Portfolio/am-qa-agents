@@ -7,6 +7,7 @@ Ledger step names match Temporal UI activity names for easy debug:
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import uuid
@@ -17,6 +18,32 @@ from typing import Any
 from temporalio import activity
 
 from stores import get_ledger
+
+# Keep below workflow heartbeat_timeout (3m) so a dead worker is detected quickly.
+_UI_SUITE_HEARTBEAT_SEC = 30.0
+
+
+async def _heartbeat_while(coro: Any, details: dict[str, Any]) -> Any:
+    """Run coro while emitting Temporal heartbeats (pod recycle → fail/retry)."""
+
+    async def _pulse() -> None:
+        while True:
+            try:
+                activity.heartbeat(details)
+            except Exception:  # noqa: BLE001 — best-effort; activity cancel raises
+                return
+            await asyncio.sleep(_UI_SUITE_HEARTBEAT_SEC)
+
+    activity.heartbeat(details)
+    pulse = asyncio.create_task(_pulse(), name="release_ops_ui_suite_heartbeat")
+    try:
+        return await coro
+    finally:
+        pulse.cancel()
+        try:
+            await pulse
+        except asyncio.CancelledError:
+            pass
 
 
 def _repo_root() -> Path:
@@ -257,6 +284,123 @@ async def activity_release_ops_wait_deploy_healthy(payload: dict[str, Any]) -> d
     return out
 
 
+def _persist_ui_suite_to_specs(payload: dict[str, Any], ui: dict[str, Any]) -> list[str]:
+    """Write Specs /api/runs rows for portal Runs (idempotent on tracking_id)."""
+    tracking_id = str(payload.get("tracking_id") or "")
+    release_id = str(payload.get("release_id") or "")
+    workflow_id = str(payload.get("workflow_id") or "")
+    suite = str(ui.get("suite") or payload.get("suite") or "prod_ui_full")
+    env = str(payload.get("env") or "prod")
+    target = str(payload.get("target_url") or "https://am.asrax.in")
+    decision = str(ui.get("decision") or "UNKNOWN")
+    hard = int(ui.get("hard_fail_count") or 0)
+    soft = int(ui.get("soft_fail_count") or 0)
+    results = list(ui.get("results") or [])
+
+    try:
+        from specs.persistence.run_store import save_run
+    except Exception as exc:  # noqa: BLE001
+        activity.logger.warning("release_ops.specs_bridge_import_failed err=%s", exc)
+        return []
+
+    now = _utc()
+    passed = decision in {"GO", "GO_WITH_CAVEATS", "SKIPPED"} and hard == 0
+    if decision == "NO_GO":
+        passed = False
+    status = "passed" if passed else ("skipped" if decision == "SKIPPED" else "failed")
+
+    saved_ids: list[str] = []
+    suite_id = f"relops-{tracking_id}"
+    suite_rec: dict[str, Any] = {
+        "id": suite_id,
+        "started_at": now,
+        "finished_at": now,
+        "status": status,
+        "passed": passed,
+        "runner": "asrax-release-ops",
+        "run_profile": "release",
+        "config_name": suite,
+        "service": "am-modern-ui",
+        "environment": env,
+        "test_type": "playwright",
+        "audience": "ci",
+        "triggered_by": str(payload.get("requested_by") or "asrax-release-ops"),
+        "target_url": target,
+        "api_summary": [
+            {
+                "profile": r.get("profile"),
+                "status": r.get("status"),
+                "checks_passed": str(r.get("status") or "").upper()
+                in {"PASSED", "PASS", "OK", "GO"},
+            }
+            for r in results
+            if isinstance(r, dict)
+        ],
+        "live": {
+            "phase": "release_ops_ui_suite",
+            "message": f"suite={suite} decision={decision}",
+            "pct": 100,
+        },
+        "error": None if passed else f"decision={decision} hard={hard} soft={soft}",
+        "tracking_id": tracking_id,
+        "workflow_id": workflow_id,
+        "release_id": release_id,
+        "suite": suite,
+        "decision": decision,
+        "hard_fail_count": hard,
+        "soft_fail_count": soft,
+        "suite_summary_path": ui.get("suite_summary_path"),
+        "mode": ui.get("mode"),
+    }
+    try:
+        out = save_run(suite_rec)
+        saved_ids.append(str(out.get("id") or suite_id))
+    except Exception as exc:  # noqa: BLE001
+        activity.logger.warning("release_ops.specs_bridge_suite_failed err=%s", exc)
+
+    for idx, row in enumerate(results):
+        if not isinstance(row, dict):
+            continue
+        profile = str(row.get("profile") or f"profile-{idx}")
+        pid = f"relops-{tracking_id}-{profile}".replace(" ", "_")[:120]
+        prow_status = str(row.get("status") or "").upper()
+        prow_pass = prow_status in {"PASSED", "PASS", "OK", "GO"}
+        try:
+            out = save_run(
+                {
+                    "id": pid,
+                    "started_at": now,
+                    "finished_at": now,
+                    "status": "passed" if prow_pass else "failed",
+                    "passed": prow_pass,
+                    "runner": "asrax-release-ops",
+                    "run_profile": "release",
+                    "config_name": profile,
+                    "service": "am-modern-ui",
+                    "environment": env,
+                    "test_type": "playwright",
+                    "audience": "ci",
+                    "triggered_by": str(payload.get("requested_by") or "asrax-release-ops"),
+                    "target_url": target,
+                    "tracking_id": tracking_id,
+                    "workflow_id": workflow_id,
+                    "release_id": release_id,
+                    "suite": suite,
+                    "parent_run_id": suite_id,
+                    "live": {"phase": "profile", "message": profile, "pct": 100},
+                    "error": None if prow_pass else prow_status,
+                }
+            )
+            saved_ids.append(str(out.get("id") or pid))
+        except Exception as exc:  # noqa: BLE001
+            activity.logger.warning(
+                "release_ops.specs_bridge_profile_failed profile=%s err=%s",
+                profile,
+                exc,
+            )
+    return saved_ids
+
+
 @activity.defn(name="activity_release_ops_ui_suite")
 async def activity_release_ops_ui_suite(payload: dict[str, Any]) -> dict[str, Any]:
     """Run UI suite (or skip) and attach results to pack."""
@@ -277,6 +421,7 @@ async def activity_release_ops_ui_suite(payload: dict[str, Any]) -> dict[str, An
             "soft_fail_count": 0,
             "mode": "skipped",
         }
+        ui["specs_run_ids"] = _persist_ui_suite_to_specs(payload, ui)
         get_ledger().upsert_step(tracking_id, "release_ops_ui_suite", ui)
         return ui
 
@@ -291,13 +436,22 @@ async def activity_release_ops_ui_suite(payload: dict[str, Any]) -> dict[str, An
 
     from scripts.release_report import _run_ui_suite  # type: ignore
 
-    ui = await _run_ui_suite(
-        SimpleNamespace(
-            suite=suite,
-            url=url,
-            portfolio_id=payload.get("portfolio_id"),
-            login_mode=login_mode,
-        )
+    ui = await _heartbeat_while(
+        _run_ui_suite(
+            SimpleNamespace(
+                suite=suite,
+                url=url,
+                portfolio_id=payload.get("portfolio_id"),
+                login_mode=login_mode,
+            )
+        ),
+        {
+            "phase": "ui_suite",
+            "suite": suite,
+            "tracking_id": tracking_id,
+            "release_id": release_id,
+            "target_url": url,
+        },
     )
     src = ui.get("suite_summary_path")
     if src and Path(str(src)).is_file():
@@ -311,11 +465,13 @@ async def activity_release_ops_ui_suite(payload: dict[str, Any]) -> dict[str, An
     summary["phase"] = "UI_DONE"
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
+    ui["specs_run_ids"] = _persist_ui_suite_to_specs(payload, ui)
     get_ledger().upsert_step(tracking_id, "release_ops_ui_suite", ui)
     activity.logger.info(
-        "release_ops.ui_suite decision=%s hard=%s",
+        "release_ops.ui_suite decision=%s hard=%s specs_runs=%s",
         ui.get("decision"),
         ui.get("hard_fail_count"),
+        ui.get("specs_run_ids"),
     )
     return ui
 
