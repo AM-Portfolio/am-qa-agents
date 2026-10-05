@@ -68,7 +68,10 @@ class ProfileTestRunRequest(BaseModel):
 
 
 class SuiteTestRunRequest(BaseModel):
-    suite: str = Field(default="release_gate", description="smoke | release_gate | prod_ui_full")
+    suite: str = Field(
+        default="release_gate",
+        description="smoke | release_gate | prod_ui_full | auth_user_module",
+    )
     targetUrl: Optional[str] = Field(default=None)
     environment: Optional[str] = Field(default=None)
     portfolioId: Optional[str] = Field(default=None)
@@ -134,7 +137,7 @@ async def _execute_suite(suite_id: str, payload: Dict[str, Any]) -> Dict[str, An
     profiles = payload.get("profiles") or default_profiles
     target = payload.get("targetUrl") or settings.MODERN_UI_MAIN_URL
     login_mode = payload.get("loginMode") or "demo"
-    if suite_name == "prod_ui_full" and login_mode == "demo":
+    if suite_name in {"prod_ui_full", "auth_user_module"} and login_mode == "demo":
         login_mode = "credentials"
     results: list[dict[str, Any]] = []
     hard_fail = 0
@@ -286,7 +289,9 @@ async def run_suite_test(request: SuiteTestRunRequest, background_tasks: Backgro
     if not profiles:
         profiles = list(suite_profiles(request.suite))
     login_mode = request.loginMode
-    if request.suite == "prod_ui_full" and (not login_mode or login_mode == "demo"):
+    if request.suite in {"prod_ui_full", "auth_user_module"} and (
+        not login_mode or login_mode == "demo"
+    ):
         login_mode = "credentials"
     payload = {
         "suite": request.suite,

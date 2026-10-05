@@ -83,6 +83,7 @@ class PendingReleaseRequest:
     release_name: str = ""
     env: str = "prod"
     suite: str = "prod_ui_full"
+    api_pack: str = ""  # e.g. "subscription" — run scoped API pack with UI suite
     target_url: str = "https://am.asrax.in"
     login_mode: str = "credentials"
     soak_min: int = 30
@@ -103,12 +104,16 @@ class PendingReleaseRequest:
         return asdict(self)
 
     def workflow_args(self) -> dict[str, Any]:
+        api_pack = self.api_pack or (
+            "subscription" if self.suite == "subscription_module" else ""
+        )
         return {
             "tracking_id": self.tracking_id or f"qa-{uuid.uuid4().hex[:12]}",
             "release_id": self.release_id or None,
             "release_name": self.release_name or self.release_id,
             "env": self.env,
             "suite": self.suite,
+            "api_pack": api_pack,
             "target_url": self.target_url,
             "login_mode": self.login_mode,
             "soak_min": self.soak_min,

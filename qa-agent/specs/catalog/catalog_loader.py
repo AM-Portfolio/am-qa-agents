@@ -27,13 +27,25 @@ _CATALOG_ROOT = Path(__file__).resolve().parents[1] / "resources" / "catalog"
 _SERVICES_FILE = _CATALOG_ROOT / "services.yaml"
 
 
-def _external_root() -> Path:
+def _external_roots() -> list[Path]:
+    """One or more catalog roots (os.pathsep / ';' / ',' separated)."""
     raw = (
         os.environ.get("SPT_CATALOG_EXTERNAL")
         or settings.catalog_external_dir
         or "/catalog-external"
     )
-    return Path(raw)
+    parts: list[str] = []
+    for chunk in str(raw).replace(",", os.pathsep).replace(";", os.pathsep).split(os.pathsep):
+        c = chunk.strip()
+        if c:
+            parts.append(c)
+    return [Path(p) for p in parts] or [Path("/catalog-external")]
+
+
+def _external_root() -> Path:
+    """Primary catalog-external root (first configured path)."""
+    roots = _external_roots()
+    return roots[0]
 
 
 def _running_in_cluster() -> bool:
@@ -256,36 +268,43 @@ def build_registration_trace(service: str, reg: dict[str, Any] | None = None) ->
 
 
 def list_registration_files() -> list[Path]:
-    """spt.yaml files under catalog-external/<service>/spt.yaml (and flat *.yaml)."""
-    root = _external_root()
+    """spt.yaml files under all catalog-external roots (and flat *.yaml)."""
     found: list[Path] = []
-    if not root.is_dir():
-        return found
-    for path in sorted(root.rglob("spt.yaml")):
-        found.append(path)
-    for path in sorted(root.glob("*.yaml")):
-        if path.name != "spt.yaml" and path not in found:
-            # flat ConfigMap mount style: /catalog-external/<service>.yaml
-            found.append(path)
+    seen: set[str] = set()
+    for root in _external_roots():
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("spt.yaml")):
+            key = str(path.resolve()) if path.exists() else str(path)
+            if key not in seen:
+                seen.add(key)
+                found.append(path)
+        for path in sorted(root.glob("*.yaml")):
+            if path.name == "spt.yaml":
+                continue
+            key = str(path.resolve()) if path.exists() else str(path)
+            if key not in seen:
+                seen.add(key)
+                found.append(path)
     return found
 
 
 def load_registration(service: str) -> dict[str, Any] | None:
     """Load ServiceLoadTest registration for a service id."""
-    root = _external_root()
-    candidates = [
-        root / service / "spt.yaml",
-        root / f"{service}.yaml",
-        root / f"{service}.spt.yaml",
-    ]
-    for path in candidates:
-        data = _read_yaml(path)
-        if not data:
-            continue
-        if data.get("enabled") is False:
-            return None
-        data.setdefault("service", service)
-        return data
+    for root in _external_roots():
+        candidates = [
+            root / service / "spt.yaml",
+            root / f"{service}.yaml",
+            root / f"{service}.spt.yaml",
+        ]
+        for path in candidates:
+            data = _read_yaml(path)
+            if not data:
+                continue
+            if data.get("enabled") is False:
+                return None
+            data.setdefault("service", service)
+            return data
     for path in list_registration_files():
         data = _read_yaml(path)
         if not data or data.get("enabled") is False:

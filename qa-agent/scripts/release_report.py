@@ -95,20 +95,36 @@ async def _run_ui_suite(args: argparse.Namespace) -> dict[str, Any]:
         portfolio_id = args.portfolio_id
         login_mode = args.login_mode
         design_review = False
+        tracking_id = getattr(args, "tracking_id", None)
+        workflow_id = getattr(args, "workflow_id", None)
+        release_id = getattr(args, "release_id", None)
+        env = getattr(args, "env", None) or "prod"
+        requested_by = getattr(args, "requested_by", None) or "asrax-release-ops"
 
-    code = await suite_mod.main_async(_Args())
-    # suite writes suite-*.json under REPORT_DIR — find latest
-    try:
-        from ui_evidence.config import settings
+    code, summary = await suite_mod.main_async(_Args())
+    payload: dict[str, Any] = {
+        "exit_code": code,
+        "results": [],
+        "decision": "UNKNOWN",
+        **(summary or {}),
+    }
+    if summary.get("report_json"):
+        payload["suite_summary_path"] = summary["report_json"]
+    else:
+        try:
+            from ui_evidence.config import settings
 
-        report_dir = Path(settings.REPORT_DIR)
-    except Exception:
-        report_dir = Path(os.getenv("TEMP") or "/tmp") / "am-ui-test-reports"
-    suites = sorted(report_dir.glob("suite-*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
-    payload: dict[str, Any] = {"exit_code": code, "results": [], "decision": "UNKNOWN"}
-    if suites:
-        payload.update(json.loads(suites[0].read_text(encoding="utf-8")))
-        payload["suite_summary_path"] = str(suites[0])
+            report_dir = Path(settings.REPORT_DIR)
+        except Exception:
+            report_dir = Path(os.getenv("TEMP") or "/tmp") / "am-ui-test-reports"
+        suites = sorted(
+            report_dir.glob("suite-*.json"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if suites:
+            payload.update(json.loads(suites[0].read_text(encoding="utf-8")))
+            payload["suite_summary_path"] = str(suites[0])
     payload["profiles"] = list(suite_profiles(args.suite))
     return payload
 
@@ -211,7 +227,11 @@ def main() -> int:
     p = argparse.ArgumentParser(description="Asrax T0 release report")
     p.add_argument("--env", default=os.getenv("QA_AGENT_ENV") or "prod")
     p.add_argument("--url", default=os.getenv("MODERN_UI_URL") or "https://am.asrax.in")
-    p.add_argument("--suite", default="prod_ui_full", choices=["smoke", "release_gate", "prod_ui_full"])
+    p.add_argument(
+        "--suite",
+        default="prod_ui_full",
+        choices=["smoke", "release_gate", "prod_ui_full", "auth_user_module"],
+    )
     p.add_argument("--login-mode", default="credentials", choices=["demo", "credentials"])
     p.add_argument("--portfolio-id", default=os.getenv("TEST_PORTFOLIO_ID"))
     p.add_argument("--release-id", default=None)

@@ -81,6 +81,12 @@ class AsraxReleaseOpsWorkflow:
                 "release_id": release_id,
                 "pack_path": pack_path,
                 "suite": args.get("suite") or "prod_ui_full",
+                "api_pack": args.get("api_pack")
+                or (
+                    "subscription"
+                    if (args.get("suite") or "") == "subscription_module"
+                    else ""
+                ),
                 "target_url": args.get("target_url") or args.get("url"),
                 "login_mode": args.get("login_mode") or "credentials",
                 "portfolio_id": args.get("portfolio_id"),

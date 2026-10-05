@@ -85,9 +85,13 @@ class SqliteWorkflowLedger:
                         existing = self._load(conn, row["tracking_id"])
                         if existing:
                             return existing
+                # Gateway + activity_release_ops_init both call create_run; stay idempotent.
+                existing = self._load(conn, tracking_id)
+                if existing:
+                    return existing
                 now = _now()
                 conn.execute(
-                    "INSERT INTO runs(tracking_id,workflow_id,status,route,steps_json,meta_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+                    "INSERT OR IGNORE INTO runs(tracking_id,workflow_id,status,route,steps_json,meta_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
                     (
                         tracking_id,
                         workflow_id,
@@ -105,6 +109,9 @@ class SqliteWorkflowLedger:
                         (idempotency_key, tracking_id),
                     )
                 conn.commit()
+                loaded = self._load(conn, tracking_id)
+                if loaded:
+                    return loaded
                 return WorkflowRun(
                     tracking_id=tracking_id,
                     workflow_id=workflow_id,

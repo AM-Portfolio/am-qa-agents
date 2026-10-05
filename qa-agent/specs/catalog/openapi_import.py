@@ -173,7 +173,11 @@ def openapi_to_apis(
 def parse_openapi_bytes(raw: bytes, content_type: str = "") -> dict[str, Any]:
     text = raw.decode("utf-8", errors="replace")
     ct = (content_type or "").lower()
-    if "yaml" in ct or text.lstrip().startswith(("openapi:", "swagger:")):
+    stripped = text.lstrip()
+    # Flutter SPA / HTML catch-all often returns 200 for /openapi.json
+    if "text/html" in ct or stripped[:15].lower().startswith(("<!doctype", "<html")):
+        raise ValueError("response is HTML, not OpenAPI")
+    if "yaml" in ct or stripped.startswith(("openapi:", "swagger:")):
         data = yaml.safe_load(text)
     else:
         try:
@@ -182,6 +186,8 @@ def parse_openapi_bytes(raw: bytes, content_type: str = "") -> dict[str, Any]:
             data = yaml.safe_load(text)
     if not isinstance(data, dict):
         raise ValueError("OpenAPI document is not an object")
+    if not (data.get("paths") or data.get("openapi") or data.get("swagger")):
+        raise ValueError("document missing OpenAPI markers (paths/openapi/swagger)")
     return data
 
 

@@ -98,6 +98,7 @@ class ReleaseOpsRequestBody(BaseModel):
     release_name: str | None = None
     env: str = "prod"
     suite: str = "prod_ui_full"
+    api_pack: str = ""  # subscription → subscription API pack alongside UI suite
     target_url: str = "https://am.asrax.in"
     login_mode: str = "credentials"
     soak_min: int = 30
@@ -549,11 +550,15 @@ async def start_release_ops_now(
     from intelligence.cliq_release_gate import get_pending_store
 
     store = get_pending_store()
+    api_pack = body.api_pack or (
+        "subscription" if body.suite == "subscription_module" else ""
+    )
     req = store.create(
         release_id=body.release_id or "",
         release_name=body.release_name or body.release_id or "n8n-release-ops",
         env=body.env,
         suite=body.suite,
+        api_pack=api_pack,
         target_url=body.target_url,
         login_mode=body.login_mode,
         soak_min=body.soak_min,
@@ -599,11 +604,15 @@ async def request_release_ops(
         raise HTTPException(503, "QA_AGENT_RELEASE_ADMIN must be set (single Cliq approver)")
 
     store = get_pending_store()
+    api_pack = body.api_pack or (
+        "subscription" if body.suite == "subscription_module" else ""
+    )
     req = store.create(
         release_id=body.release_id or "",
         release_name=body.release_name or body.release_id or "",
         env=body.env,
         suite=body.suite,
+        api_pack=api_pack,
         target_url=body.target_url,
         login_mode=body.login_mode,
         soak_min=body.soak_min,

@@ -28,6 +28,8 @@ npm run release:ops:drive -- --release-name "YYYY-MM-DD drive pack"
 - Calls `POST /qa/v2/releases/ops/start` (Bearer `QA_AGENT_GATEWAY_TOKEN`). Defaults = Drive pack. Full UI+soak: body `{ "skip_ui": false, "soak_min": 30 }`.
 - Import: `.\scripts\import.ps1 -Target preprod -Pack support` from `am-n8n-workflows`.
 
+**Subscription-only pack (GitHub, not n8n):** on push to `am-platform` `main` under `am-subscription/**`, workflow [`.github/workflows/subscription-qa-on-main.yml`](../../../am-platform/.github/workflows/subscription-qa-on-main.yml) calls ops/start with `suite=subscription_module`, `api_pack=subscription`, `env=preprod`, `requested_by=github-merge`. Manual re-run: Actions → **Subscription QA on main** → Run workflow. Mapping: [`SUBSCRIPTION_MODULE_CATALOG.md`](../../qa-agent/ui_evidence/docs/SUBSCRIPTION_MODULE_CATALOG.md). Specs portal Runs use the returned `tracking_id`.
+
 Equivalent flags: `--inline --skip-ui --skip-soak --skip-cliq --soak-min 0 --env prod`.
 
 **Prereqs**
