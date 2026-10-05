@@ -334,6 +334,11 @@ PROD_UI_FULL_PROFILES = [
     "ADMIN_GATE_FLOW",
 ]
 
+try:
+    from ui_evidence.profiles.registry import AUTH_USER_MODULE_PROFILES as _AUTH_USER_MODULE
+except Exception:  # noqa: BLE001
+    _AUTH_USER_MODULE = ()
+
 SUITE_META = [
     {
         "id": "smoke",
@@ -352,6 +357,12 @@ SUITE_META = [
         "label": "Prod UI full (read-only)",
         "summary": "Credentials login; all live Portfolio/Trade/Market sidebars; no upload or mutate",
         "profiles": PROD_UI_FULL_PROFILES,
+    },
+    {
+        "id": "auth_user_module",
+        "label": "Auth user module (Cucumber scenarios)",
+        "summary": "Registration → login → forgot password → Google CTA/OAuth redirect",
+        "profiles": list(_AUTH_USER_MODULE),
     },
 ]
 
@@ -387,7 +398,9 @@ def build_ui_flow_catalog(
     flows = [_flow_entry(fid) for fid in ordered]
 
     rg = list(release_gate or RELEASE_GATE_PROFILES)
-    suite_ids = list(suites or ["smoke", "release_gate", "prod_ui_full"])
+    suite_ids = list(
+        suites or ["smoke", "release_gate", "prod_ui_full", "auth_user_module"]
+    )
     suite_rows = []
     for s in SUITE_META:
         if s["id"] in suite_ids:

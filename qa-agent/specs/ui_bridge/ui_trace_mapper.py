@@ -334,6 +334,14 @@ def agent_status_passed(status: dict[str, Any]) -> bool:
         return False
     if status.get("failures"):
         return False
-    if s in ("COMPLETED", "GO", "GO_WITH_CAVEATS"):
+    if s in (
+        "COMPLETED",
+        "GO",
+        "GO_WITH_CAVEATS",
+        "PASSED",
+        "PASS",
+        "OK",
+        "PASSED_WITH_DESIGN_DRIFT",
+    ):
         return True
     return False

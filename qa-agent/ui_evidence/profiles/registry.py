@@ -4,9 +4,21 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from ui_evidence.profiles.base import TargetConfig
+from ui_evidence.features.feature_catalog import (
+    auth_user_full_flow_profiles,
+    auth_user_module_profiles,
+)
 from ui_evidence.profiles.modern_ui.auth_flow import (
     auth_verification_checklist,
     build_auth_flow_steps,
+)
+from ui_evidence.profiles.modern_ui.auth_scenarios import (
+    AUTH_SCENARIO_BUILDERS,
+    auth_scenario_verification_checklist,
+)
+from ui_evidence.profiles.modern_ui.subscription_scenarios import (
+    SUBSCRIPTION_SCENARIO_BUILDERS,
+    subscription_scenario_verification_checklist,
 )
 from ui_evidence.profiles.modern_ui.dashboard_flow import (
     build_dashboard_flow_steps,
@@ -42,11 +54,15 @@ from ui_evidence.profiles.modern_ui.trade_flow import (
 )
 
 AUTH_PROFILES = frozenset({"AUTH_FLOW", "AUTH_FLOW_MAIN", "AUTH_FLOW_PORTFOLIO"})
+AUTH_SCENARIO_PROFILES = frozenset(AUTH_SCENARIO_BUILDERS.keys())
+SUBSCRIPTION_SCENARIO_PROFILES = frozenset(SUBSCRIPTION_SCENARIO_BUILDERS.keys())
 
 PROFILE_BUILDERS: dict[str, Callable[..., list[dict[str, Any]]]] = {
     "AUTH_FLOW": build_auth_flow_steps,
     "AUTH_FLOW_MAIN": build_auth_flow_steps,
     "AUTH_FLOW_PORTFOLIO": build_auth_flow_steps,
+    **AUTH_SCENARIO_BUILDERS,
+    **SUBSCRIPTION_SCENARIO_BUILDERS,
     "DASHBOARD_SMOKE_FLOW": build_dashboard_flow_steps,
     "PORTFOLIO_SMOKE_FLOW": build_portfolio_flow_steps,
     "PORTFOLIO_TABS_FLOW": build_portfolio_tabs_flow_steps,
@@ -67,6 +83,11 @@ CHECKLIST_BUILDERS: dict[str, Callable[..., list[dict[str, str]]]] = {
     "AUTH_FLOW": auth_verification_checklist,
     "AUTH_FLOW_MAIN": auth_verification_checklist,
     "AUTH_FLOW_PORTFOLIO": auth_verification_checklist,
+    **{name: auth_scenario_verification_checklist for name in AUTH_SCENARIO_BUILDERS},
+    **{
+        name: subscription_scenario_verification_checklist
+        for name in SUBSCRIPTION_SCENARIO_BUILDERS
+    },
     "DASHBOARD_SMOKE_FLOW": dashboard_verification_checklist,
     "PORTFOLIO_SMOKE_FLOW": portfolio_verification_checklist,
     "PORTFOLIO_TABS_FLOW": portfolio_verification_checklist,
@@ -114,13 +135,66 @@ PROD_UI_FULL_PROFILES = (
     "ADMIN_GATE_FLOW",
 )
 
+# Cucumber-style auth module — order from features/auth/*.feature
+AUTH_USER_MODULE_PROFILES = auth_user_module_profiles()
+
+# Full auth/user/subscription UI flows (see docs/AUTH_USER_FLOW_CATALOG.md)
+AUTH_USER_FULL_FLOW_PROFILES = auth_user_full_flow_profiles()
+
+# Auth + users/profile + subscription smoke (complete login module pack)
+def _auth_users_subs_module_profiles() -> tuple[str, ...]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for name in (
+        *AUTH_USER_FULL_FLOW_PROFILES,
+        "PROFILE_SMOKE_FLOW",
+        "SUBSCRIPTION_SMOKE_FLOW",
+    ):
+        if name in seen:
+            continue
+        seen.add(name)
+        out.append(name)
+    return tuple(out)
+
+
+AUTH_USERS_SUBS_MODULE_PROFILES = _auth_users_subs_module_profiles()
+
+# Subscription-only modern-ui (productized merge gate — no full auth)
+SUBSCRIPTION_MODULE_PROFILES = (
+    "SUB_UI_OPEN",
+    "SUB_UI_PLANS",
+    "SUB_UI_TIME_LEFT",
+    "SUBSCRIPTION_SMOKE_FLOW",
+)
+
+# Identity API scenarios (prod Swagger → OpenAPI MCP tools). Not Playwright profiles —
+# executed via ui_evidence.api.run_auth_api_scenarios.
+AUTH_API_MODULE_SCENARIOS = (
+    "AUTH_API_HEALTH",
+    "AUTH_API_LOGIN",
+    "AUTH_API_USERS_ME",
+    "AUTH_API_FORGOT_SCHEMA",
+    "AUTH_API_REGISTER_SCHEMA",
+)
+
 SUITE_PROFILES: dict[str, tuple[str, ...]] = {
     "smoke": SMOKE_SUITE_PROFILES,
     "release_gate": RELEASE_GATE_PROFILES,
     "prod_ui_full": PROD_UI_FULL_PROFILES,
+    "auth_user_module": AUTH_USER_MODULE_PROFILES,
+    "auth_user_full_flows": AUTH_USER_FULL_FLOW_PROFILES,
+    "auth_users_subs_module": AUTH_USERS_SUBS_MODULE_PROFILES,
+    "subscription_module": SUBSCRIPTION_MODULE_PROFILES,
+    # API-only identity module (tool names, not UI builders)
+    "auth_api_module": AUTH_API_MODULE_SCENARIOS,
 }
 
-DETERMINISTIC_PROFILES = frozenset(PROFILE_BUILDERS.keys()) | AUTH_PROFILES
+DETERMINISTIC_PROFILES = (
+    frozenset(PROFILE_BUILDERS.keys())
+    | AUTH_PROFILES
+    | AUTH_SCENARIO_PROFILES
+    | SUBSCRIPTION_SCENARIO_PROFILES
+)
 
 
 def profile_for_mode(ui_mode: str) -> str:
@@ -128,7 +202,11 @@ def profile_for_mode(ui_mode: str) -> str:
 
 
 def is_auth_profile(profile: str) -> bool:
-    return profile in AUTH_PROFILES
+    return (
+        profile in AUTH_PROFILES
+        or profile in AUTH_SCENARIO_PROFILES
+        or profile in SUBSCRIPTION_SCENARIO_PROFILES
+    )
 
 
 def is_deterministic_profile(profile: str) -> bool:

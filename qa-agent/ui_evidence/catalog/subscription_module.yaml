@@ -1,0 +1,43 @@
+# Subscription QA module — machine-readable mapping (SoT with docs/SUBSCRIPTION_MODULE_CATALOG.md)
+id: subscription_module
+title: Subscription-only API + modern-ui pack
+suite: subscription_module
+api_pack: subscription
+
+trigger_paths:
+  - am-subscription/**
+  - .github/workflows/am-subscription.yml
+  - .github/workflows/subscription-qa-on-main.yml
+
+services:
+  - id: am-subscription
+    role: primary
+  - id: am-identity
+    role: login_jwt_only
+
+ui_profiles:
+  - SUB_UI_OPEN
+  - SUB_UI_PLANS
+  - SUB_UI_TIME_LEFT
+  - SUBSCRIPTION_SMOKE_FLOW
+
+api_flows:
+  - FLOW_SUBSCRIPTION_LOGIN
+  - FLOW_SUBSCRIPTION
+
+api_sweep_services:
+  - am-subscription
+
+reports:
+  combined: ui_evidence/data/reports/api-test/subscription-module-complete-latest.html
+  api_flows: ui_evidence/data/reports/api-test/subscription-api-flows-latest.html
+  metrics_ledger: ui_evidence/data/reports/api-test/subscription-api-flows-metrics.json
+
+portal:
+  ops_start: POST /qa/v2/releases/ops/start
+  suite: subscription_module
+  api_pack: subscription
+  default_env: preprod
+  skip_soak: true
+
+orchestrator: ui_evidence/scripts/run_subscription_module_complete.py

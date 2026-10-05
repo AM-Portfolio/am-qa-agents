@@ -311,6 +311,56 @@ def spt_prepare_mcp_payloads(
     )
 
 
+@mcp.tool(name="spt_refresh_openapi_tools")
+def spt_refresh_openapi_tools(
+    environment: Optional[str] = "prod",
+    service: Optional[str] = None,
+) -> dict[str, Any]:
+    """Fetch prod (or env) Swagger for catalog services and regenerate MCP API tools."""
+    from specs.openapi_tools.registry import refresh_tools_from_prod
+
+    services = [service] if service else None
+    return refresh_tools_from_prod(environment=environment or "prod", services=services)
+
+
+@mcp.tool(name="spt_list_openapi_tools")
+def spt_list_openapi_tools(
+    service: Optional[str] = None,
+    q: Optional[str] = None,
+    limit: int = 200,
+) -> dict[str, Any]:
+    """List generated OpenAPI tools (from last spt_refresh_openapi_tools)."""
+    from specs.openapi_tools.registry import list_tools
+
+    return list_tools(service=service, q=q, limit=limit)
+
+
+@mcp.tool(name="spt_call_openapi_tool")
+def spt_call_openapi_tool(
+    name: str,
+    arguments_json: Optional[str] = None,
+    with_identity_auth: bool = True,
+    record_run: bool = True,
+) -> dict[str, Any]:
+    """Call a generated OpenAPI tool by name; arguments_json is a JSON object string."""
+    from specs.openapi_tools.registry import call_tool
+
+    args: dict[str, Any] = {}
+    if arguments_json:
+        try:
+            parsed = json.loads(arguments_json)
+            if isinstance(parsed, dict):
+                args = parsed
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "error": f"invalid arguments_json: {exc}"}
+    return call_tool(
+        name,
+        args,
+        with_identity_auth=with_identity_auth,
+        record_run=record_run,
+    )
+
+
 @mcp.resource("spt://profiles/{config_id}")
 def resource_profile(config_id: str) -> str:
     row = services.profile_get(config_id)

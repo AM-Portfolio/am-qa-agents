@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run smoke / release_gate / prod_ui_full suite sequentially (in-process)."""
+"""Run smoke / release_gate / prod_ui_full / auth_user_module suite sequentially (in-process)."""
 from __future__ import annotations
 
 import argparse
@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT.parent))
 
 
-async def main_async(args) -> int:
+async def main_async(args) -> tuple[int, dict]:
     try:
         from ui_evidence.config import settings
         from ui_evidence.profiles.registry import suite_profiles
@@ -41,7 +41,17 @@ async def main_async(args) -> int:
 
     profiles = list(suite_profiles(args.suite))
     login_mode = args.login_mode
-    if args.suite == "prod_ui_full" and login_mode == "demo":
+    if (
+        args.suite
+        in {
+            "prod_ui_full",
+            "auth_user_module",
+            "auth_user_full_flows",
+            "auth_users_subs_module",
+            "subscription_module",
+        }
+        and login_mode == "demo"
+    ):
         login_mode = "credentials"
 
     suite_id = str(uuid.uuid4())
@@ -72,16 +82,37 @@ async def main_async(args) -> int:
             hard += 1
         if result.get("soft_failures"):
             soft += 1
-        results.append(
-            {
-                "profile": profile,
-                "status": status,
-                "error": result.get("error"),
-                "report": result.get("report"),
-                "duration_ms": result.get("duration_ms"),
-                "soft_failures": len(result.get("soft_failures") or []),
-            }
-        )
+        row = {
+            "profile": profile,
+            "status": status,
+            "error": result.get("error"),
+            "report": result.get("report"),
+            "duration_ms": result.get("duration_ms"),
+            "soft_failures": len(result.get("soft_failures") or []),
+        }
+        results.append(row)
+        tracking_id = getattr(args, "tracking_id", None) or ""
+        if tracking_id:
+            try:
+                from ui_evidence.bridge_specs_runs import bridge_suite_profile_run
+
+                bridged = bridge_suite_profile_run(
+                    tracking_id=str(tracking_id),
+                    profile=profile,
+                    row=row,
+                    suite=str(args.suite),
+                    env=str(getattr(args, "env", None) or "prod"),
+                    target_url=str(target_url),
+                    workflow_id=str(getattr(args, "workflow_id", None) or ""),
+                    release_id=str(getattr(args, "release_id", None) or ""),
+                    requested_by=str(
+                        getattr(args, "requested_by", None) or "asrax-release-ops"
+                    ),
+                )
+                if bridged:
+                    print(f"  -> bridged {bridged}", flush=True)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  -> bridge skipped: {exc}", flush=True)
 
     if hard:
         decision = "NO_GO"
@@ -107,16 +138,31 @@ async def main_async(args) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"suite-{suite_id}.json"
     out_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    summary["report_json"] = str(out_path)
     print(f"\n=== {decision} ===\nSummary: {out_path}", flush=True)
     print(json.dumps(summary, indent=2))
-    return code
+    return code, summary
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="UI smoke / release_gate / prod_ui_full suite")
+    parser = argparse.ArgumentParser(
+        description=(
+            "UI suite: smoke / release_gate / prod_ui_full / "
+            "auth_user_module / auth_user_full_flows / auth_users_subs_module / "
+            "subscription_module"
+        )
+    )
     parser.add_argument(
         "--suite",
-        choices=["release_gate", "smoke", "prod_ui_full"],
+        choices=[
+            "release_gate",
+            "smoke",
+            "prod_ui_full",
+            "auth_user_module",
+            "auth_user_full_flows",
+            "auth_users_subs_module",
+            "subscription_module",
+        ],
         default="release_gate",
     )
     parser.add_argument("--url", default=None)
@@ -127,7 +173,8 @@ def main() -> int:
     parser.add_argument("--login-mode", choices=["demo", "credentials"], default="demo")
     parser.add_argument("--design-review", action="store_true")
     args = parser.parse_args()
-    return asyncio.run(main_async(args))
+    code, _summary = asyncio.run(main_async(args))
+    return code
 
 
 if __name__ == "__main__":
