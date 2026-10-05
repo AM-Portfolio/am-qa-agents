@@ -124,6 +124,7 @@ class PostgresWorkflowLedger:
                         if existing:
                             return existing
                 now = _now()
+                # Gateway + activity_release_ops_init both call create_run; stay idempotent.
                 conn.execute(
                     text(
                         """
@@ -131,6 +132,7 @@ class PostgresWorkflowLedger:
                           (tracking_id,workflow_id,status,route,steps_json,meta_json,created_at,updated_at)
                         VALUES
                           (:tid,:wid,'running',NULL,'{}',:meta,:now,:now)
+                        ON CONFLICT (tracking_id) DO NOTHING
                         """
                     ),
                     {
@@ -151,6 +153,9 @@ class PostgresWorkflowLedger:
                         ),
                         {"k": idempotency_key, "tid": tracking_id},
                     )
+                existing = self._load(conn, tracking_id)
+                if existing:
+                    return existing
                 return WorkflowRun(
                     tracking_id=tracking_id,
                     workflow_id=workflow_id,
