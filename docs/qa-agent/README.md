@@ -4,6 +4,7 @@
 
 | File | Role |
 |------|------|
+| [RELEASE_REPORT.md](RELEASE_REPORT.md) | Generate Drive pack / full release evidence / PR readiness |
 | [QA_AGENT_PLAN.md](QA_AGENT_PLAN.md) | Full design spec (§1–§24) |
 | [UPCOMING_WORK_AND_TEST.md](UPCOMING_WORK_AND_TEST.md) | Pilot handoff + test plan |
 | [AGENTS_OWNERSHIP_AND_DONT.md](AGENTS_OWNERSHIP_AND_DONT.md) | Who owns what · do / don’t across agents |

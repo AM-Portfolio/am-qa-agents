@@ -41,6 +41,6 @@ env:
   TEMPORAL_NAMESPACE: qa-agent
   FIN_AGENT_BASE_URL: "http://am-fin-agent.am-ai.svc.cluster.local:8100"
   TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-apps-preprod.svc.cluster.local:8141"
-  GNX_MCP_URL: ""
+  GNX_MCP_URL: "https://gitnexus.asrax.in"
   KEYCLOAK_TOKEN_URL: "http://auth.munish.org/auth/realms/am-preprod-realm/protocol/openid-connect/token"
   SPT_PUBLIC_BASE_URL: "https://am.asrax.in/qa"

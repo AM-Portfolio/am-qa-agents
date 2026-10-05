@@ -7,7 +7,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-os.environ["PYTHONPATH"] = str(ROOT / "qa-agent") + os.pathsep + str(ROOT / "qa-agent" / "release_gate")
+os.environ["PYTHONPATH"] = (
+    str(ROOT / "qa-agent")
+    + os.pathsep
+    + str(ROOT / "qa-agent" / "release_gate")
+    + os.pathsep
+    + str(ROOT.parent / "am-infra" / "scripts")
+)
 os.environ.setdefault("QA_AGENT_WORKER_ENABLED", "0")
 
 if len(sys.argv) < 2:

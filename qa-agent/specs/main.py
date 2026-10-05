@@ -76,9 +76,42 @@ from specs.services import execute_svc
 from specs.persistence.trace_store import filter_api_index
 
 
+async def _startup_db_and_seed() -> None:
+    """Create SPT tables + seed. Must run from lifespan (on_event is skipped when lifespan is set)."""
+    if store_mode() != "json":
+        init_db()
+        try:
+            from specs.persistence.db.migrate_json import migrate_all
+
+            migrate_all()
+        except Exception:
+            pass
+        seed_bootstrap_keys()
+        # Orphaned "running" rows from crashed processes / JSON migration
+        try:
+            from specs.persistence.run_store import list_runs, update_run
+
+            rows, _ = list_runs(limit=200, status="running")
+            for row in rows:
+                update_run(
+                    str(row["id"]),
+                    {
+                        "status": "failed",
+                        "passed": False,
+                        "error": row.get("error") or "stale running state cleared on startup",
+                        "finished_at": datetime.now(timezone.utc).isoformat(),
+                        "live": {"phase": "error", "message": "cleared on startup"},
+                    },
+                )
+        except Exception:
+            pass
+    ensure_default_config()
+
+
 @asynccontextmanager
 async def _app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Run FastMCP streamable HTTP session manager (required for /mcp)."""
+    """DB seed + FastMCP streamable HTTP session manager (required for /mcp)."""
+    await _startup_db_and_seed()
     async with control_mcp.session_manager.run():
         yield
 
@@ -161,38 +194,6 @@ if _FLUTTER_DIR is not None:
         StaticFiles(directory=str(_FLUTTER_DIR), html=True),
         name="flutter_ui",
     )
-
-
-@app.on_event("startup")
-async def startup() -> None:
-    if store_mode() != "json":
-        init_db()
-        try:
-            from specs.persistence.db.migrate_json import migrate_all
-
-            migrate_all()
-        except Exception:
-            pass
-        seed_bootstrap_keys()
-        # Orphaned "running" rows from crashed processes / JSON migration
-        try:
-            from specs.persistence.run_store import list_runs, update_run
-
-            rows, _ = list_runs(limit=200, status="running")
-            for row in rows:
-                update_run(
-                    str(row["id"]),
-                    {
-                        "status": "failed",
-                        "passed": False,
-                        "error": row.get("error") or "stale running state cleared on startup",
-                        "finished_at": datetime.now(timezone.utc).isoformat(),
-                        "live": {"phase": "error", "message": "cleared on startup"},
-                    },
-                )
-        except Exception:
-            pass
-    ensure_default_config()
 
 
 @app.get("/", include_in_schema=False)

@@ -19,12 +19,14 @@ from orchestrator.activities.release_ops import (
     activity_release_ops_publish_sheet,
     activity_release_ops_stability_score,
     activity_release_ops_ui_suite,
+    activity_release_ops_wait_deploy_healthy,
 )
 from stores import get_ledger
 
 
 RELEASE_OPS_STEPS = (
     "release_ops_init",
+    "release_ops_wait_deploy_healthy",
     "release_ops_ui_suite",
     "release_ops_pack_t0",
     "release_ops_stability_score",
@@ -92,6 +94,7 @@ def test_activity_names_stable():
 
     expected = {
         "activity_release_ops_init": activity_release_ops_init,
+        "activity_release_ops_wait_deploy_healthy": activity_release_ops_wait_deploy_healthy,
         "activity_release_ops_ui_suite": activity_release_ops_ui_suite,
         "activity_release_ops_pack_t0": activity_release_ops_pack_t0,
         "activity_release_ops_stability_score": activity_release_ops_stability_score,

@@ -36,6 +36,9 @@ Or use root wrappers:
 | `npm run ui:start:dev` | Flutter → VPS `am-dev` SPT (`/spt-poc`) |
 | `npm run vps:forward` | Port-forward Temporal `:7233` + Influx `:8086` via `VPS/VPS/kubeconfig.vps` |
 | `npm run ui:get` / `ui:analyze` / `ui:build` | Portal deps / analyze / build |
+| `npm run release:ops:drive` | Daily Drive pack (no UI/soak/Cliq) — see [`docs/qa-agent/RELEASE_REPORT.md`](docs/qa-agent/RELEASE_REPORT.md) |
+
+n8n trigger (sibling repo **`am-n8n-workflows`**, add `f:\am-repos\am-repos\am-n8n-workflows` to the Cursor workspace): workflow **qa-release-ops** — Execute in n8n or POST `/webhook/qa-release-ops`.
 
 ### Local ↔ VPS lab
 
