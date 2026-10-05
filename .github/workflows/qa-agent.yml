@@ -71,7 +71,7 @@ jobs:
         with:
           repository: AM-Portfolio/am-modern-ui
           path: am-modern-ui
-          token: ${{ secrets.GITHUB_PAT || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_TOKEN || secrets.GITHUB_PAT || secrets.AM_GITHUB_PAT || secrets.GITHUB_TOKEN }}
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -81,6 +81,7 @@ jobs:
 
       - name: Build Flutter portal (cluster)
         id: portal
+        continue-on-error: true
         working-directory: am-qa-agents/qa-portal-ui
         run: |
           flutter pub get
@@ -92,6 +93,16 @@ jobs:
           test -f build/web/index.html
           echo "built=true" >> "$GITHUB_OUTPUT"
           du -sh build/web
+
+      - name: Portal bake status
+        run: |
+          if [ "${{ steps.portal.outcome }}" != "success" ]; then
+            echo "::warning::Flutter portal bake failed (am-modern-ui). Publishing agent image without SPA; Specs/k6 still ship."
+            rm -rf am-qa-agents/qa-portal-ui/build/web || true
+          else
+            echo "Portal web assets ready"
+            du -sh am-qa-agents/qa-portal-ui/build/web
+          fi
 
       - name: Image tag
         id: meta
