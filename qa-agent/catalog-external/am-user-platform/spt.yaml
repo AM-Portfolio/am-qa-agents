@@ -1,0 +1,26 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-user-platform
+label: am-user-platform
+enabled: true
+runtime: python
+owners: [platform-team]
+description: User platform / AI gateway (prod OpenAPI at /ai)
+createdBy: qa-agent
+updatedBy: qa-agent
+createdAt: "2026-10-06"
+updatedAt: "2026-10-06"
+tags: [users, ai, python, fastapi]
+source:
+  repo: am-platform
+  path: am-user-platform
+  team: platform-team
+traces:
+  - name: openapi
+    ref: /openapi.json
+targets:
+  dev: "https://am-dev.asrax.in/ai"
+  preprod: "https://am-preprod.asrax.in/ai"
+  prod: "https://am.asrax.in/ai"
+openapi:
+  path: /openapi.json
