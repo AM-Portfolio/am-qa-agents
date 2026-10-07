@@ -41,6 +41,9 @@ vault:
         QA_AGENT_DATABASE_URL: "QA_AGENT_DATABASE_URL"
         SPT_BOOTSTRAP_KEYS: "SPT_BOOTSTRAP_KEYS"
         SPT_ACL_REQUIRED: "SPT_ACL_REQUIRED"
+        QA_AGENT_GATEWAY_TOKEN: "QA_AGENT_GATEWAY_TOKEN"
+        SPT_AUTH_USERNAME: "SPT_AUTH_USERNAME"
+        SPT_AUTH_PASSWORD: "SPT_AUTH_PASSWORD"
       # Do NOT store AM_MCP_CLIENT_SECRET here (identity-oidc owns MCP creds).
 
 ingress:
@@ -70,7 +73,9 @@ env:
   LOG_LEVEL: INFO
   # Must exist in Temporal cluster (create qa-agent NS before enabling worker)
   TEMPORAL_NAMESPACE: qa-agent
-  QA_AGENT_WORKER_ENABLED: "0"
+  # Required for ServiceOnboardPrepWorkflow / release Temporal UI visibility
+  QA_AGENT_WORKER_ENABLED: "1"
+  TEMPORAL_TASK_QUEUE: "qa-agent-release-dev-v1"
   FIN_AGENT_BASE_URL: "http://am-fin-agent-dev.am-apps-dev.svc.cluster.local:8100"
   TOOL_AGENT_BASE_URL: "http://am-tool-agent-dev.am-apps-dev.svc.cluster.local:8141"
   # Team GitNexus MCP (stand-up: kind-fleet-clusters/gitnexus)
@@ -79,7 +84,11 @@ env:
   QA_AGENT_SKIP_OBSERVE: "true"
   QA_AGENT_OBSERVE_FORCE_TEMPLATE: "true"
   # MCP gateway client_credentials (must match Vault AM_MCP_CLIENT_SECRET realm)
-  KEYCLOAK_TOKEN_URL: "https://auth-dev.asrax.in/auth/realms/am-realm/protocol/openid-connect/token"
+  KEYCLOAK_TOKEN_URL: "https://auth.asrax.in/realms/am-dev-realm/protocol/openid-connect/token"
+  OIDC_TOKEN_URL: "https://auth.asrax.in/realms/am-dev-realm/protocol/openid-connect/token"
+  OIDC_ISSUER: "https://auth.asrax.in/realms/am-dev-realm"
+  SPT_CATALOG_EXTERNAL: "/app/qa-agent/catalog-external"
+  TEMPORAL_UI_EXTERNAL_URL: "https://temporal.asrax.in"
   AM_MCP_CLIENT_ID: "am-mcp-service"
   SPT_PUBLIC_BASE_URL: "https://am-dev.asrax.in/qa"
   SPT_UI_TEST_AGENT_URL: "http://127.0.0.1:8150"

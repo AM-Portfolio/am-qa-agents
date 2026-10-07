@@ -125,7 +125,7 @@ def _fetch_spec_for_service(service: str, environment: str) -> tuple[dict[str, A
     runtime = str(reg.get("runtime") or "python")
     oas = reg.get("openapi") if isinstance(reg.get("openapi"), dict) else {}
     preferred = str(oas.get("path") or default_openapi_path(runtime))
-    headers = _platform_openapi_headers()
+    headers = _platform_openapi_headers(environment=environment)
     headers.setdefault("Accept", "application/json")
     last_err: str | None = None
     for path in (preferred, "/openapi.json", "/v3/api-docs", "/api-docs"):
@@ -139,6 +139,69 @@ def _fetch_spec_for_service(service: str, environment: str) -> tuple[dict[str, A
             return doc, target.rstrip("/"), None
         last_err = f"empty or non-OpenAPI at {url}"
     return None, target.rstrip("/"), last_err or "openapi fetch failed"
+
+
+def tools_from_openapi_document(
+    doc: dict[str, Any],
+    *,
+    service: str,
+    base_url: str = "",
+    environment: str | None = None,
+    persist: bool = True,
+) -> dict[str, Any]:
+    """Build slim Specs MCP tool rows from the same OpenAPI doc as Swagger/APIs."""
+    from specs.catalog.openapi_import import _slug, count_openapi_operations
+
+    global _TOOLS, _LAST_REFRESH
+    tools = spec_to_tools(
+        doc,
+        base_url=base_url,
+        service=service,
+        skip_delete=False,
+    )
+    env = (environment or settings.default_environment or "dev").strip()
+    for t in tools:
+        meta = t.setdefault("_meta", {})
+        meta["environment"] = env
+    if persist:
+        if not _TOOLS:
+            _load_cache()
+        _TOOLS = {
+            k: v
+            for k, v in _TOOLS.items()
+            if str((v.get("_meta") or {}).get("service") or "") != service
+        }
+        for t in tools:
+            name = str((t.get("_meta") or {}).get("tool_name") or "")
+            if name:
+                _TOOLS[name] = t
+        _LAST_REFRESH = {
+            **(_LAST_REFRESH or {}),
+            "last_service": service,
+            "last_service_tools": len(tools),
+        }
+        _persist()
+
+    rows: list[dict[str, Any]] = []
+    for t in tools:
+        meta = t.get("_meta") or {}
+        fn = t.get("function") or {}
+        op_id = str(meta.get("op_id") or "")
+        rows.append(
+            {
+                "name": meta.get("tool_name") or fn.get("name"),
+                "method": str(meta.get("method") or "").upper(),
+                "path": meta.get("path"),
+                "op_id": op_id,
+                "description": fn.get("description") or "",
+                "api_id": _slug(op_id),
+            }
+        )
+    return {
+        "tools": rows,
+        "count": len(rows),
+        "operation_count": count_openapi_operations(doc),
+    }
 
 
 def refresh_tools_from_prod(
@@ -165,11 +228,27 @@ def refresh_tools_from_prod(
                 {"service": sid, "ok": False, "error": err, "tools": 0, "target": base}
             )
             continue
-        tools = spec_to_tools(spec, base_url=base, service=sid)
+        tools = spec_to_tools(spec, base_url=base, service=sid, skip_delete=False)
         for t in tools:
-            name = str((t.get("_meta") or {}).get("tool_name") or "")
+            meta = t.setdefault("_meta", {})
+            meta["environment"] = env
+            name = str(meta.get("tool_name") or "")
             if name:
                 new_tools[name] = t
+        try:
+            from specs.catalog.openapi_import import openapi_to_apis
+            from specs.catalog.openapi_sync import save_synced_openapi
+
+            save_synced_openapi(
+                sid,
+                env,
+                document=spec,
+                openapi_url=openapi_url(base, default_openapi_path("python")) if base else "",
+                target_url=base or "",
+                apis=openapi_to_apis(spec, include_mutating=True),
+            )
+        except Exception as sync_exc:  # noqa: BLE001
+            logger.info("openapi sync from tools refresh skipped for %s: %s", sid, sync_exc)
         per_service.append(
             {
                 "service": sid,
@@ -202,6 +281,7 @@ def call_tool(
     *,
     with_identity_auth: bool = True,
     record_run: bool = True,
+    environment: str | None = None,
 ) -> dict[str, Any]:
     """Invoke a generated tool; optionally attach identity JWT and persist a Specs run."""
     if not _TOOLS:
@@ -210,10 +290,17 @@ def call_tool(
     if not tool:
         return {"ok": False, "error": f"unknown tool: {name}", "hint": "spt_refresh_openapi_tools"}
     meta = dict(tool.get("_meta") or {})
+    env = (
+        (environment or "").strip()
+        or str(meta.get("environment") or "").strip()
+        or settings.default_environment
+        or "dev"
+    )
+    meta["environment"] = env
     headers: dict[str, str] = {"Accept": "application/json"}
     if with_identity_auth:
         try:
-            auth = _platform_openapi_headers()
+            auth = _platform_openapi_headers(environment=env)
             if auth.get("Authorization"):
                 headers["Authorization"] = auth["Authorization"]
         except Exception as exc:  # noqa: BLE001

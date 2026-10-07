@@ -288,6 +288,155 @@ bool _pathMatchesTemplate(String concrete, String template) {
   return true;
 }
 
+/// Deep-ish copy of [document] with `example` filled from payload-set rows
+/// (`path_params` / `query` / `body`) so Swagger Try shows the selected data version.
+Map<String, dynamic>? openapiDocWithPayloadExamples(
+  Map<String, dynamic>? document,
+  List<Map<String, dynamic>> payloadRows,
+) {
+  if (document == null) return null;
+  if (payloadRows.isEmpty) return document;
+  final paths = document['paths'];
+  if (paths is! Map) return document;
+
+  final byOp = <String, Map<String, dynamic>>{};
+  for (final row in payloadRows) {
+    final method = '${row['method'] ?? ''}'.toUpperCase();
+    final path = _normPath('${row['path'] ?? ''}');
+    if (method.isEmpty || path.isEmpty) continue;
+    final req = row['request'] is Map
+        ? Map<String, dynamic>.from(row['request'] as Map)
+        : row;
+    byOp['$method $path'] = req;
+  }
+  if (byOp.isEmpty) return document;
+
+  final newPaths = <String, dynamic>{};
+  for (final e in paths.entries) {
+    final template = '${e.key}';
+    final item = e.value;
+    if (item is! Map) {
+      newPaths[template] = e.value;
+      continue;
+    }
+    final newItem = Map<String, dynamic>.from(item);
+    for (final methodKey in const [
+      'get',
+      'post',
+      'put',
+      'patch',
+      'delete',
+      'head',
+      'options',
+    ]) {
+      final op = newItem[methodKey];
+      if (op is! Map) continue;
+      final method = methodKey.toUpperCase();
+      Map<String, dynamic>? req;
+      for (final entry in byOp.entries) {
+        if (!entry.key.startsWith('$method ')) continue;
+        final rowPath = entry.key.substring(method.length + 1);
+        if (_normPath(rowPath) == _normPath(template) ||
+            _pathMatchesTemplate(rowPath, template)) {
+          req = entry.value;
+          break;
+        }
+      }
+      if (req == null) continue;
+      newItem[methodKey] = _injectPayloadExamplesIntoOperation(
+        Map<String, dynamic>.from(op),
+        req,
+      );
+    }
+    newPaths[template] = newItem;
+  }
+
+  return {
+    ...document,
+    'paths': newPaths,
+  };
+}
+
+Map<String, dynamic> _injectPayloadExamplesIntoOperation(
+  Map<String, dynamic> op,
+  Map<String, dynamic> req,
+) {
+  final pathParams = <String, String>{};
+  final queryParams = <String, String>{};
+  final rawPath = req['path_params'] ?? req['pathParams'];
+  if (rawPath is Map) {
+    rawPath.forEach((k, v) {
+      final s = '$v';
+      if (s.isNotEmpty && !s.contains('{{')) pathParams['$k'] = s;
+    });
+  }
+  final rawQuery = req['query'] ?? req['query_params'] ?? req['queryParams'];
+  if (rawQuery is Map) {
+    rawQuery.forEach((k, v) {
+      final s = '$v';
+      if (s.isNotEmpty && !s.contains('{{')) queryParams['$k'] = s;
+    });
+  }
+
+  if (op['parameters'] is List &&
+      (pathParams.isNotEmpty || queryParams.isNotEmpty)) {
+    op['parameters'] = [
+      for (final raw in op['parameters'] as List)
+        _paramWithExample(
+          raw,
+          pathParams: pathParams,
+          queryParams: queryParams,
+        ),
+    ];
+  }
+
+  final bodyRaw = req['body'] ?? req['json'] ?? req['data'];
+  if (bodyRaw != null) {
+    final rb = op['requestBody'];
+    if (rb is Map) {
+      final newRb = Map<String, dynamic>.from(rb);
+      final content = newRb['content'];
+      if (content is Map) {
+        final newContent = Map<String, dynamic>.from(content);
+        for (final mediaKey in newContent.keys.toList()) {
+          final media = newContent[mediaKey];
+          if (media is! Map) continue;
+          final m = Map<String, dynamic>.from(media);
+          m['example'] = bodyRaw;
+          newContent[mediaKey] = m;
+        }
+        newRb['content'] = newContent;
+        op['requestBody'] = newRb;
+      }
+    }
+  }
+  return op;
+}
+
+dynamic _paramWithExample(
+  dynamic raw, {
+  required Map<String, String> pathParams,
+  required Map<String, String> queryParams,
+}) {
+  if (raw is! Map) return raw;
+  final p = Map<String, dynamic>.from(raw);
+  final name = '${p['name'] ?? ''}'.trim();
+  final loc = '${p['in'] ?? ''}'.toLowerCase();
+  String? ex;
+  if (loc == 'path') {
+    ex = pathParams[name];
+  } else if (loc == 'query') {
+    ex = queryParams[name];
+  }
+  if (ex == null || ex.isEmpty) return p;
+  p['example'] = ex;
+  final schema = p['schema'];
+  if (schema is Map) {
+    p['schema'] = {...Map<String, dynamic>.from(schema), 'example': ex};
+  }
+  return p;
+}
+
 /// Apply a catalog API row or saved payload request onto a draft (does not clear unspecified fields blindly).
 TryDraft applyRequestOntoDraft(
   TryDraft base,

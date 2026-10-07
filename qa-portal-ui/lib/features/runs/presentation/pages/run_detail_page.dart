@@ -578,7 +578,7 @@ class _RunDetailView extends StatelessWidget {
                       run['api_fail_count'] != null)
                     Chip(
                       label: Text(
-                        'APIs ${run['api_count'] ?? '—'} · '
+                        '${_isPlaywrightRun(run) ? 'Steps' : 'APIs'} ${run['api_count'] ?? '—'} · '
                         '${run['api_pass_count'] ?? '—'}✓ / ${run['api_fail_count'] ?? '—'}✗',
                       ),
                     ),
@@ -616,13 +616,13 @@ class _RunDetailView extends StatelessWidget {
                   length: 4,
                   child: Column(
                     children: [
-                      const TabBar(
+                      TabBar(
                         isScrollable: true,
                         tabs: [
-                          Tab(text: 'Overview'),
-                          Tab(text: 'Inspector'),
-                          Tab(text: 'Artifacts'),
-                          Tab(text: 'APIs'),
+                          const Tab(text: 'Overview'),
+                          const Tab(text: 'Inspector'),
+                          const Tab(text: 'Artifacts'),
+                          Tab(text: _isPlaywrightRun(run) ? 'Steps' : 'APIs'),
                         ],
                       ),
                       Expanded(
@@ -883,7 +883,11 @@ class _OverviewTab extends StatelessWidget {
                 spacing: 12,
                 runSpacing: 8,
                 children: [
-                  _metricTile(context, 'APIs', '$apiCount'),
+                  _metricTile(
+                    context,
+                    _isPlaywrightRun(run) ? 'Steps' : 'APIs',
+                    '$apiCount',
+                  ),
                   _metricTile(context, 'Pass', '$apiPass', ok: true),
                   _metricTile(
                     context,
@@ -1017,8 +1021,12 @@ class _OverviewTab extends StatelessWidget {
               if (rows.isEmpty)
                 Text(
                   isLive
-                      ? 'Results stream when APIs finish…'
-                      : 'No API result rows for this run.',
+                      ? (_isPlaywrightRun(run)
+                          ? 'Results stream when UI steps finish…'
+                          : 'Results stream when APIs finish…')
+                      : (_isPlaywrightRun(run)
+                          ? 'No UI steps for this run.'
+                          : 'No API result rows for this run.'),
                   style: Theme.of(context).textTheme.bodySmall,
                 )
               else
@@ -1028,15 +1036,17 @@ class _OverviewTab extends StatelessWidget {
                     headingRowHeight: 36,
                     dataRowMinHeight: 36,
                     dataRowMaxHeight: 48,
-                    columns: const [
-                      DataColumn(label: Text('API')),
-                      DataColumn(label: Text('HTTP'), numeric: true),
-                      DataColumn(label: Text('Calls'), numeric: true),
-                      DataColumn(label: Text('Pass'), numeric: true),
-                      DataColumn(label: Text('Fail'), numeric: true),
-                      DataColumn(label: Text('Fail%'), numeric: true),
-                      DataColumn(label: Text('Avg ms'), numeric: true),
-                      DataColumn(label: Text('p90 ms'), numeric: true),
+                    columns: [
+                      DataColumn(
+                        label: Text(_isPlaywrightRun(run) ? 'Step' : 'API'),
+                      ),
+                      const DataColumn(label: Text('HTTP'), numeric: true),
+                      const DataColumn(label: Text('Calls'), numeric: true),
+                      const DataColumn(label: Text('Pass'), numeric: true),
+                      const DataColumn(label: Text('Fail'), numeric: true),
+                      const DataColumn(label: Text('Fail%'), numeric: true),
+                      const DataColumn(label: Text('Avg ms'), numeric: true),
+                      const DataColumn(label: Text('p90 ms'), numeric: true),
                       DataColumn(label: Text('Result')),
                     ],
                     rows: [
@@ -1231,7 +1241,7 @@ class _BaselineCard extends StatelessWidget {
                   Chip(
                     visualDensity: VisualDensity.compact,
                     label: Text(
-                      'APIs ${prev['api_count'] ?? '—'} · '
+                      '${_isPlaywrightRun(prev) ? 'Steps' : 'APIs'} ${prev['api_count'] ?? '—'} · '
                       '${prev['api_pass_count'] ?? '—'}✓ / ${prev['api_fail_count'] ?? '—'}✗',
                     ),
                   ),
@@ -1356,6 +1366,14 @@ class _BaselineDelta extends StatelessWidget {
       ],
     );
   }
+}
+
+bool _isPlaywrightRun(Map<String, dynamic> r) {
+  final tt = '${r['test_type'] ?? ''}'.toLowerCase();
+  final runner = '${r['runner'] ?? ''}'.toLowerCase();
+  return tt == 'playwright' ||
+      runner.contains('asrax-release-ops') ||
+      runner.contains('ui-test');
 }
 
 bool _hasStructuredTrace(Map<String, dynamic> trace) {
@@ -2168,7 +2186,7 @@ class _ApisTab extends StatelessWidget {
     return GlassCard(
       padding: const EdgeInsets.all(8),
       child: apis.isEmpty
-          ? const Center(child: Text('No API rows'))
+          ? const Center(child: Text('No step/API rows'))
           : SingleChildScrollView(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -2177,7 +2195,7 @@ class _ApisTab extends StatelessWidget {
                   dataRowMinHeight: 36,
                   dataRowMaxHeight: 48,
                   columns: const [
-                    DataColumn(label: Text('API')),
+                    DataColumn(label: Text('Step/API')),
                     DataColumn(label: Text('HTTP'), numeric: true),
                     DataColumn(label: Text('Calls'), numeric: true),
                     DataColumn(label: Text('Pass'), numeric: true),

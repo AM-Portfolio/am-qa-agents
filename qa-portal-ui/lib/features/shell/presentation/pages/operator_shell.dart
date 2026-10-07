@@ -16,9 +16,11 @@ class OperatorShell extends StatelessWidget {
   final Widget child;
 
   static const _nav = <(String route, String title, IconData icon)>[
+    (AppRoutes.services, 'Services', Icons.hub_outlined),
     (AppRoutes.runs, 'Runs', Icons.play_circle_outline),
     (AppRoutes.profiles, 'Profiles', Icons.tune),
     (AppRoutes.specs, 'OpenAPI', Icons.api_outlined),
+    (AppRoutes.flows, 'Flows', Icons.account_tree_outlined),
     (AppRoutes.uiFlows, 'UI flows', Icons.web_asset),
   ];
 
@@ -134,28 +136,32 @@ class OperatorShell extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Material(
-                    elevation: 0,
-                    color: theme.colorScheme.surface,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        BlocBuilder<_ShellCubit, _ShellState>(
-                          builder: (context, shell) {
-                            return ExecuteBar(
-                              apiOk: shell.apiOk && shell.k6Ok != false,
-                              apiMessage: shell.k6Ok == false
-                                  ? 'k6 missing'
-                                  : shell.message,
-                              onClearCache: () =>
-                                  context.read<_ShellCubit>().clearCache(),
-                            );
-                          },
-                        ),
-                      ],
+                  // Specs/Flows own their own run controls; hide global profile bar.
+                  if (!location.startsWith(AppRoutes.specs) &&
+                      !location.startsWith(AppRoutes.flows)) ...[
+                    Material(
+                      elevation: 0,
+                      color: theme.colorScheme.surface,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          BlocBuilder<_ShellCubit, _ShellState>(
+                            builder: (context, shell) {
+                              return ExecuteBar(
+                                apiOk: shell.apiOk && shell.k6Ok != false,
+                                apiMessage: shell.k6Ok == false
+                                    ? 'k6 missing'
+                                    : shell.message,
+                                onClearCache: () =>
+                                    context.read<_ShellCubit>().clearCache(),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Divider(height: 1),
+                    const Divider(height: 1),
+                  ],
                   Expanded(child: child),
                 ],
               ),

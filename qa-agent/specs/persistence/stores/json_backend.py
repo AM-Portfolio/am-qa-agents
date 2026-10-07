@@ -60,6 +60,26 @@ def api_outcome_counts(api_summary: list[dict[str, Any]] | None) -> dict[str, in
     return {"api_pass_count": passed, "api_fail_count": failed, "api_count": len(rows)}
 
 
+def _run_suite_value(row: dict[str, Any]) -> str:
+    payloads = row.get("payloads_used") or {}
+    params = payloads.get("run_params") or {} if isinstance(payloads, dict) else {}
+    for key in ("suite", "ui_suite"):
+        v = row.get(key) or (params.get(key) if isinstance(params, dict) else None)
+        if v:
+            return str(v)
+    return ""
+
+
+def _run_api_pack_value(row: dict[str, Any]) -> str:
+    payloads = row.get("payloads_used") or {}
+    params = payloads.get("run_params") or {} if isinstance(payloads, dict) else {}
+    for key in ("api_pack",):
+        v = row.get(key) or (params.get(key) if isinstance(params, dict) else None)
+        if v:
+            return str(v)
+    return ""
+
+
 def slim_run_for_list(row: dict[str, Any]) -> dict[str, Any]:
     """Lightweight run row for sidebar list (no k6 scripts / tokens)."""
     payloads = row.get("payloads_used") or {}
@@ -78,6 +98,8 @@ def slim_run_for_list(row: dict[str, Any]) -> dict[str, Any]:
             counts["api_fail_count"] = derived["api_fail_count"]
         if not counts["api_count"]:
             counts["api_count"] = derived["api_count"] or row.get("api_count")
+    suite = _run_suite_value(row)
+    api_pack = _run_api_pack_value(row)
     return {
         "id": row.get("id"),
         "started_at": row.get("started_at"),
@@ -93,6 +115,9 @@ def slim_run_for_list(row: dict[str, Any]) -> dict[str, Any]:
         "test_type": row.get("test_type"),
         "triggered_by": row.get("triggered_by"),
         "target_url": row.get("target_url"),
+        "suite": suite or None,
+        "ui_suite": row.get("ui_suite") or suite or None,
+        "api_pack": api_pack or None,
         "api_count": counts["api_count"],
         "api_pass_count": counts["api_pass_count"],
         "api_fail_count": counts["api_fail_count"],
@@ -133,6 +158,8 @@ def list_runs(
     q: str | None = None,
     started_from: str | None = None,
     started_to: str | None = None,
+    suite: str | None = None,
+    api_pack: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     with _lock:
         rows = _read_json(RUNS_FILE)
@@ -141,6 +168,8 @@ def list_runs(
     to_bound = _day_bound(started_to, end=True)
     matched: list[dict[str, Any]] = []
     rid = (run_id or "").strip()
+    suite_n = (suite or "").strip().lower() or None
+    pack_n = (api_pack or "").strip().lower() or None
     for row in rows:
         if rid and str(row.get("id") or "") != rid and not str(row.get("id") or "").startswith(rid):
             continue
@@ -158,6 +187,10 @@ def list_runs(
             continue
         if triggered_by and row.get("triggered_by") != triggered_by:
             continue
+        if suite_n and _run_suite_value(row).lower() != suite_n:
+            continue
+        if pack_n and _run_api_pack_value(row).lower() != pack_n:
+            continue
         started = str(row.get("started_at") or "")
         if from_bound and started < from_bound:
             continue
@@ -166,7 +199,17 @@ def list_runs(
         if q:
             ql = q.lower()
             blob = " ".join(
-                str(row.get(k, "")) for k in ("id", "config_name", "target_url", "service", "error")
+                str(row.get(k, ""))
+                for k in (
+                    "id",
+                    "config_name",
+                    "target_url",
+                    "service",
+                    "error",
+                    "suite",
+                    "ui_suite",
+                    "api_pack",
+                )
             ).lower()
             if ql not in blob:
                 continue

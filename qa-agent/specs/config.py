@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     spt_identity_url: str = ""
     spt_auth_username: str = "ssd2658@gmail.com"
     spt_auth_password: str | None = None
+    # Fernet key material for QA credential store (or derive from data_dir)
+    qa_credentials_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("QA_CREDENTIALS_KEY", "SPT_CREDENTIALS_KEY"),
+    )
 
     # Safety caps (preprod)
     max_vus: int = 50

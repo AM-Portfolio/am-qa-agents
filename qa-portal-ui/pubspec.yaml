@@ -19,6 +19,7 @@ dependencies:
   file_picker: ^8.0.0
   am_design_system:
     path: ../../am-modern-ui/am_design_system
+  node_flow: ^0.2.2
 
 dev_dependencies:
   flutter_test:

@@ -3,21 +3,29 @@ import 'package:go_router/go_router.dart';
 import '../../features/profiles/presentation/pages/profiles_page.dart';
 import '../../features/runs/presentation/pages/run_detail_page.dart';
 import '../../features/runs/presentation/pages/runs_page.dart';
+import '../../features/services/presentation/pages/services_page.dart';
 import '../../features/shell/presentation/pages/operator_shell.dart';
 import '../../features/specs/presentation/pages/specs_page.dart';
+import '../../features/flows/presentation/pages/flows_page.dart';
 import '../../features/ui_flows/presentation/pages/ui_flows_page.dart';
 
 abstract final class AppRoutes {
+  static const services = '/services';
   static const runs = '/runs';
   static const profiles = '/profiles';
   static const specs = '/specs';
+  static const flows = '/flows';
   static const uiFlows = '/ui-flows';
 }
 
 GoRouter createPortalRouter() {
   return GoRouter(
-    initialLocation: AppRoutes.runs,
+    initialLocation: AppRoutes.services,
     redirect: (context, state) {
+      final loc = state.uri.path;
+      if (loc.isEmpty || loc == '/') {
+        return AppRoutes.services;
+      }
       final base = Uri.base.queryParameters;
       final run = base['run'];
       if (run != null && run.isNotEmpty && state.matchedLocation == AppRoutes.runs) {
@@ -33,6 +41,24 @@ GoRouter createPortalRouter() {
       ShellRoute(
         builder: (context, state, child) => OperatorShell(child: child),
         routes: [
+          GoRoute(
+            path: AppRoutes.services,
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: ServicesPage(
+                initialService: state.uri.queryParameters['service'],
+              ),
+            ),
+            routes: [
+              GoRoute(
+                path: ':serviceKey',
+                pageBuilder: (context, state) => NoTransitionPage(
+                  child: ServicesPage(
+                    initialService: state.pathParameters['serviceKey'],
+                  ),
+                ),
+              ),
+            ],
+          ),
           GoRoute(
             path: AppRoutes.runs,
             pageBuilder: (context, state) => const NoTransitionPage(
@@ -57,6 +83,12 @@ GoRouter createPortalRouter() {
             path: AppRoutes.specs,
             pageBuilder: (context, state) => const NoTransitionPage(
               child: SpecsPage(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.flows,
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: FlowsPage(),
             ),
           ),
           GoRoute(

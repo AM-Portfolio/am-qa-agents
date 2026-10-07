@@ -685,3 +685,325 @@ async def run_release_readiness_inline(args: dict[str, Any]) -> dict[str, Any]:
     get_ledger().complete(tracking_id, final_status)
     get_ledger().upsert_step(tracking_id, "complete", outcome)
     return outcome
+
+
+async def start_or_run_service_onboard(
+    *,
+    service: str,
+    environment: str = "dev",
+    strict_payloads: bool = False,
+    strict_smoke: bool = False,
+    allow_llm: bool = True,
+    plugin_id: str | None = None,
+    use_temporal: bool = True,
+    wait: bool = False,
+    workflow_id: str | None = None,
+) -> dict[str, Any]:
+    """Start ServiceOnboardPrepWorkflow or run inline; shared by gateway + Specs API."""
+    import asyncio
+    import uuid
+
+    from orchestrator.activities.onboard_report import normalize_env
+
+    svc = (service or "").strip()
+    if not svc:
+        raise ValueError("service required")
+    env = normalize_env(environment)
+    wf_id = workflow_id or f"service-onboard-{svc}-{env}-{uuid.uuid4().hex[:10]}"
+    args = {
+        "service": svc,
+        "environment": env,
+        "strict_payloads": strict_payloads,
+        "strict_smoke": strict_smoke,
+        "allow_llm": allow_llm,
+        "plugin_id": plugin_id,
+        "workflow_id": wf_id,
+    }
+    force_inline = os.getenv("QA_AGENT_FORCE_INLINE", "").lower() in {"1", "true"}
+    if use_temporal and not force_inline:
+        try:
+            started = await start_service_onboard_prep(workflow_id=wf_id, args=args)
+            if wait:
+                for _ in range(120):
+                    polled = await get_service_onboard_result(started)
+                    if polled.get("status") == "COMPLETED" and polled.get("result"):
+                        return {
+                            "workflow_id": started,
+                            "mode": "temporal",
+                            "status": "COMPLETED",
+                            "result": polled["result"],
+                        }
+                    if polled.get("status") in {
+                        "FAILED",
+                        "TERMINATED",
+                        "CANCELED",
+                        "TIMED_OUT",
+                    }:
+                        return {
+                            "workflow_id": started,
+                            "mode": "temporal",
+                            "status": polled.get("status"),
+                            "result": polled.get("result"),
+                            "error": polled.get("error"),
+                        }
+                    await asyncio.sleep(2)
+                return {
+                    "workflow_id": started,
+                    "mode": "temporal",
+                    "status": "RUNNING",
+                    "hint": "still running; poll GET …/onboard/{workflow_id}",
+                }
+            return {"workflow_id": started, "mode": "temporal", "status": "STARTED"}
+        except Exception as exc:  # noqa: BLE001
+            LOG.warning(
+                "onboard.temporal_fallback error=%s",
+                exc,
+                extra={"event": "onboard.temporal_fallback"},
+            )
+            outcome = await run_service_onboard_prep_inline(args)
+            return {
+                "workflow_id": wf_id,
+                "mode": "inline_fallback",
+                "temporal_error": str(exc),
+                "status": "COMPLETED",
+                "result": outcome,
+            }
+    outcome = await run_service_onboard_prep_inline(args)
+    return {
+        "workflow_id": wf_id,
+        "mode": "inline",
+        "status": "COMPLETED",
+        "result": outcome,
+    }
+
+
+async def start_service_onboard_prep(
+    *,
+    workflow_id: str,
+    args: dict[str, Any],
+) -> str:
+    """Start ServiceOnboardPrepWorkflow on the release task queue."""
+    from temporalio.common import WorkflowIDReusePolicy
+
+    from orchestrator.activities.onboard_report import normalize_env
+
+    queue = assert_safe_task_queue()
+    namespace = resolve_namespace()
+    host = os.getenv("TEMPORAL_HOST", "localhost:7233")
+    service = str(args.get("service") or "")
+    env = normalize_env(args.get("environment"))
+    LOG.info(
+        "temporal.start ServiceOnboardPrepWorkflow workflow_id=%s service=%s env=%s queue=%s",
+        workflow_id,
+        service,
+        env,
+        queue,
+        extra={
+            "event": "temporal.start",
+            "domain": "onboard",
+            "flow": "onboard.start",
+            "workflow_id": workflow_id,
+            "target": f"{host}/{namespace}/{queue}",
+        },
+    )
+    client = await get_temporal_client()
+    handle = await client.start_workflow(
+        "ServiceOnboardPrepWorkflow",
+        {**args, "service": service, "environment": env, "workflow_id": workflow_id},
+        id=workflow_id,
+        task_queue=queue,
+        id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
+    )
+    LOG.info(
+        "temporal.started ServiceOnboardPrepWorkflow workflow_id=%s",
+        handle.id,
+        extra={
+            "event": "temporal.started",
+            "domain": "onboard",
+            "flow": "onboard.started",
+            "workflow_id": handle.id,
+        },
+    )
+    return handle.id
+
+
+async def get_service_onboard_result(workflow_id: str) -> dict[str, Any]:
+    """Poll Temporal for onboard workflow status / result."""
+    client = await get_temporal_client()
+    handle = client.get_workflow_handle(workflow_id)
+    desc = await handle.describe()
+    status = str(getattr(desc.status, "name", None) or desc.status or "UNKNOWN")
+    out: dict[str, Any] = {
+        "workflow_id": workflow_id,
+        "status": status,
+        "run_id": getattr(desc, "run_id", None) or getattr(desc.execution_info, "run_id", None),
+    }
+    if status in {"COMPLETED", "FAILED", "TERMINATED", "CANCELED", "TIMED_OUT"}:
+        try:
+            if status == "COMPLETED":
+                out["result"] = await handle.result()
+            else:
+                out["result"] = None
+        except Exception as exc:  # noqa: BLE001
+            out["error"] = str(exc)
+    return out
+
+
+async def run_service_onboard_prep_inline(args: dict[str, Any]) -> dict[str, Any]:
+    """Local path without Temporal worker (same activity order as the workflow)."""
+    from common.observability.domain_flow import emit_flow_phase
+    from orchestrator.activities.onboard_prep import (
+        activity_onboard_analyze,
+        activity_onboard_apis,
+        activity_onboard_auth,
+        activity_onboard_contract,
+        activity_onboard_generate_payloads,
+        activity_onboard_llm_status,
+        activity_onboard_openapi_sync,
+        activity_onboard_overview,
+        activity_onboard_persist_report,
+        activity_onboard_prepare_mcp,
+        activity_onboard_tools_refresh,
+        activity_onboard_tools_smoke,
+    )
+    from orchestrator.activities.onboard_report import build_report, normalize_env
+
+    service = str(args.get("service") or "").strip()
+    env = normalize_env(args.get("environment"))
+    wf_id = str(args.get("workflow_id") or f"onboard-inline-{service}-{env}")
+    base = {**args, "service": service, "environment": env, "workflow_id": wf_id, "mode": "inline"}
+    steps: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    payload_set_version: int | None = None
+    tool_count: int | None = None
+    api_count: int | None = None
+    llm_rows = 0
+
+    def _stop(step: dict[str, Any]) -> bool:
+        return bool(step.get("hard_fail") or (not step.get("ok") and step.get("required")))
+
+    emit_flow_phase(phase="analyze", detail="inline")
+    step = await activity_onboard_analyze(base)
+    steps.append(step)
+    if _stop(step):
+        return await _inline_finish(
+            service, env, wf_id, steps, warnings, payload_set_version, tool_count, api_count
+        )
+    target_url = str((step.get("evidence") or {}).get("target_url") or "")
+
+    emit_flow_phase(phase="openapi_sync", detail="inline")
+    step = await activity_onboard_openapi_sync({**base, "target_url": target_url})
+    steps.append(step)
+    if _stop(step):
+        return await _inline_finish(
+            service, env, wf_id, steps, warnings, payload_set_version, tool_count, api_count
+        )
+
+    emit_flow_phase(phase="apis_catalog", detail="inline")
+    step = await activity_onboard_apis(base)
+    steps.append(step)
+    if _stop(step):
+        return await _inline_finish(
+            service, env, wf_id, steps, warnings, payload_set_version, tool_count, api_count
+        )
+    api_count = (step.get("evidence") or {}).get("api_count")
+
+    emit_flow_phase(phase="tools_refresh", detail="inline")
+    step = await activity_onboard_tools_refresh(base)
+    steps.append(step)
+    if _stop(step):
+        return await _inline_finish(
+            service, env, wf_id, steps, warnings, payload_set_version, tool_count, api_count
+        )
+    tool_count = (step.get("evidence") or {}).get("tool_count")
+
+    emit_flow_phase(phase="contract", detail="inline")
+    step = await activity_onboard_contract(base)
+    steps.append(step)
+    if _stop(step):
+        return await _inline_finish(
+            service, env, wf_id, steps, warnings, payload_set_version, tool_count, api_count
+        )
+
+    emit_flow_phase(phase="auth_try_token", detail="inline")
+    step = await activity_onboard_auth(base)
+    steps.append(step)
+    if _stop(step):
+        return await _inline_finish(
+            service, env, wf_id, steps, warnings, payload_set_version, tool_count, api_count
+        )
+
+    emit_flow_phase(phase="prepare_mcp", detail="inline")
+    step = await activity_onboard_prepare_mcp(base)
+    steps.append(step)
+    if not step.get("ok") or str(step.get("status") or "").startswith("warn"):
+        warnings.append(f"prepare_mcp:{step.get('status')}")
+
+    emit_flow_phase(phase="generate_all_payloads", detail="inline")
+    step = await activity_onboard_generate_payloads(base)
+    steps.append(step)
+    ev = step.get("evidence") or {}
+    if ev.get("payload_set_version") is not None:
+        payload_set_version = int(ev["payload_set_version"])
+    llm_rows = int(ev.get("llm_rows") or 0)
+    if _stop(step):
+        return await _inline_finish(
+            service, env, wf_id, steps, warnings, payload_set_version, tool_count, api_count
+        )
+    if not step.get("ok"):
+        warnings.append(f"generate_all_payloads:{step.get('status')}")
+
+    emit_flow_phase(phase="llm_fallback", detail="inline")
+    step = await activity_onboard_llm_status({**base, "llm_rows": llm_rows})
+    steps.append(step)
+
+    emit_flow_phase(phase="tools_smoke", detail="inline")
+    step = await activity_onboard_tools_smoke(base)
+    steps.append(step)
+    if step.get("hard_fail"):
+        return await _inline_finish(
+            service, env, wf_id, steps, warnings, payload_set_version, tool_count, api_count
+        )
+    if step.get("status") in {"billing_dependency", "smoke_soft_failure"}:
+        warnings.append(f"tools_smoke:{step.get('status')}")
+
+    emit_flow_phase(phase="overview_report", detail="inline")
+    step = await activity_onboard_overview({**base, "warnings": warnings})
+    steps.append(step)
+
+    return await _inline_finish(
+        service, env, wf_id, steps, warnings, payload_set_version, tool_count, api_count
+    )
+
+
+async def _inline_finish(
+    service: str,
+    env: str,
+    wf_id: str,
+    steps: list[dict[str, Any]],
+    warnings: list[str],
+    payload_set_version: int | None,
+    tool_count: int | None,
+    api_count: int | None,
+) -> dict[str, Any]:
+    from orchestrator.activities.onboard_prep import activity_onboard_persist_report
+    from orchestrator.activities.onboard_report import build_report
+
+    report = build_report(
+        service=service,
+        environment=env,
+        workflow_id=wf_id,
+        steps=steps,
+        payload_set_version=payload_set_version,
+        tool_count=tool_count,
+        api_count=api_count,
+        warnings=warnings,
+        mode="inline",
+    )
+    try:
+        await activity_onboard_persist_report(
+            {"report": report, "service": service, "environment": env}
+        )
+    except Exception:  # noqa: BLE001
+        LOG.warning("onboard.persist_failed service=%s env=%s", service, env)
+    return report

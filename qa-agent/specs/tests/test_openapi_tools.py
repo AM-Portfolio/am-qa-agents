@@ -56,7 +56,15 @@ def test_spec_to_tools_basic():
     assert any("login" in n for n in names)
     assert any("usersMe" in n or "users_me" in n.lower() for n in names)
     # delete skipped by default
-    assert not any("delete" in n.lower() for n in names)
+    assert not any(t["_meta"]["method"] == "delete" for t in tools)
+
+    all_tools = spec_to_tools(
+        spec,
+        base_url="https://am.asrax.in/identity",
+        service="am-identity",
+        skip_delete=False,
+    )
+    assert any(t["_meta"]["method"] == "delete" for t in all_tools)
 
 
 def test_resolve_tool_for_login_scenario():

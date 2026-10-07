@@ -60,6 +60,9 @@ def _tool_name(service: str, op_id: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_]", "_", raw)[:96]
 
 
+_TOOL_HTTP_METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
+
+
 def spec_to_tools(
     spec_dict: dict[str, Any],
     *,
@@ -67,7 +70,11 @@ def spec_to_tools(
     service: str = "",
     skip_delete: bool = True,
 ) -> list[dict[str, Any]]:
-    """Convert OpenAPI dict → tool list with private _meta routing."""
+    """Convert OpenAPI dict → tool list with private _meta routing.
+
+    When ``skip_delete=False``, includes DELETE plus HEAD/OPTIONS so tool count
+    matches Specs ``openapi_to_apis`` / Swagger operation_count.
+    """
     tools: list[dict[str, Any]] = []
     if not base_url:
         servers = spec_dict.get("servers") or []
@@ -78,7 +85,8 @@ def spec_to_tools(
     for path, path_item in paths.items():
         if not isinstance(path_item, dict):
             continue
-        for method in ("get", "post", "put", "patch", "delete"):
+        shared_params = list(path_item.get("parameters") or [])
+        for method in _TOOL_HTTP_METHODS:
             operation = path_item.get(method)
             if not operation or not isinstance(operation, dict):
                 continue
@@ -90,7 +98,7 @@ def spec_to_tools(
             )
             properties: dict[str, Any] = {}
             required: list[str] = []
-            for param in operation.get("parameters") or []:
+            for param in shared_params + list(operation.get("parameters") or []):
                 if not isinstance(param, dict):
                     continue
                 if "$ref" in param:

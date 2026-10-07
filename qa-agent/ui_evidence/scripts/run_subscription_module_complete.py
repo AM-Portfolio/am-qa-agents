@@ -162,49 +162,39 @@ async def _run_ui(args: argparse.Namespace) -> dict[str, Any]:
     return summary
 
 
-def _run_api(environment: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    from ui_evidence.api.flow_metrics import (
-        load_ledger,
-        merge_sweep_into_ledger,
-        save_ledger,
-        subscription_ledger_path,
-    )
-    from ui_evidence.api.run_all_auth_user_apis import run_all_auth_user_apis
-    from ui_evidence.api.run_subscription_api_flows import run_subscription_api_flows
+def _run_api(environment: str) -> dict[str, Any]:
+    """Plugin pack runner: select/prep/execute (fail-closed on env=dev)."""
+    from ui_evidence.plugins.pack_runner import run_api_pack
 
-    flows = run_subscription_api_flows(
-        environment=environment, refresh=True, report_dir=_api_report_dir()
-    )
-    sweep = run_all_auth_user_apis(
-        environment=environment,
-        services=["am-subscription"],
-        refresh=True,
-        report_dir=_api_report_dir(),
-    )
-    # Rename sweep latest is auth-user-apis — copy note in report only
-    ledger_path = subscription_ledger_path(_api_report_dir())
-    ledger = load_ledger(ledger_path)
-    merge_sweep_into_ledger(ledger, list(sweep.get("results") or []))
-    save_ledger(ledger_path, ledger)
-    return flows, sweep
+    return run_api_pack("subscription", environment)
 
 
 def build_combined_report(
     *,
     ui: dict[str, Any],
-    api_flows: dict[str, Any],
-    api_sweep: dict[str, Any],
+    api_pack_result: dict[str, Any],
     environment: str,
 ) -> dict[str, Any]:
+    api_flows = api_pack_result.get("api_flows") or {}
+    api_sweep = api_pack_result.get("api_sweep") or {}
     ui_hard = int(ui.get("hard_fail_count") or 0)
     api_failed = int((api_flows.get("counts") or {}).get("failed") or 0)
     sweep_failed = int((api_sweep.get("counts") or {}).get("failed") or 0)
-    decision = "GO" if ui_hard == 0 and api_failed == 0 and sweep_failed == 0 else "NO_GO"
+    pack_decision = str(api_pack_result.get("decision") or "NO_GO")
+    if pack_decision != "GO":
+        decision = "NO_GO"
+    else:
+        decision = (
+            "GO" if ui_hard == 0 and api_failed == 0 and sweep_failed == 0 else "NO_GO"
+        )
     return {
         "generated_at": _utc(),
         "environment": environment,
         "pack": "subscription_module",
         "decision": decision,
+        "llm_invoked": bool(api_pack_result.get("llm_invoked")),
+        "prep": api_pack_result.get("prep") or {},
+        "bank": api_pack_result.get("bank") or {},
         "ui": ui,
         "api_flows": {
             "decision": api_flows.get("decision"),
@@ -222,6 +212,8 @@ def build_combined_report(
         },
         "metrics": api_flows.get("metrics") or {},
         "catalog": "ui_evidence/docs/SUBSCRIPTION_MODULE_CATALOG.md",
+        "executed": bool(api_pack_result.get("executed")),
+        "pack_reason": api_pack_result.get("reason"),
     }
 
 
@@ -229,9 +221,13 @@ async def run_complete(args: argparse.Namespace) -> dict[str, Any]:
     _load_env()
     environment = args.environment
 
-    print("=== API subscription flows ===", flush=True)
-    api_flows, api_sweep = _run_api(environment)
-    print("=== API subscription sweep done ===", flush=True)
+    print("=== API pack (plugin + bank select/prep) ===", flush=True)
+    api_pack_result = _run_api(environment)
+    print(
+        f"=== API pack decision={api_pack_result.get('decision')} "
+        f"executed={api_pack_result.get('executed')} ===",
+        flush=True,
+    )
 
     if args.skip_ui:
         ui: dict[str, Any] = {
@@ -243,13 +239,23 @@ async def run_complete(args: argparse.Namespace) -> dict[str, Any]:
         }
         print("=== UI skipped (--skip-ui) ===", flush=True)
     else:
-        print("=== UI subscription_module ===", flush=True)
-        ui = await _run_ui(args)
+        if not api_pack_result.get("executed") and api_pack_result.get("decision") == "NO_GO":
+            ui = {
+                "suite": "subscription_module",
+                "decision": "SKIPPED",
+                "hard_fail_count": 0,
+                "soft_fail_count": 0,
+                "results": [],
+                "reason": "api_prep_fail_closed",
+            }
+            print("=== UI skipped (prep fail-closed) ===", flush=True)
+        else:
+            print("=== UI subscription_module ===", flush=True)
+            ui = await _run_ui(args)
 
     report = build_combined_report(
         ui=ui,
-        api_flows=api_flows,
-        api_sweep=api_sweep,
+        api_pack_result=api_pack_result,
         environment=environment,
     )
     out_dir = _api_report_dir()
@@ -275,7 +281,7 @@ async def run_complete(args: argparse.Namespace) -> dict[str, Any]:
 def main() -> int:
     logging.basicConfig(level=logging.WARNING)
     parser = argparse.ArgumentParser(description="Subscription module API+UI complete")
-    parser.add_argument("--environment", default="prod")
+    parser.add_argument("--environment", default="dev")
     parser.add_argument("--url", default=None)
     parser.add_argument("--target-file", default=None)
     parser.add_argument("--target", default=None)

@@ -234,6 +234,7 @@ def payload_to_api_override(payload: dict[str, Any]) -> dict[str, Any]:
         "path": req.get("path"),
         "headers": req.get("headers") or {},
         "query": req.get("query") or {},
+        "path_params": req.get("path_params") or {},
         "body": req.get("body"),
     }
 
@@ -344,18 +345,21 @@ def create_payload_set(
     label: str | None = None,
     clone_from: int | None = None,
     make_active: bool = True,
+    empty: bool = False,
 ) -> dict[str, Any]:
     meta = _read_sets_meta(service)
     existing = [int(s.get("version") or 0) for s in (meta.get("sets") or [])]
     next_ver = (max(existing) if existing else 0) + 1
     apis: dict[str, Any] = {}
-    src_ver = clone_from
-    if src_ver is None and existing:
-        src_ver = meta.get("active_version") or max(existing)
-    if src_ver is not None:
-        src = get_payload_set(service, int(src_ver))
-        if src and isinstance(src.get("apis"), dict):
-            apis = json.loads(json.dumps(src["apis"]))  # deep copy
+    src_ver: int | None = None
+    if not empty:
+        src_ver = clone_from
+        if src_ver is None and existing:
+            src_ver = meta.get("active_version") or max(existing)
+        if src_ver is not None:
+            src = get_payload_set(service, int(src_ver))
+            if src and isinstance(src.get("apis"), dict):
+                apis = json.loads(json.dumps(src["apis"]))  # deep copy
     now = _now()
     payload_set = {
         "id": str(uuid.uuid4()),
@@ -398,6 +402,72 @@ def set_active_payload_set(service: str, version: int) -> dict[str, Any]:
     meta["active_version"] = int(version)
     _write_sets_meta(service, meta)
     return {"service": service, "active_version": int(version), "set": _summarize_set(payload_set)}
+
+
+def remove_apis_from_payload_set(
+    service: str,
+    version: int,
+    api_ids: list[str],
+) -> dict[str, Any]:
+    """Drop one or more API entries from a payload set version."""
+    payload_set = get_payload_set(service, int(version))
+    if not payload_set:
+        raise FileNotFoundError(f"Payload set {service} v{version} not found")
+    apis = dict(payload_set.get("apis") or {})
+    removed: list[str] = []
+    for raw in api_ids:
+        key = str(raw)
+        if key in apis:
+            del apis[key]
+            removed.append(key)
+    payload_set["apis"] = apis
+    payload_set["updated_at"] = _now()
+    ver = int(payload_set["version"])
+    _set_file_path(service, ver).write_text(
+        json.dumps(payload_set, indent=2, default=str), encoding="utf-8"
+    )
+    meta_doc = _read_sets_meta(service)
+    sets = []
+    for s in meta_doc.get("sets") or []:
+        if int(s.get("version") or 0) == ver:
+            sets.append(_summarize_set(payload_set))
+        else:
+            sets.append(s)
+    meta_doc["sets"] = sets
+    _write_sets_meta(service, meta_doc)
+    return {
+        "service": service,
+        "version": ver,
+        "removed": removed,
+        "api_count": len(apis),
+        "set": _summarize_set(payload_set),
+    }
+
+
+def delete_payload_set(service: str, version: int) -> dict[str, Any]:
+    """Delete an entire payload-set version and update meta / active pointer."""
+    ver = int(version)
+    path = _set_file_path(service, ver)
+    if not path.is_file():
+        raise FileNotFoundError(f"Payload set {service} v{ver} not found")
+    path.unlink(missing_ok=True)
+    meta = _read_sets_meta(service)
+    sets = [s for s in (meta.get("sets") or []) if int(s.get("version") or 0) != ver]
+    meta["sets"] = sets
+    active = meta.get("active_version")
+    if active is not None and int(active) == ver:
+        if sets:
+            meta["active_version"] = max(int(s.get("version") or 0) for s in sets)
+        else:
+            meta["active_version"] = None
+    _write_sets_meta(service, meta)
+    return {
+        "deleted": True,
+        "service": service,
+        "version": ver,
+        "active_version": meta.get("active_version"),
+        "remaining": len(sets),
+    }
 
 
 def upsert_api_in_payload_set(

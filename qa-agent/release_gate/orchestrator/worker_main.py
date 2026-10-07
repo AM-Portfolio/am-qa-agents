@@ -59,11 +59,29 @@ async def run_worker() -> None:
         activity_release_ops_stability_score,
         activity_release_ops_ui_suite,
         activity_release_ops_wait_deploy_healthy,
+        activity_onboard_analyze,
+        activity_onboard_apis,
+        activity_onboard_auth,
+        activity_onboard_contract,
+        activity_onboard_generate_payloads,
+        activity_onboard_llm_status,
+        activity_onboard_openapi_sync,
+        activity_onboard_overview,
+        activity_onboard_persist_report,
+        activity_onboard_prepare_mcp,
+        activity_onboard_tools_refresh,
+        activity_onboard_tools_smoke,
         activity_resolve_load_profile,
         activity_security_scan,
         activity_smoke_ui_test,
     )
-    from orchestrator.workflows import AsraxReleaseOpsWorkflow, ReleaseReadinessWorkflow
+    from orchestrator.activities.flow_execute import activity_flow_execute
+    from orchestrator.workflows import (
+        AsraxReleaseOpsWorkflow,
+        FlowExecuteWorkflow,
+        ReleaseReadinessWorkflow,
+        ServiceOnboardPrepWorkflow,
+    )
 
     configure_logging()
     configure_tracing(service_name="am-qa-agents")
@@ -87,8 +105,14 @@ async def run_worker() -> None:
     worker = Worker(
         client,
         task_queue=queue,
-        workflows=[ReleaseReadinessWorkflow, AsraxReleaseOpsWorkflow],
+        workflows=[
+            ReleaseReadinessWorkflow,
+            AsraxReleaseOpsWorkflow,
+            ServiceOnboardPrepWorkflow,
+            FlowExecuteWorkflow,
+        ],
         activities=[
+            activity_flow_execute,
             activity_classify,
             activity_resolve_load_profile,
             activity_await_index,
@@ -120,6 +144,18 @@ async def run_worker() -> None:
             activity_release_ops_publish_drive,
             activity_release_ops_cliq_final,
             activity_release_ops_complete,
+            activity_onboard_analyze,
+            activity_onboard_openapi_sync,
+            activity_onboard_apis,
+            activity_onboard_tools_refresh,
+            activity_onboard_contract,
+            activity_onboard_auth,
+            activity_onboard_prepare_mcp,
+            activity_onboard_generate_payloads,
+            activity_onboard_llm_status,
+            activity_onboard_tools_smoke,
+            activity_onboard_overview,
+            activity_onboard_persist_report,
         ],
         workflow_runner=runner,
         interceptors=temporal_worker_interceptors(),

@@ -1,0 +1,50 @@
+apiVersion: am.qa.plugin/v1
+id: am-subscription
+enabled: true
+title: Subscription QA plugin
+spt_service_id: am-subscription
+depends_on:
+  - am-identity
+suite: subscription_module
+api_pack: subscription
+trigger_paths:
+  - am-subscription/**
+  - .github/workflows/am-subscription.yml
+  - .github/workflows/subscription-qa-on-main.yml
+env_policy:
+  mutate_envs: [dev]
+  block_skills_on:
+    contabo_prod: [level5_abuse, security]
+contract:
+  openapi_path: /openapi.json
+  min_tools: 3
+catalog:
+  # invent profile + features live in Mongo (qa_invent_profiles / qa_features), not git
+  apis: catalog/apis.yaml
+  ui_profiles: catalog/ui.yaml
+  features: features/
+data_prep:
+  entry: seed:prepare
+  fail_closed_envs: [dev]
+  assert_only_envs: [contabo_prod, prod]
+runners:
+  api_flows: ui_evidence.api.run_subscription_api_flows:run_subscription_api_flows
+  api_sweep_services:
+    - am-subscription
+scenario_bank:
+  service_key: am-subscription
+  seed_skills:
+    - data_generator
+    - happy_flow
+    - level2_alt_path
+reports:
+  combined: ui_evidence/data/reports/api-test/subscription-module-complete-latest.html
+  api_flows: ui_evidence/data/reports/api-test/subscription-api-flows-latest.html
+  metrics_ledger: ui_evidence/data/reports/api-test/subscription-api-flows-metrics.json
+portal:
+  ops_start: POST /qa/v2/releases/ops/start
+  ops_start_defaults:
+    suite: subscription_module
+    api_pack: subscription
+    default_env: dev
+    skip_soak: true

@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from specs.security.acl import AclMiddleware, Caller, seed_bootstrap_keys
 from specs.api.platform import router as platform_router
+from specs.api.flows_api import router as flows_router
 from specs.config import settings
 from specs.load.config_builder import config_from_request, ensure_default_config
 from specs.portal.dashboard import render_portal
@@ -30,11 +31,13 @@ from specs.mcp.control import mount_mcp
 from specs.payloads.payload_store import (
     create_payload_set,
     delete_payload,
+    delete_payload_set,
     ensure_payload_set,
     get_payload,
     get_payload_set,
     list_payload_sets,
     list_payloads,
+    remove_apis_from_payload_set,
     save_from_trace,
     save_payload,
     set_active_payload_set,
@@ -61,6 +64,7 @@ from specs.persistence.run_store import (
 from specs.schemas import (
     PayloadCreateRequest,
     PayloadSetCreateRequest,
+    PayloadSetRemoveApisRequest,
     PayloadSetUpsertApiRequest,
     RunExecuteRequest,
     SavePayloadRequest,
@@ -87,6 +91,12 @@ async def _startup_db_and_seed() -> None:
         except Exception:
             pass
         seed_bootstrap_keys()
+        try:
+            from specs.security.credential_store import seed_from_spt_env
+
+            seed_from_spt_env()
+        except Exception:
+            pass
         # Orphaned "running" rows from crashed processes / JSON migration
         try:
             from specs.persistence.run_store import list_runs, update_run
@@ -112,6 +122,12 @@ async def _startup_db_and_seed() -> None:
 async def _app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """DB seed + FastMCP streamable HTTP session manager (required for /mcp)."""
     await _startup_db_and_seed()
+    try:
+        from specs.flows.scheduler import start_local_ticker
+
+        start_local_ticker()
+    except Exception:  # noqa: BLE001
+        pass
     async with control_mcp.session_manager.run():
         yield
 
@@ -133,6 +149,7 @@ _STATIC_DIR = portal_static_dir()
 if _STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 app.include_router(platform_router)
+app.include_router(flows_router)
 # Flutter web on another origin (e.g. localhost:8151 → :8150) needs CORS.
 # Cluster traffic is same-origin via Traefik; local allow-list is for portal dev.
 app.add_middleware(
@@ -140,6 +157,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:8151",
         "http://127.0.0.1:8151",
+        "http://localhost:8152",
+        "http://127.0.0.1:8152",
         "http://localhost:8150",
         "http://127.0.0.1:8150",
     ],
@@ -246,6 +265,8 @@ async def api_list_runs(
     run_id: str | None = None,
     test_type: str | None = None,
     triggered_by: str | None = None,
+    suite: str | None = None,
+    api_pack: str | None = None,
     q: str | None = None,
     started_from: str | None = Query(None, alias="from"),
     started_to: str | None = Query(None, alias="to"),
@@ -263,6 +284,8 @@ async def api_list_runs(
         run_id=run_id,
         test_type=test_type,
         triggered_by=triggered_by,
+        suite=suite,
+        api_pack=api_pack,
         q=q,
         started_from=started_from,
         started_to=started_to,
@@ -571,6 +594,28 @@ async def api_upsert_payload_set_api(
             name=body.name,
             bump_set=body.bump_set,
         )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/api/payload-sets/{service}/{version}/apis")
+async def api_remove_payload_set_apis(
+    service: str,
+    version: int,
+    body: PayloadSetRemoveApisRequest,
+) -> dict:
+    if not body.api_ids:
+        raise HTTPException(status_code=400, detail="api_ids required")
+    try:
+        return remove_apis_from_payload_set(service, version, list(body.api_ids))
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/api/payload-sets/{service}/{version}")
+async def api_delete_payload_set(service: str, version: int) -> dict:
+    try:
+        return delete_payload_set(service, version)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

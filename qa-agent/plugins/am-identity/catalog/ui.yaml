@@ -1,0 +1,8 @@
+# Identity plugin is API-first; UI auth flows stay in registry auth suites.
+profiles: []
+scenarios:
+  - AUTH_API_HEALTH
+  - AUTH_API_LOGIN
+  - AUTH_API_USERS_ME
+  - AUTH_API_FORGOT_SCHEMA
+  - AUTH_API_REGISTER_SCHEMA

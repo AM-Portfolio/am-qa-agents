@@ -104,9 +104,16 @@ class PendingReleaseRequest:
         return asdict(self)
 
     def workflow_args(self) -> dict[str, Any]:
-        api_pack = self.api_pack or (
-            "subscription" if self.suite == "subscription_module" else ""
-        )
+        api_pack = self.api_pack or ""
+        if not api_pack:
+            try:
+                from ui_evidence.plugins.loader import resolve_api_pack_default
+
+                api_pack = resolve_api_pack_default(self.suite)
+            except Exception:  # noqa: BLE001
+                api_pack = (
+                    "subscription" if self.suite == "subscription_module" else ""
+                )
         return {
             "tracking_id": self.tracking_id or f"qa-{uuid.uuid4().hex[:12]}",
             "release_id": self.release_id or None,

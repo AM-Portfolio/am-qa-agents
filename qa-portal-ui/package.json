@@ -8,12 +8,13 @@
     "analyze": "flutter analyze --no-fatal-infos",
     "test": "flutter test",
     "run": "npm run run:local",
-    "run:local": "flutter run -d chrome --web-port=8151 --dart-define=API_BASE=http://localhost:8150",
+    "run:local": "flutter run -d web-server --web-hostname=127.0.0.1 --web-port=8151 --dart-define=API_BASE=http://localhost:8150",
     "run:dev": "flutter run -d chrome --web-port=8151 --dart-define=API_BASE=https://am-dev.asrax.in/qa --dart-define=ROOT_PATH=/qa",
     "run:cluster": "flutter run -d chrome --web-port=8151 --dart-define=API_BASE=https://am.asrax.in/qa --dart-define=ROOT_PATH=/qa",
     "build": "npm run build:local",
     "build:local": "flutter build web --release --base-href=/ui/",
-    "build:cluster": "flutter build web --release --base-href=/qa/ui/ --dart-define=API_BASE=/qa --dart-define=ROOT_PATH=/qa",
+    "build:dev": "flutter build web --release --base-href=/qa/ui/ --dart-define=API_BASE=/qa --dart-define=ROOT_PATH=/qa --no-wasm-dry-run",
+    "build:cluster": "flutter build web --release --base-href=/qa/ui/ --dart-define=API_BASE=/qa --dart-define=ROOT_PATH=/qa --no-wasm-dry-run",
     "clean": "flutter clean"
   }
 }

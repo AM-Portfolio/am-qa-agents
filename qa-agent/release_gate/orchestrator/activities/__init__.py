@@ -50,6 +50,20 @@ from orchestrator.activities.release_ops import (
     activity_release_ops_ui_suite,
     activity_release_ops_wait_deploy_healthy,
 )
+from orchestrator.activities.onboard_prep import (
+    activity_onboard_analyze,
+    activity_onboard_apis,
+    activity_onboard_auth,
+    activity_onboard_contract,
+    activity_onboard_generate_payloads,
+    activity_onboard_llm_status,
+    activity_onboard_openapi_sync,
+    activity_onboard_overview,
+    activity_onboard_persist_report,
+    activity_onboard_prepare_mcp,
+    activity_onboard_tools_refresh,
+    activity_onboard_tools_smoke,
+)
 
 __all__ = [
     "activity_await_index",
@@ -84,5 +98,17 @@ __all__ = [
     "activity_release_ops_publish_drive",
     "activity_release_ops_cliq_final",
     "activity_release_ops_complete",
+    "activity_onboard_analyze",
+    "activity_onboard_openapi_sync",
+    "activity_onboard_apis",
+    "activity_onboard_tools_refresh",
+    "activity_onboard_contract",
+    "activity_onboard_auth",
+    "activity_onboard_prepare_mcp",
+    "activity_onboard_generate_payloads",
+    "activity_onboard_llm_status",
+    "activity_onboard_tools_smoke",
+    "activity_onboard_overview",
+    "activity_onboard_persist_report",
     "build_evidence_bundle",
 ]

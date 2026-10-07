@@ -61,7 +61,10 @@ class ExecuteRepository {
   }
 
   Future<Map<String, dynamic>> execute({
-    required String configId,
+    String? configId,
+    String? service,
+    String? audience,
+    String? environment,
     String testType = 'k6',
     int vus = 1,
     int calls = 1,
@@ -73,10 +76,17 @@ class ExecuteRepository {
     String? openapiVersion,
     String? payloadSet,
   }) async {
+    int? payloadSetVersion;
+    if (payloadSet != null && payloadSet.isNotEmpty) {
+      payloadSetVersion = int.tryParse(payloadSet);
+    }
     final res = await _api.post(
       '/api/runs/execute',
       data: {
-        'config_id': configId,
+        if (configId != null && configId.isNotEmpty) 'config_id': configId,
+        if (service != null && service.isNotEmpty) 'service': service,
+        if (audience != null && audience.isNotEmpty) 'audience': audience,
+        if (environment != null && environment.isNotEmpty) 'environment': environment,
         'test_type': testType,
         'vus': vus,
         'iterations': calls,
@@ -87,7 +97,7 @@ class ExecuteRepository {
         if (apiIds != null && apiIds.isNotEmpty) 'api_ids': apiIds,
         if (openapiVersion != null && openapiVersion.isNotEmpty)
           'openapi_version': openapiVersion,
-        if (payloadSet != null && payloadSet.isNotEmpty) 'payload_set': payloadSet,
+        if (payloadSetVersion != null) 'payload_set_version': payloadSetVersion,
       },
     );
     return asMap(res.data);

@@ -1,0 +1,44 @@
+# Platform skill taxonomy (shared). Plugins may override quotas only.
+apiVersion: am.qa.skills/v1
+skills:
+  - id: data_generator
+    level: L0
+    env:
+      dev: run
+      contabo_prod: assert_only
+  - id: happy_flow
+    level: L1
+    env: { dev: run, contabo_prod: run }
+  - id: level2_alt_path
+    level: L2
+    env: { dev: run, contabo_prod: run }
+  - id: validation
+    level: L2
+    env: { dev: run, contabo_prod: read_only }
+  - id: level3_edge
+    level: L3
+    env: { dev: run, contabo_prod: skip_mutate }
+  - id: null_point
+    level: L3
+    env: { dev: run, contabo_prod: skip_mutate }
+  - id: tweak_data
+    level: L3
+    env: { dev: run, contabo_prod: skip_mutate }
+  - id: level4_state
+    level: L4
+    env: { dev: run, contabo_prod: skip }
+  - id: level5_abuse
+    level: L5
+    env: { dev: run, contabo_prod: block }
+  - id: security
+    level: L5
+    env: { dev: run, contabo_prod: block }
+
+select_few_default: 6
+select_few_mix:
+  - happy_flow
+  - validation
+  - null_point
+  - level3_edge
+  - security
+  - never_run_or_failed

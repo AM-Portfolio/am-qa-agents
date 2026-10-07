@@ -112,9 +112,22 @@ async def execute_run(
                 },
             )
         if len(matches) > 1:
-            # Prefer template-ci / known seed names over ad-hoc duplicates.
+            # Prefer template-* seeds; among those, match requested test_type (Specs → k6).
             preferred = [m for m in matches if str(m.get("name") or "").startswith("template-")]
             matches = preferred or matches
+            want_tt = str(
+                body.test_type
+                or (getattr(body.config, "test_type", None) if body.config else None)
+                or "k6"
+            ).lower()
+            by_type = [
+                m
+                for m in matches
+                if str(m.get("test_type") or "").lower() == want_tt
+                or str(m.get("name") or "").endswith(f"-{want_tt}")
+            ]
+            if by_type:
+                matches = by_type
             if len(matches) > 1:
                 matches = [matches[0]]
         cfg = matches[0]
@@ -373,6 +386,8 @@ async def execute_run(
         "test_type": cfg.get("test_type", "k6"),
         "ui_profile": cfg.get("ui_profile"),
         "ui_suite": cfg.get("ui_suite"),
+        "suite": cfg.get("suite") or cfg.get("ui_suite"),
+        "api_pack": cfg.get("api_pack"),
         "triggered_by": body.triggered_by,
         "target_url": cfg.get("target_url") or settings.poc_target_url,
         "api_count": len(planned_rows) or None,
@@ -394,6 +409,8 @@ async def execute_run(
                 "openapi_version": cfg.get("openapi_version"),
                 "ui_profile": cfg.get("ui_profile"),
                 "ui_suite": cfg.get("ui_suite"),
+                "suite": cfg.get("suite") or cfg.get("ui_suite"),
+                "api_pack": cfg.get("api_pack"),
             },
             "apis_tested": apis_tested,
         },

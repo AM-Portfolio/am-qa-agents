@@ -17,8 +17,16 @@ class ApiClient {
     String path, {
     Object? data,
     Map<String, dynamic>? query,
+    Duration? receiveTimeout,
   }) {
-    return _dio.post<dynamic>(path, data: data, queryParameters: query);
+    return _dio.post<dynamic>(
+      path,
+      data: data,
+      queryParameters: query,
+      options: receiveTimeout == null
+          ? null
+          : Options(receiveTimeout: receiveTimeout),
+    );
   }
 
   Future<Response<dynamic>> put(String path, {Object? data}) {
@@ -27,9 +35,10 @@ class ApiClient {
 
   Future<Response<dynamic>> delete(
     String path, {
+    Object? data,
     Map<String, dynamic>? query,
   }) {
-    return _dio.delete<dynamic>(path, queryParameters: query);
+    return _dio.delete<dynamic>(path, data: data, queryParameters: query);
   }
 
   Future<Response<dynamic>> request(

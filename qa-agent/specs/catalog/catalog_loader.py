@@ -453,7 +453,8 @@ def _health_api() -> dict[str, Any]:
     }
 
 
-_token_cache: dict[str, Any] = {"token": None, "at": 0.0}
+# identity_url → {"token": str, "at": float}
+_token_cache: dict[str, dict[str, Any]] = {}
 _TOKEN_TTL_SEC = 240.0
 _openapi_doc_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _OPENAPI_DOC_TTL_SEC = 90.0
@@ -462,42 +463,56 @@ _OPENAPI_DOC_TTL_SEC = 90.0
 def clear_platform_caches() -> dict[str, int]:
     """Drop in-memory OpenAPI docs + identity token (UI / recovery after stale payloads)."""
     openapi_n = len(_openapi_doc_cache)
-    had_token = 1 if _token_cache.get("token") else 0
+    had_token = sum(1 for v in _token_cache.values() if v.get("token"))
     _openapi_doc_cache.clear()
-    _token_cache["token"] = None
-    _token_cache["at"] = 0.0
+    _token_cache.clear()
     return {"openapi_docs": openapi_n, "auth_token": had_token}
 
 
-def _platform_openapi_headers() -> dict[str, str]:
-    """SPT owns auth — use identity login when fetching protected OpenAPI docs."""
+def _identity_url_for_platform_auth(environment: str | None = None) -> str:
+    """Login host for OpenAPI/MCP auth — follow Specs env, not laptop SPT_IDENTITY_URL pin."""
+    from specs import env_urls
+
+    env = (environment or "").strip()
+    if env and env_urls.normalize_env(env):
+        return str(env_urls.identity_url_for_env(env) or "").rstrip("/")
+    return str(
+        settings.spt_identity_url or env_urls.identity_url_for_env("dev") or ""
+    ).rstrip("/")
+
+
+def _platform_openapi_headers(environment: str | None = None) -> dict[str, str]:
+    """SPT owns auth — identity login matched to the target environment (dig/dev vs prod)."""
     username = settings.spt_auth_username
     password = settings.spt_auth_password
     if not username or not password:
         return {}
+    identity_url = _identity_url_for_platform_auth(environment)
+    if not identity_url:
+        return {}
     now = time.time()
-    cached = _token_cache.get("token")
-    if cached and (now - float(_token_cache.get("at") or 0)) < _TOKEN_TTL_SEC:
+    entry = _token_cache.get(identity_url) or {}
+    cached = entry.get("token")
+    if cached and (now - float(entry.get("at") or 0)) < _TOKEN_TTL_SEC:
         return {"Authorization": f"Bearer {cached}", "Accept": "application/json"}
     try:
-        url = f"{settings.spt_identity_url.rstrip('/')}/auth/login"
+        url = f"{identity_url}/auth/login"
         with httpx.Client(timeout=12.0) as client:
             resp = client.post(url, json={"username": username, "password": password})
             resp.raise_for_status()
             token = (resp.json() or {}).get("access_token")
         if not token:
             return {}
-        _token_cache["token"] = token
-        _token_cache["at"] = now
+        _token_cache[identity_url] = {"token": token, "at": now}
         return {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     except Exception as exc:
-        logger.warning("OpenAPI auth login failed: %s", exc)
+        logger.warning("OpenAPI auth login failed (%s): %s", identity_url, exc)
         return {}
 
 
-def platform_bearer_token() -> str | None:
+def platform_bearer_token(environment: str | None = None) -> str | None:
     """Access token from platform identity (for Swagger Try it out)."""
-    headers = _platform_openapi_headers()
+    headers = _platform_openapi_headers(environment=environment)
     auth = headers.get("Authorization") or ""
     if auth.lower().startswith("bearer "):
         return auth.split(" ", 1)[1].strip()
@@ -760,13 +775,28 @@ def _apis_from_openapi_registration(
                     doc, _ov = merge_effective_document(doc, service, environment)
                 except Exception:
                     pass
-                apis = openapi_to_apis(doc)
-                ids = {a.get("id") for a in apis}
-                if "actuator.health" not in ids and not any(
-                    str(a.get("path") or "").endswith("/actuator/health") for a in apis
-                ):
-                    apis.insert(0, _health_api())
+                apis = openapi_to_apis(doc, include_mutating=True)
+                # Java convention health only — FastAPI/python docs already expose /health.
+                if runtime in ("java", "spring"):
+                    ids = {a.get("id") for a in apis}
+                    if "actuator.health" not in ids and not any(
+                        str(a.get("path") or "").endswith("/actuator/health") for a in apis
+                    ):
+                        apis.insert(0, _health_api())
                 info = doc.get("info") if isinstance(doc.get("info"), dict) else {}
+                try:
+                    from specs.catalog.openapi_sync import save_synced_openapi
+
+                    save_synced_openapi(
+                        service,
+                        environment,
+                        document=doc,
+                        openapi_url=url,
+                        target_url=target,
+                        apis=apis,
+                    )
+                except Exception as sync_exc:
+                    logger.info("OpenAPI sync persist skipped for %s: %s", service, sync_exc)
                 return {
                     "base_url": "{{target_url}}",
                     "apis": apis,
@@ -784,6 +814,28 @@ def _apis_from_openapi_registration(
                 logger.info("OpenAPI try failed for %s (%s): %s", service, url, exc)
 
     logger.warning("OpenAPI fetch failed for %s after %s: %s", service, path_candidates, last_err)
+    try:
+        from specs.catalog.openapi_sync import load_synced_openapi
+
+        synced = load_synced_openapi(service, environment)
+    except Exception:
+        synced = None
+    if synced and isinstance(synced.get("document"), dict):
+        # Always rebuild from document so Specs matches Swagger (ignore stale GET-only cache).
+        apis = openapi_to_apis(synced["document"], include_mutating=True)
+        return {
+            "base_url": "{{target_url}}",
+            "apis": apis,
+            "source": "synced-cache",
+            "openapi_url": synced.get("openapi_url") or last_url,
+            "openapi_error": str(last_err),
+            "openapi_version": synced.get("version"),
+            "openapi_title": synced.get("title"),
+            "runtime": runtime,
+            "count": len(apis),
+            "synced_at": synced.get("synced_at"),
+        }
+    # Legacy escape hatch only — do not add new per-service files under resources/.
     baked = _load_baked_apis(service)
     if baked.get("apis"):
         baked["source"] = "baked-fallback"
@@ -916,13 +968,69 @@ def load_openapi_document(
                         if m in item
                     ),
                     "document": doc,
+                    "source": "openapi",
                     "registration": _registration_payload(service, reg, oas, runtime),
                 }
+                try:
+                    from specs.catalog.openapi_sync import save_synced_openapi
+
+                    saved = save_synced_openapi(
+                        service,
+                        env,
+                        document=doc,
+                        openapi_url=url,
+                        target_url=target,
+                        apis=openapi_to_apis(doc, include_mutating=True),
+                    )
+                    result["synced_at"] = saved.get("synced_at")
+                except Exception as sync_exc:
+                    logger.info("OpenAPI sync persist skipped for %s: %s", service, sync_exc)
                 _openapi_doc_cache[cache_key] = (time.time(), result)
                 return result
             except Exception as exc:
                 last_err = str(exc)
                 logger.info("OpenAPI document fetch failed %s %s: %s", service, url, exc)
+
+    try:
+        from specs.catalog.openapi_sync import load_synced_openapi
+
+        synced = load_synced_openapi(service, env)
+    except Exception:
+        synced = None
+    if synced and isinstance(synced.get("document"), dict):
+        doc = synced["document"]
+        info = doc.get("info") if isinstance(doc.get("info"), dict) else {}
+        paths = doc.get("paths") if isinstance(doc.get("paths"), dict) else {}
+        result = {
+            "service": service,
+            "environment": env,
+            "runtime": runtime,
+            "target_url": synced.get("target_url") or primary_target,
+            "openapi_url": synced.get("openapi_url") or last_url,
+            "openapi_url_cluster": last_url or synced.get("openapi_url"),
+            "openapi_path": preferred,
+            "ok": True,
+            "openapi": str(doc.get("openapi") or doc.get("swagger") or ""),
+            "title": info.get("title") or synced.get("title"),
+            "version": info.get("version") or synced.get("version"),
+            "description": info.get("description"),
+            "servers": doc.get("servers") or [],
+            "path_count": len(paths),
+            "operation_count": sum(
+                1
+                for item in paths.values()
+                if isinstance(item, dict)
+                for m in ("get", "post", "put", "patch", "delete", "head", "options")
+                if m in item
+            ),
+            "document": doc,
+            "source": "synced-cache",
+            "synced_at": synced.get("synced_at"),
+            "live_error": last_err,
+            "registration": _registration_payload(service, reg, oas, runtime),
+        }
+        _openapi_doc_cache[cache_key] = (time.time(), result)
+        return result
 
     result = {
         "service": service,
@@ -1140,35 +1248,76 @@ def resolve_api(api: dict[str, Any], ctx: dict[str, str], env_ctx: dict[str, str
     return resolved
 
 
+def _norm_api_path(path: str) -> str:
+    p = (path or "").strip() or "/"
+    if not p.startswith("/"):
+        p = f"/{p}"
+    if len(p) > 1 and p.endswith("/"):
+        p = p.rstrip("/")
+    return p
+
+
+def _api_method_path_key(method: Any, path: Any) -> str:
+    return f"{str(method or '').upper()} {_norm_api_path(str(path or ''))}"
+
+
+def _apply_api_override_patch(api: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
+    row = dict(api)
+    for k, v in patch.items():
+        if v is None:
+            continue
+        if k == "id":
+            # Keep catalog/OpenAPI id as the stable run key.
+            continue
+        if k == "headers" and isinstance(v, dict):
+            # Empty override headers must not wipe catalog Authorization
+            base_h = dict(api.get("headers") or {})
+            if v:
+                base_h.update(
+                    {str(hk): hv for hk, hv in v.items() if hv is not None and hv != ""}
+                )
+            row["headers"] = base_h
+        elif k == "query" and isinstance(v, dict):
+            base_q = dict(api.get("query") or {})
+            base_q.update({str(qk): qv for qk, qv in v.items() if qv is not None})
+            row["query"] = base_q
+        elif k == "path_params" and isinstance(v, dict):
+            base_pp = dict(api.get("path_params") or {})
+            base_pp.update({str(pk): pv for pk, pv in v.items() if pv is not None})
+            row["path_params"] = base_pp
+        else:
+            row[k] = v
+    return row
+
+
 def merge_api_overrides(
     apis: list[dict[str, Any]],
     overrides: list[dict[str, Any]] | None,
 ) -> list[dict[str, Any]]:
+    """Merge payload-set / Postman rows onto OpenAPI catalog ops.
+
+    Match by api id first, then by method+path (Postman import ids often differ
+    from OpenAPI operation ids). Catalog order and ids are preserved so
+    APIs:all still runs the full OpenAPI surface.
+    """
     if not overrides:
         return apis
     by_id = {str(o.get("id")): o for o in overrides if o.get("id")}
+    by_mp: dict[str, dict[str, Any]] = {}
+    for o in overrides:
+        if not isinstance(o, dict):
+            continue
+        key = _api_method_path_key(o.get("method"), o.get("path"))
+        if key.strip():
+            by_mp.setdefault(key, o)
     merged: list[dict[str, Any]] = []
     for api in apis:
         aid = str(api.get("id", ""))
-        if aid in by_id:
-            patch = by_id[aid]
-            row = dict(api)
-            for k, v in patch.items():
-                if v is None:
-                    continue
-                if k == "headers" and isinstance(v, dict):
-                    # Empty override headers must not wipe catalog Authorization
-                    base_h = dict(api.get("headers") or {})
-                    if v:
-                        base_h.update({str(hk): hv for hk, hv in v.items() if hv is not None and hv != ""})
-                    row["headers"] = base_h
-                elif k == "query" and isinstance(v, dict):
-                    base_q = dict(api.get("query") or {})
-                    base_q.update({str(qk): qv for qk, qv in v.items() if qv is not None})
-                    row["query"] = base_q
-                else:
-                    row[k] = v
-            merged.append(row)
+        patch = by_id.get(aid)
+        if patch is None:
+            patch = by_mp.get(_api_method_path_key(api.get("method"), api.get("path")))
+        if patch is not None:
+            merged.append(_apply_api_override_patch(api, patch))
         else:
             merged.append(api)
     return merged

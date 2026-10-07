@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://asrax.in/schemas/am.qa.plugin/v1",
+  "title": "am.qa.plugin/v1",
+  "type": "object",
+  "required": ["apiVersion", "id", "suite", "api_pack", "spt_service_id"],
+  "properties": {
+    "apiVersion": { "const": "am.qa.plugin/v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "enabled": { "type": "boolean", "default": true },
+    "title": { "type": "string" },
+    "spt_service_id": { "type": "string", "minLength": 1 },
+    "depends_on": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "suite": { "type": "string", "minLength": 1 },
+    "api_pack": { "type": "string", "minLength": 1 },
+    "trigger_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "env_policy": {
+      "type": "object",
+      "properties": {
+        "mutate_envs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "block_skills_on": { "type": "object" }
+      }
+    },
+    "contract": {
+      "type": "object",
+      "properties": {
+        "openapi_path": { "type": "string" },
+        "min_tools": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "skills_ref": { "type": "string" },
+    "catalog": {
+      "type": "object",
+      "properties": {
+        "apis": { "type": "string" },
+        "ui_profiles": { "type": "string" },
+        "features": { "type": "string" }
+      }
+    },
+    "data_prep": {
+      "type": "object",
+      "properties": {
+        "entry": { "type": "string" },
+        "fail_closed_envs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "assert_only_envs": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "runners": {
+      "type": "object",
+      "properties": {
+        "api_flows": { "type": "string" },
+        "api_sweep_services": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "scenario_bank": {
+      "type": "object",
+      "properties": {
+        "service_key": { "type": "string" },
+        "seed_skills": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "reports": { "type": "object" },
+    "portal": { "type": "object" }
+  },
+  "additionalProperties": true
+}

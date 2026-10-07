@@ -5,6 +5,9 @@
 | File | Role |
 |------|------|
 | [RELEASE_REPORT.md](RELEASE_REPORT.md) | Generate Drive pack / full release evidence / PR readiness |
+| [SERVICE_ONBOARD_PREP.md](SERVICE_ONBOARD_PREP.md) | Specs onboard Temporal workflow (`steps[]` failure report) |
+| [plugins/PLAN.md](plugins/PLAN.md) + [plugins/TODOS.md](plugins/TODOS.md) | Service QA plugins (plug/detach, MCP `qa_plugin_*`, **dev** env) |
+| [scenario-bank/README.md](scenario-bank/README.md) (phases 0–8 + [tests/](scenario-bank/tests/) + [RUNBOOK-MATRIX.md](scenario-bank/RUNBOOK-MATRIX.md)) | Scenario bank track — identity-infra-split style; local then MCP |
 | [QA_AGENT_PLAN.md](QA_AGENT_PLAN.md) | Full design spec (§1–§24) |
 | [UPCOMING_WORK_AND_TEST.md](UPCOMING_WORK_AND_TEST.md) | Pilot handoff + test plan |
 | [AGENTS_OWNERSHIP_AND_DONT.md](AGENTS_OWNERSHIP_AND_DONT.md) | Who owns what · do / don’t across agents |

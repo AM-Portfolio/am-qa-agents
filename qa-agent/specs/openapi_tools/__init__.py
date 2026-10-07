@@ -9,6 +9,7 @@ from specs.openapi_tools.registry import (
     call_tool,
     list_tools,
     refresh_tools_from_prod,
+    tools_from_openapi_document,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "list_tools",
     "refresh_tools_from_prod",
     "spec_to_tools",
+    "tools_from_openapi_document",
 ]

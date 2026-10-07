@@ -33,9 +33,17 @@ class _RunsViewState extends State<_RunsView> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final runId = GoRouterState.of(context).uri.queryParameters['run_id'];
+      final q = GoRouterState.of(context).uri.queryParameters;
+      final runId = q['run_id'];
       if (runId != null && runId.isNotEmpty) {
         context.go('/runs/$runId');
+        return;
+      }
+      final service = q['service'];
+      if (service != null && service.isNotEmpty) {
+        final cubit = context.read<RunsCubit>();
+        cubit.setService(service);
+        cubit.load();
       }
     });
   }
@@ -182,6 +190,71 @@ class _RunsViewState extends State<_RunsView> {
                       ),
                     ),
                     SizedBox(
+                      width: 160,
+                      child: DropdownButtonFormField<String>(
+                        key: ValueKey('suite-${state.suite}'),
+                        initialValue: state.suite,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Suite',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: '', child: Text('Any')),
+                          DropdownMenuItem(
+                            value: 'subscription_module',
+                            child: Text('subscription_module'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'auth_api_module',
+                            child: Text('auth_api_module'),
+                          ),
+                          DropdownMenuItem(value: 'smoke', child: Text('smoke')),
+                          DropdownMenuItem(
+                            value: 'release_gate',
+                            child: Text('release_gate'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'prod_ui_full',
+                            child: Text('prod_ui_full'),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          cubit.setSuite(v ?? '');
+                          cubit.load();
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: 140,
+                      child: DropdownButtonFormField<String>(
+                        key: ValueKey('pack-${state.apiPack}'),
+                        initialValue: state.apiPack,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'API pack',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: '', child: Text('Any')),
+                          DropdownMenuItem(
+                            value: 'identity',
+                            child: Text('identity'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'subscription',
+                            child: Text('subscription'),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          cubit.setApiPack(v ?? '');
+                          cubit.load();
+                        },
+                      ),
+                    ),
+                    SizedBox(
                       width: 150,
                       child: TextFormField(
                         key: ValueKey('from-${state.from}'),
@@ -298,7 +371,7 @@ class _RunsViewState extends State<_RunsView> {
                             _colHeader(context, 'Type', flex: 2),
                             _colHeader(context, 'Svc / env', flex: 3),
                             _colHeader(context, 'VUs', flex: 1),
-                            _colHeader(context, 'APIs · Pass/Fail', flex: 3),
+                            _colHeader(context, 'Steps/APIs · Pass/Fail', flex: 3),
                             _colHeader(context, 'Started', flex: 2),
                           ],
                         ),
@@ -452,6 +525,7 @@ class _RunsViewState extends State<_RunsView> {
                                         apiCount: apiCount,
                                         passN: passN,
                                         failN: failN,
+                                        stepsLabel: _isPlaywrightRun(r),
                                       ),
                                     ),
                                     Expanded(
@@ -539,22 +613,35 @@ String _fmtStarted(String raw) {
       '${two(local.hour)}:${two(local.minute)}';
 }
 
+bool _isPlaywrightRun(Map<String, dynamic> r) {
+  final tt = '${r['test_type'] ?? ''}'.toLowerCase();
+  final runner = '${r['runner'] ?? ''}'.toLowerCase();
+  return tt == 'playwright' ||
+      runner.contains('asrax-release-ops') ||
+      runner.contains('ui-test');
+}
+
 class _ApiCountsCell extends StatelessWidget {
   const _ApiCountsCell({
     required this.apiCount,
     required this.passN,
     required this.failN,
+    this.stepsLabel = false,
   });
 
   final Object? apiCount;
   final Object? passN;
   final Object? failN;
+  final bool stepsLabel;
 
   @override
   Widget build(BuildContext context) {
     final hasAny = apiCount != null || passN != null || failN != null;
     if (!hasAny) {
-      return Text('—', style: Theme.of(context).textTheme.bodySmall);
+      return Text(
+        stepsLabel ? '0 steps' : '—',
+        style: Theme.of(context).textTheme.bodySmall,
+      );
     }
     final total = apiCount ??
         ((passN is num ? passN as num : 0) + (failN is num ? failN as num : 0));
@@ -565,6 +652,13 @@ class _ApiCountsCell extends StatelessWidget {
       TextSpan(
         style: Theme.of(context).textTheme.bodySmall,
         children: [
+          if (stepsLabel)
+            TextSpan(
+              text: 'Steps ',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
           TextSpan(
             text: '$total',
             style: const TextStyle(fontWeight: FontWeight.w700),

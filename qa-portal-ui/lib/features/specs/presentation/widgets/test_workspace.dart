@@ -258,91 +258,132 @@ class _TestWorkspaceState extends State<TestWorkspace> {
     final color = methodColor(method);
     return Material(
       color: Theme.of(context).colorScheme.surface,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 108,
-            child: DropdownButtonFormField<String>(
-              key: ValueKey('method-$method'),
-              initialValue: _methods.contains(method) ? method : 'GET',
-              decoration: InputDecoration(
-                isDense: true,
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(color: color, width: 1.5),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: color, width: 1.5),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              ),
-              selectedItemBuilder: (context) => [
-                for (final m in _methods)
-                  Text(
-                    m,
-                    style: TextStyle(
-                      color: methodColor(m),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-              ],
-              items: [
-                for (final m in _methods)
-                  DropdownMenuItem(
-                    value: m,
-                    child: Text(
-                      m,
-                      style: TextStyle(
-                        color: methodColor(m),
-                        fontWeight: FontWeight.w600,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 100,
+                    child: DropdownButtonFormField<String>(
+                      key: ValueKey('method-$method'),
+                      initialValue: _methods.contains(method) ? method : 'GET',
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(color: color, width: 1.5),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: color, width: 1.5),
+                        ),
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                       ),
+                      selectedItemBuilder: (context) => [
+                        for (final m in _methods)
+                          Text(
+                            m,
+                            style: TextStyle(
+                              color: methodColor(m),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                      ],
+                      items: [
+                        for (final m in _methods)
+                          DropdownMenuItem(
+                            value: m,
+                            child: Text(
+                              m,
+                              style: TextStyle(
+                                color: methodColor(m),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                      onChanged: widget.loading
+                          ? null
+                          : (v) {
+                              if (v != null) _emit(draft.copyWith(method: v));
+                            },
                     ),
                   ),
-              ],
-              onChanged: widget.loading
-                  ? null
-                  : (v) {
-                      if (v != null) _emit(draft.copyWith(method: v));
-                    },
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextFormField(
-              key: ValueKey('path-${draft.path}'),
-              initialValue: draft.path,
-              style: _mono,
-              decoration: const InputDecoration(
-                labelText: 'Path',
-                isDense: true,
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: (constraints.maxWidth - 280).clamp(160.0, 900.0),
+                    child: TextFormField(
+                      key: ValueKey('path-${draft.path}'),
+                      initialValue: draft.path,
+                      style: _mono,
+                      decoration: const InputDecoration(
+                        labelText: 'Path',
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      ),
+                      onChanged: (v) {
+                        final params = pathParamsFromTemplate(v);
+                        final merged = <String, String>{
+                          for (final k in params.keys) k: draft.pathParams[k] ?? '',
+                        };
+                        _emit(draft.copyWith(path: v, pathParams: merged));
+                      },
+                    ),
+                  ),
+                  if (widget.selectedPayloadVersion != null) ...[
+                    const SizedBox(width: 6),
+                    Chip(
+                      label: Text(
+                        'data v${widget.selectedPayloadVersion}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: EdgeInsets.zero,
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                    ),
+                  ],
+                  const SizedBox(width: 6),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    onPressed: widget.loading ? null : widget.onSend,
+                    child: widget.loading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            widget.selectedPayloadVersion == null
+                                ? 'Send'
+                                : 'Test v${widget.selectedPayloadVersion}',
+                          ),
+                  ),
+                  const SizedBox(width: 6),
+                  FilledButton.tonal(
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    onPressed: widget.loading ? null : widget.onMock,
+                    child: const Text('Mock 1×'),
+                  ),
+                ],
               ),
-              onChanged: (v) {
-                final params = pathParamsFromTemplate(v);
-                final merged = <String, String>{
-                  for (final k in params.keys) k: draft.pathParams[k] ?? '',
-                };
-                _emit(draft.copyWith(path: v, pathParams: merged));
-              },
             ),
-          ),
-          const SizedBox(width: 8),
-          FilledButton(
-            onPressed: widget.loading ? null : widget.onSend,
-            child: widget.loading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Send'),
-          ),
-          const SizedBox(width: 6),
-          FilledButton.tonal(
-            onPressed: widget.loading ? null : widget.onMock,
-            child: const Text('Mock 1×'),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

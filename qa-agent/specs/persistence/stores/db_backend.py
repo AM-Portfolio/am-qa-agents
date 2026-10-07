@@ -270,7 +270,12 @@ def list_runs(
     q: str | None = None,
     started_from: str | None = None,
     started_to: str | None = None,
+    suite: str | None = None,
+    api_pack: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
+    suite_n = (suite or "").strip().lower() or None
+    pack_n = (api_pack or "").strip().lower() or None
+    need_detail = bool(suite_n or pack_n)
     with get_session() as session:
         filters = []
         from_bound = jb._day_bound(started_from, end=False)
@@ -308,32 +313,58 @@ def list_runs(
                 )
             )
         where = and_(*filters) if filters else True
-        total = session.scalar(select(func.count()).select_from(RunRow).where(where)) or 0
-        stmt = (
-            select(RunRow)
-            .where(where)
-            .order_by(RunRow.started_at.desc())
-            .offset(max(0, int(offset or 0)))
-            .limit(max(0, int(limit or 0)))
-        )
+        if not need_detail:
+            total = session.scalar(select(func.count()).select_from(RunRow).where(where)) or 0
+            stmt = (
+                select(RunRow)
+                .where(where)
+                .order_by(RunRow.started_at.desc())
+                .offset(max(0, int(offset or 0)))
+                .limit(max(0, int(limit or 0)))
+            )
+            rows = session.scalars(stmt).all()
+            out = []
+            for row in rows:
+                d = _row_to_dict(row, include_detail=False)
+                if row.live and row.live.live is not None:
+                    d["live"] = row.live.live
+                d["payloads_used"] = {
+                    "bench_run": {
+                        "vus": row.vus,
+                        "iterations": row.iterations,
+                        "duration": row.duration,
+                    },
+                    "auth_env": {"username": row.auth_username} if row.auth_username else {},
+                }
+                out.append(d)
+            return out, int(total)
+
+        # Suite/api_pack live in payloads_used / extra — filter in Python
+        stmt = select(RunRow).where(where).order_by(RunRow.started_at.desc())
         rows = session.scalars(stmt).all()
-        # Attach live cheaply for list (optional slim)
-        out = []
+        matched: list[dict[str, Any]] = []
         for row in rows:
-            d = _row_to_dict(row, include_detail=False)
+            d = _row_to_dict(row, include_detail=True)
             if row.live and row.live.live is not None:
                 d["live"] = row.live.live
-            # Minimal payloads for slim_run_for_list
-            d["payloads_used"] = {
-                "bench_run": {
-                    "vus": row.vus,
-                    "iterations": row.iterations,
-                    "duration": row.duration,
-                },
-                "auth_env": {"username": row.auth_username} if row.auth_username else {},
-            }
-            out.append(d)
-        return out, int(total)
+            if not d.get("payloads_used"):
+                d["payloads_used"] = {
+                    "bench_run": {
+                        "vus": row.vus,
+                        "iterations": row.iterations,
+                        "duration": row.duration,
+                    },
+                    "auth_env": {"username": row.auth_username} if row.auth_username else {},
+                }
+            if suite_n and jb._run_suite_value(d).lower() != suite_n:
+                continue
+            if pack_n and jb._run_api_pack_value(d).lower() != pack_n:
+                continue
+            matched.append(d)
+        total = len(matched)
+        start = max(0, int(offset or 0))
+        end = start + max(0, int(limit or 0))
+        return matched[start:end], int(total)
 
 
 def increment_run_progress(

@@ -1,0 +1,40 @@
+apiVersion: am.qa.plugin/v1
+id: am-identity
+enabled: true
+title: Identity QA plugin (login JWT + auth API)
+spt_service_id: am-identity
+depends_on: []
+suite: auth_api_module
+api_pack: identity
+trigger_paths:
+  - am-identity/**
+env_policy:
+  mutate_envs: [dev]
+  block_skills_on:
+    contabo_prod: [level5_abuse, security]
+contract:
+  openapi_path: /openapi.json
+  min_tools: 2
+catalog:
+  # invent profile + features live in Mongo (qa_invent_profiles / qa_features), not git
+  apis: catalog/apis.yaml
+  ui_profiles: catalog/ui.yaml
+  features: features/
+data_prep:
+  entry: seed:prepare
+  fail_closed_envs: [dev]
+  assert_only_envs: [contabo_prod, prod]
+runners:
+  api_flows: ui_evidence.api.run_auth_api_scenarios:run_auth_api_scenarios
+  api_sweep_services:
+    - am-identity
+scenario_bank:
+  service_key: am-identity
+  seed_skills:
+    - data_generator
+    - happy_flow
+portal:
+  ops_start_defaults:
+    suite: auth_api_module
+    api_pack: identity
+    default_env: dev

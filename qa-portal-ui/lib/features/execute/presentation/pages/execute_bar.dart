@@ -274,16 +274,22 @@ class _ExecuteCubit extends Cubit<_ExecuteState> {
       emit(state.copyWith(uiSuite: v, clearUiSuite: v == null));
   void setSelectedApis(Set<String> ids) => emit(state.copyWith(selectedApiIds: ids));
 
-  Future<String?> run() async {
+  Future<String?> run({String? service, String? environment}) async {
     final id = state.configId;
     if (id == null || id.isEmpty) {
       emit(state.copyWith(message: 'Select a profile'));
       return null;
     }
+    final cfg = state.selectedConfig;
+    final svc = (service ?? '${cfg?['service'] ?? ''}').trim();
+    final env = (environment ?? '${cfg?['environment'] ?? ''}').trim();
     emit(state.copyWith(busy: true, message: null));
     try {
       final out = await _repo.execute(
         configId: id,
+        // Bind OpenAPI catalog service when template profiles have empty service.
+        service: svc.isEmpty ? null : svc,
+        environment: env.isEmpty ? null : env,
         testType: state.testType,
         vus: state.vus,
         calls: state.calls,
@@ -291,6 +297,7 @@ class _ExecuteCubit extends Cubit<_ExecuteState> {
         uiProfile: state.uiProfile,
         uiSuite: state.uiSuite,
         reportFormats: state.reportFormats,
+        // Empty selection = all OpenAPI APIs for the bound service.
         apiIds: state.selectedApiIds.isEmpty ? null : state.selectedApiIds.toList(),
         openapiVersion: state.openapiVersion,
       );
@@ -640,8 +647,24 @@ class _ExecuteBarView extends StatelessWidget {
                         onPressed: state.busy
                             ? null
                             : () async {
-                                final id =
-                                    await context.read<_ExecuteCubit>().run();
+                                // Prefer service from /services/:id or /specs?spec=
+                                final loc = GoRouterState.of(context).uri;
+                                String? routeService;
+                                final path = loc.path;
+                                final m = RegExp(r'^/services/([^/]+)').firstMatch(path);
+                                if (m != null) {
+                                  routeService = Uri.decodeComponent(m.group(1)!);
+                                } else {
+                                  final spec = loc.queryParameters['spec'];
+                                  if (spec != null && spec.isNotEmpty) {
+                                    routeService = spec;
+                                  }
+                                }
+                                final env = loc.queryParameters['env'];
+                                final id = await context.read<_ExecuteCubit>().run(
+                                      service: routeService,
+                                      environment: env,
+                                    );
                                 if (id != null &&
                                     id.isNotEmpty &&
                                     context.mounted) {

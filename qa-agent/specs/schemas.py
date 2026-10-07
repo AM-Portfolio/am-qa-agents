@@ -174,6 +174,10 @@ class PayloadSetUpsertApiRequest(BaseModel):
     bump_set: bool = False
 
 
+class PayloadSetRemoveApisRequest(BaseModel):
+    api_ids: list[str] = Field(default_factory=list)
+
+
 class RunFilterQuery(BaseModel):
     service: str | None = None
     environment: str | None = None
@@ -197,6 +201,32 @@ class PayloadBuildRequest(BaseModel):
 class PayloadEnsureRequest(PayloadBuildRequest):
     write_back: bool = True
     allow_llm: bool | None = None
+    max_attempts: int = 3
+    prefer_stored: bool = False
+
+
+class PayloadGenerateAllRequest(BaseModel):
+    """Batch prepare working payloads for all Specs OpenAPI APIs."""
+
+    service: str
+    environment: str | None = None
+    try_each: bool = True
+    write_back: bool = True
+    allow_llm: bool = True
+    prefer_stored: bool = True
+    max_attempts: int = 3
+
+
+class PayloadImportRequest(BaseModel):
+    """Import external collection (+ optional env) into a service payload set."""
+
+    service: str
+    collection: dict[str, Any] | list[Any] | str
+    environment: dict[str, Any] | str | None = None
+    format: str | None = None  # postman | auto-detect
+    label: str | None = None
+    make_active: bool = True
+    bump_set: bool = True
 
 
 class PayloadPrepareMcpRequest(BaseModel):
@@ -207,3 +237,27 @@ class PayloadPrepareMcpRequest(BaseModel):
     services: list[str] | None = None
     write_overlays: bool = True
     try_each: bool = False
+
+
+class OpenapiToolCallRequest(BaseModel):
+    """Invoke one OpenAPI MCP tool via registry.call_tool."""
+
+    name: str
+    arguments: dict[str, Any] | None = None
+    environment: str | None = None
+    payload_set_version: int | None = None
+    with_identity_auth: bool = True
+    record_run: bool = True
+
+
+class OpenapiToolsRunRequest(BaseModel):
+    """Run selected (or all) OpenAPI tools for a service sequentially."""
+
+    environment: str | None = None
+    payload_set_version: int | None = None
+    tool_names: list[str] | None = None
+    all: bool = False
+    arguments_by_tool: dict[str, dict[str, Any]] | None = None
+    max_tools: int | None = Field(default=None, ge=1, le=500)
+    with_identity_auth: bool = True
+    record_run: bool = False

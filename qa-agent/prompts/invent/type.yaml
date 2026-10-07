@@ -1,0 +1,11 @@
+apiVersion: am.qa.prompts.invent/v1
+max_invent_calls: 2
+scenarios_per_skill_default: 2
+preferred_models:
+  - gpt-4o-mini
+  - together-llama-turbo
+schema_version: invent-scenario/v2
+system: system.md
+user_template: user.tmpl.md
+skills_dir: skills/
+bans: bans.yaml

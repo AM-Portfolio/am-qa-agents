@@ -81,6 +81,11 @@ def _apply_aliases() -> None:
         ("MINIO_SECRET_KEY", "QA_AGENT_MINIO_SECRET_KEY"),
         ("MINIO_BUCKET", "QA_AGENT_MINIO_BUCKET"),
         ("GRAFANA_EXTERNAL_URL", "QA_AGENT_GRAFANA_URL"),
+        # Mongo aliases (local invent → dig Mongo via mongo_resolve)
+        ("MONGODB_URI", "MONGO_URI"),
+        ("MONGO_URI", "MONGODB_URI"),
+        ("MONGO_DB", "MONGO_DATABASE"),
+        ("MONGO_USERNAME", "MONGO_USER"),
     ]
     for src, dst in pairs:
         if os.getenv(src) and not os.getenv(dst):

@@ -9,7 +9,7 @@ description: Subscription service load-test registration (OpenAPI via FastAPI)
 createdBy: billing-team
 updatedBy: billing-team
 createdAt: "2026-07-24"
-updatedAt: "2026-07-24"
+updatedAt: "2026-10-06"
 tags: [billing, python, fastapi]
 source:
   repo: am-platform
@@ -17,10 +17,11 @@ source:
   team: billing-team
 traces:
   - name: openapi
-    ref: /openapi.json
+    ref: /subscriptions/openapi.json
 targets:
-  dev: "https://am-dev.asrax.in/subscription"
-  preprod: "https://am-preprod.asrax.in/subscription"
-  prod: "https://am.asrax.in/subscription"
+  # Host root — routes already include /subscriptions/... (not SPA /subscription).
+  dev: "https://am-dev.asrax.in"
+  preprod: "https://am-preprod.asrax.in"
+  prod: "https://am.asrax.in"
 openapi:
-  path: /openapi.json
+  path: /subscriptions/openapi.json

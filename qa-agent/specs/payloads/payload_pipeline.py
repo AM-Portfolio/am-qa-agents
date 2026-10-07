@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 from specs.catalog.catalog_loader import load_catalog, load_openapi_document, proxy_try_request
@@ -134,6 +135,12 @@ def prepare_mcp_payloads_for_service(
     Dashboard APIs without portfolio params are skipped (nothing to map).
     """
     env = environment or settings.default_environment
+    try:
+        from specs.catalog.openapi_sync import sync_openapi_for_service
+
+        sync_openapi_for_service(service, env, force=True)
+    except Exception:
+        pass
     doc, meta, _overlay = _effective_doc(service, env)
     if not doc:
         return {
@@ -374,6 +381,130 @@ def prepare_mcp_payloads(
     }
 
 
+def _parse_try_body(try_result: dict[str, Any], *, limit: int = 8000) -> Any:
+    """Decode proxy Try body to JSON/object or truncated text for QA UI."""
+    body = try_result.get("body")
+    if body is None:
+        body = try_result.get("response_body") or try_result.get("text")
+    if isinstance(body, (bytes, bytearray)):
+        text = bytes(body).decode("utf-8", errors="replace")
+        try:
+            return json.loads(text)
+        except Exception:
+            return text[:limit]
+    if isinstance(body, (dict, list)):
+        return body
+    if body is None:
+        return None
+    text = str(body)
+    try:
+        return json.loads(text)
+    except Exception:
+        return text[:limit]
+
+
+def _request_for_ui(request: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "method": request.get("method"),
+        "path": request.get("path"),
+        "resolved_path": request.get("resolved_path"),
+        "path_params": request.get("path_params") or {},
+        "query": request.get("query") or {},
+        "body": request.get("body"),
+        "api_id": request.get("api_id"),
+    }
+
+
+def _snippet_from_try(try_result: dict[str, Any], *, limit: int = 2000) -> str:
+    status = int(try_result.get("status_code") or 0)
+    err = str(try_result.get("error") or "").strip()
+    parsed = _parse_try_body(try_result, limit=limit)
+    if isinstance(parsed, (dict, list)):
+        try:
+            body_s = json.dumps(parsed, default=str)[:limit]
+        except Exception:
+            body_s = str(parsed)[:limit]
+    else:
+        body_s = str(parsed or "")[:limit]
+    parts = [f"status={status}"]
+    if err:
+        parts.append(f"error={err[:400]}")
+    if body_s:
+        parts.append(f"body={body_s}")
+    return " ".join(parts)
+
+
+def _merge_llm_request(request: dict[str, Any], suggested: dict[str, Any]) -> dict[str, Any]:
+    merged = {
+        **request,
+        "path_params": suggested.get("path_params")
+        or suggested.get("pathParams")
+        or request.get("path_params"),
+        "query": suggested.get("query") or request.get("query"),
+        "body": suggested.get("body") if "body" in suggested else request.get("body"),
+        "resolved_path": suggested.get("resolved_path") or request.get("resolved_path"),
+    }
+    if merged.get("path") and merged.get("path_params"):
+        resolved = str(merged["path"])
+        for k, v in (merged.get("path_params") or {}).items():
+            resolved = resolved.replace("{" + k + "}", str(v))
+        merged["resolved_path"] = resolved
+    return merged
+
+
+def _write_working_payload(
+    *,
+    service: str,
+    env: str,
+    request: dict[str, Any],
+    source: str,
+    status: int,
+    operation_key: str | None,
+) -> dict[str, Any]:
+    op_key = str(operation_key or request.get("operation_id") or request.get("api_id"))
+    upsert_operation_overlay(
+        service,
+        env,
+        operation_key=op_key,
+        path_params=request.get("path_params") or {},
+        query=request.get("query") or {},
+        body=request.get("body"),
+        source=source if source not in ("schema", "set") else "ensure-working",
+    )
+    api_id_val = str(request.get("api_id") or "unknown")
+    saved = save_payload(
+        {
+            "service": service,
+            "api_id": api_id_val,
+            "name": "working",
+            "request": {
+                "method": request.get("method"),
+                "path": request.get("path"),
+                "query": request.get("query") or {},
+                "path_params": request.get("path_params") or {},
+                "body": request.get("body"),
+            },
+            "response": {"status": status},
+            "meta": {"source": source, "ensure_working": True},
+        },
+        bump=True,
+    )
+    payload_set = upsert_api_in_payload_set(
+        service,
+        api_id_val,
+        request=saved.get("request"),
+        response=saved.get("response"),
+        meta={"source": source},
+        name="working",
+        bump_set=False,
+    )
+    return {
+        "payload": saved,
+        "payload_set": {"version": payload_set.get("version"), "active": True},
+        "overlay_written": True,
+    }
+
+
 async def ensure_working_payload(
     *,
     service: str,
@@ -384,59 +515,115 @@ async def ensure_working_payload(
     api_id: str | None = None,
     write_back: bool = True,
     allow_llm: bool | None = None,
+    max_attempts: int = 3,
+    prefer_stored: bool = False,
+    initial_request: dict[str, Any] | None = None,
+    initial_source: str | None = None,
 ) -> dict[str, Any]:
+    """Build → Try → optional LLM retries (up to max_attempts) → write set on 2xx.
+
+    Attempt 1 uses stored/schema request; later attempts call LLM with the prior
+    API response as error_hint so payloads can be refined from real failures.
+    """
     env = environment or settings.default_environment
-    built = build_payload(
-        service=service,
-        environment=env,
-        method=method,
-        path=path,
-        operation_id=operation_id,
-        api_id=api_id,
-        enrich_mcp=True,
-    )
-    if not built.get("ok") or not isinstance(built.get("request"), dict):
-        return built
+    llm_enabled = allow_llm if allow_llm is not None else settings.spt_payload_llm_fallback
+    max_attempts = max(1, min(int(max_attempts or 3), 5))
 
-    request = dict(built["request"])
-    source = built.get("source") or "schema"
-    mcp_attempted = bool(built.get("mcp_attempted"))
-    mcp_fields = list(built.get("mcp_fields") or [])
-    mcp_error = built.get("mcp_error")
-
-    try_result = await _try_once(service, env, request)
-    status = int(try_result.get("status_code") or 0)
-    ok_http = 200 <= status < 300
-
-    llm_used = False
-    if not ok_http and (allow_llm if allow_llm is not None else settings.spt_payload_llm_fallback):
-        llm = await llm_suggest_payload(
+    built: dict[str, Any] = {"ok": True, "operation_key": None}
+    if isinstance(initial_request, dict) and initial_request.get("method"):
+        request = dict(initial_request)
+        source = initial_source or "set"
+        mcp_attempted = False
+        mcp_fields: list[Any] = []
+        mcp_error = None
+    else:
+        built = build_payload(
             service=service,
-            method=str(request.get("method") or "GET"),
-            path=str(request.get("path") or ""),
-            openapi_snippet={"operation_id": request.get("operation_id"), "path": request.get("path")},
-            error_hint=f"status={status}",
+            environment=env,
+            method=method,
+            path=path,
+            operation_id=operation_id,
+            api_id=api_id,
+            enrich_mcp=True,
         )
-        llm_used = True
-        if llm.get("ok") and isinstance(llm.get("request"), dict):
-            suggested = llm["request"]
-            request = {
-                **request,
-                "path_params": suggested.get("path_params") or suggested.get("pathParams") or request.get("path_params"),
-                "query": suggested.get("query") or request.get("query"),
-                "body": suggested.get("body") if "body" in suggested else request.get("body"),
-                "resolved_path": suggested.get("resolved_path") or request.get("resolved_path"),
-            }
-            if request.get("path") and request.get("path_params"):
-                resolved = str(request["path"])
-                for k, v in (request.get("path_params") or {}).items():
-                    resolved = resolved.replace("{" + k + "}", str(v))
-                request["resolved_path"] = resolved
-            source = "llm-fallback"
-            try_result = await _try_once(service, env, request)
-            status = int(try_result.get("status_code") or 0)
-            ok_http = 200 <= status < 300
+        if not built.get("ok") or not isinstance(built.get("request"), dict):
+            return {**built, "attempts": [], "attempts_used": 0}
+        request = dict(built["request"])
+        source = built.get("source") or "schema"
+        mcp_attempted = bool(built.get("mcp_attempted"))
+        mcp_fields = list(built.get("mcp_fields") or [])
+        mcp_error = built.get("mcp_error")
 
+    attempts: list[dict[str, Any]] = []
+    llm_used = False
+    try_result: dict[str, Any] = {}
+    status = 0
+    ok_http = False
+
+    for n in range(1, max_attempts + 1):
+        if n > 1:
+            if not llm_enabled:
+                break
+            hint = _snippet_from_try(try_result)
+            llm = await llm_suggest_payload(
+                service=service,
+                method=str(request.get("method") or "GET"),
+                path=str(request.get("path") or ""),
+                openapi_snippet={
+                    "operation_id": request.get("operation_id"),
+                    "path": request.get("path"),
+                    "api_id": request.get("api_id"),
+                },
+                error_hint=hint,
+            )
+            llm_used = True
+            if not (llm.get("ok") and isinstance(llm.get("request"), dict)):
+                attempts.append(
+                    {
+                        "n": n,
+                        "source": "llm-fallback",
+                        "status_code": None,
+                        "ok": False,
+                        "error_snippet": str(llm.get("error") or llm.get("reason") or "llm_failed")[
+                            :500
+                        ],
+                        "request": _request_for_ui(request),
+                        "response": None,
+                    }
+                )
+                continue
+            request = _merge_llm_request(request, llm["request"])
+            source = "llm-fallback"
+
+        try_result = await _try_once(service, env, request)
+        status = int(try_result.get("status_code") or 0)
+        ok_http = 200 <= status < 300
+        response_body = _parse_try_body(try_result)
+        attempts.append(
+            {
+                "n": n,
+                "source": source if n == 1 else "llm-fallback",
+                "status_code": status,
+                "ok": ok_http,
+                "error_snippet": _snippet_from_try(try_result, limit=500),
+                "request": _request_for_ui(request),
+                "response": {
+                    "status_code": status,
+                    "body": response_body,
+                    "error": try_result.get("error"),
+                    "upstream_url": try_result.get("upstream_url"),
+                },
+            }
+        )
+        if ok_http:
+            break
+
+    last_response = {
+        "status_code": status,
+        "body": _parse_try_body(try_result) if try_result else None,
+        "error": try_result.get("error") if try_result else None,
+        "upstream_url": try_result.get("upstream_url") if try_result else None,
+    }
     result: dict[str, Any] = {
         "ok": ok_http,
         "service": service,
@@ -446,68 +633,309 @@ async def ensure_working_payload(
         "mcp_attempted": mcp_attempted,
         "mcp_fields": mcp_fields,
         "mcp_error": mcp_error,
-        "request": request,
+        "request": _request_for_ui(request),
+        "response": last_response,
         "try": {
             "status_code": status,
             "upstream_url": try_result.get("upstream_url"),
             "error": try_result.get("error"),
+            "body": last_response.get("body"),
         },
         "operation_key": built.get("operation_key"),
-        "api_id": request.get("api_id"),
+        "api_id": request.get("api_id") or api_id,
+        "attempts": attempts,
+        "attempts_used": len(attempts),
+        "final_status": status,
+        "error": None if ok_http else _snippet_from_try(try_result, limit=800),
     }
 
     if ok_http and write_back:
-        op_key = str(built.get("operation_key") or request.get("operation_id") or request.get("api_id"))
-        upsert_operation_overlay(
-            service,
-            env,
-            operation_key=op_key,
-            path_params=request.get("path_params") or {},
-            query=request.get("query") or {},
-            body=request.get("body"),
-            source=source if source != "schema" else "ensure-working",
+        written = _write_working_payload(
+            service=service,
+            env=env,
+            request=request,
+            source=source,
+            status=status,
+            operation_key=str(built.get("operation_key") or "") or None,
         )
-        api_id_val = str(request.get("api_id") or "unknown")
-        saved = save_payload(
-            {
-                "service": service,
-                "api_id": api_id_val,
-                "name": "working",
-                "request": {
-                    "method": request.get("method"),
-                    "path": request.get("path"),
-                    "query": request.get("query") or {},
-                    "path_params": request.get("path_params") or {},
-                    "body": request.get("body"),
-                },
-                "response": {
-                    "status": status,
-                },
-                "meta": {"source": source, "ensure_working": True},
-            },
-            bump=True,
-        )
-        payload_set = upsert_api_in_payload_set(
-            service,
-            api_id_val,
-            request=saved.get("request"),
-            response=saved.get("response"),
-            meta={"source": source},
-            name="working",
-            bump_set=False,
-        )
-        result["payload"] = saved
-        result["payload_set"] = {
-            "version": payload_set.get("version"),
-            "active": True,
-        }
-        result["overlay_written"] = True
+        result.update(written)
 
     return result
 
 
+def _harvest_ids_from_body(body: Any) -> dict[str, Any]:
+    """Pull likely path-param values from a successful API JSON body."""
+    out: dict[str, Any] = {}
+
+    def walk(node: Any, *, depth: int = 0) -> None:
+        if depth > 4 or not isinstance(node, dict):
+            return
+        for k, v in node.items():
+            key = str(k)
+            if isinstance(v, (str, int)) and str(v).strip():
+                if key.endswith("_id") or key in ("id", "uuid", "code", "plan_code", "plan_id"):
+                    out[key] = v
+                    if key == "id":
+                        # Common OpenAPI path param names
+                        out.setdefault("subscription_id", v)
+                        out.setdefault("id", v)
+                    if key == "plan_code":
+                        out.setdefault("plan_id", v)
+            elif isinstance(v, dict):
+                walk(v, depth=depth + 1)
+            elif isinstance(v, list) and v and isinstance(v[0], dict):
+                walk(v[0], depth=depth + 1)
+
+    walk(body)
+    return out
+
+
+def _apply_run_context(
+    request: dict[str, Any],
+    ctx: dict[str, Any],
+    *,
+    prefer_ctx: bool = True,
+) -> dict[str, Any]:
+    """Fill path params from earlier successes in this generate-all run.
+
+    prefer_ctx=True overwrites schema/example ids with values harvested from
+    create/list responses so cancel/pause/resume hit a real resource.
+    """
+    if not ctx:
+        return request
+    req = dict(request)
+    path = str(req.get("path") or "")
+    pp = dict(req.get("path_params") or {})
+    changed = False
+    for name in re.findall(r"\{([^}]+)\}", path):
+        cur = pp.get(name)
+        cur_s = str(cur).strip() if cur is not None else ""
+        needs = (
+            prefer_ctx
+            or not cur_s
+            or cur_s == "{" + name + "}"
+            or cur_s.startswith("{")
+            or cur_s in ("string", "uuid", "id", "0", "1")
+        )
+        if not needs:
+            continue
+        picked = None
+        if name in ctx and ctx[name] is not None:
+            picked = ctx[name]
+        elif name.endswith("_id") and "id" in ctx:
+            picked = ctx["id"]
+        elif name == "id" and "subscription_id" in ctx:
+            picked = ctx["subscription_id"]
+        if picked is not None and str(picked) != cur_s:
+            pp[name] = picked
+            changed = True
+    if changed:
+        req["path_params"] = pp
+        resolved = path
+        for k, v in pp.items():
+            resolved = resolved.replace("{" + k + "}", str(v))
+        req["resolved_path"] = resolved
+    return req
+
+
+async def generate_all_payloads(
+    *,
+    service: str,
+    environment: str | None = None,
+    try_each: bool = True,
+    write_back: bool = True,
+    allow_llm: bool = True,
+    prefer_stored: bool = True,
+    max_attempts: int = 3,
+) -> dict[str, Any]:
+    """Prepare working payloads for every Specs OpenAPI API (batch ensure)."""
+    from specs.catalog.catalog_loader import load_openapi_document, load_service_apis
+    from specs.catalog.openapi_sync import sync_openapi_for_service
+    from specs.payloads.payload_store import ensure_payload_set, get_payload_set
+
+    env = environment or settings.default_environment
+    try:
+        sync_openapi_for_service(service, env, force=True)
+    except Exception:
+        pass
+
+    payload_set = ensure_payload_set(service)
+    set_version = int(payload_set.get("version") or 0)
+    stored_apis = payload_set.get("apis") if isinstance(payload_set.get("apis"), dict) else {}
+
+    apis_data = load_service_apis(service, env)
+    apis = list(apis_data.get("apis") or [])
+
+    def _mutation_rank(api_row: dict[str, Any]) -> tuple[int, str, str]:
+        """Run create/read first; pause/resume before cancel/delete so state stays usable."""
+        p = str(api_row.get("path") or api_row.get("path_template") or "").lower()
+        m = str(api_row.get("method") or "GET").upper()
+        rank = 0
+        if m in ("GET", "HEAD", "OPTIONS"):
+            rank = 0
+        elif "pause" in p:
+            rank = 2
+        elif "resume" in p:
+            rank = 3
+        elif "upgrade" in p or "downgrade" in p:
+            rank = 4
+        elif "cancel" in p:
+            rank = 8
+        elif m == "DELETE":
+            rank = 9
+        elif m == "POST" and p.rstrip("/").endswith("subscriptions"):
+            rank = 1  # create early for id harvest
+        else:
+            rank = 5
+        return (rank, p, m)
+
+    apis.sort(key=_mutation_rank)
+    results: list[dict[str, Any]] = []
+    passed = 0
+    failed = 0
+    run_ctx: dict[str, Any] = {}
+
+    for api in apis:
+        if not isinstance(api, dict):
+            continue
+        api_id = str(api.get("id") or "")
+        method = str(api.get("method") or "GET").upper()
+        path = str(api.get("path") or api.get("path_template") or "")
+        row_base = {
+            "api_id": api_id,
+            "method": method,
+            "path": path,
+            "name": api.get("name"),
+        }
+
+        if not try_each:
+            results.append({**row_base, "ok": False, "skipped": True, "reason": "try_each_false"})
+            failed += 1
+            continue
+
+        initial_req: dict[str, Any] | None = None
+        initial_source: str | None = None
+        if prefer_stored and api_id and isinstance(stored_apis.get(api_id), dict):
+            entry = stored_apis[api_id]
+            req = entry.get("request") if isinstance(entry.get("request"), dict) else None
+            if req and req.get("method"):
+                initial_req = {
+                    **req,
+                    "api_id": api_id,
+                    "method": str(req.get("method") or method).upper(),
+                    "path": req.get("path") or path,
+                }
+                initial_source = "set"
+
+        # Prefer ids harvested earlier in this run over stale set/schema examples
+        if initial_req is not None and run_ctx:
+            initial_req = _apply_run_context(initial_req, run_ctx)
+
+        out = await ensure_working_payload(
+            service=service,
+            environment=env,
+            method=method,
+            path=path,
+            api_id=api_id or None,
+            write_back=write_back,
+            allow_llm=allow_llm,
+            max_attempts=max_attempts,
+            prefer_stored=prefer_stored,
+            initial_request=initial_req,
+            initial_source=initial_source,
+        )
+        # If schema/set failed but we now have ids, one more try with run context
+        if (
+            not out.get("ok")
+            and run_ctx
+            and "{" in path
+            and isinstance(out.get("request"), dict)
+        ):
+            seeded = _apply_run_context(dict(out["request"]), run_ctx)
+            if seeded.get("path_params") != (out.get("request") or {}).get("path_params"):
+                out = await ensure_working_payload(
+                    service=service,
+                    environment=env,
+                    method=method,
+                    path=path,
+                    api_id=api_id or None,
+                    write_back=write_back,
+                    allow_llm=allow_llm,
+                    max_attempts=max_attempts,
+                    prefer_stored=False,
+                    initial_request=seeded,
+                    initial_source="run-context",
+                )
+        ok = bool(out.get("ok"))
+        if ok:
+            passed += 1
+            resp = out.get("response") if isinstance(out.get("response"), dict) else {}
+            body = resp.get("body") if isinstance(resp, dict) else None
+            if body is None:
+                try_block = out.get("try") if isinstance(out.get("try"), dict) else {}
+                body = try_block.get("body")
+            run_ctx.update(_harvest_ids_from_body(body))
+        else:
+            failed += 1
+        ps = out.get("payload_set") if isinstance(out.get("payload_set"), dict) else {}
+        if ps.get("version") is not None:
+            set_version = int(ps["version"])
+        # Refresh stored map after writes so later ops see updates if needed
+        if ok and write_back:
+            fresh = get_payload_set(service, None)
+            if fresh and isinstance(fresh.get("apis"), dict):
+                stored_apis = fresh["apis"]
+
+        results.append(
+            {
+                **row_base,
+                "ok": ok,
+                "final_status": out.get("final_status") or (out.get("try") or {}).get("status_code"),
+                "source": out.get("source"),
+                "attempts_used": out.get("attempts_used") or len(out.get("attempts") or []),
+                "attempts": out.get("attempts") or [],
+                "request": out.get("request"),
+                "response": out.get("response"),
+                "error": out.get("error"),
+                "payload_set_version": set_version,
+                "llm_attempted": out.get("llm_attempted"),
+            }
+        )
+
+    # Touch openapi meta for UI chips
+    meta = load_openapi_document(service, env)
+    return {
+        "ok": failed == 0,
+        "service": service,
+        "environment": env,
+        "total": len(results),
+        "passed": passed,
+        "failed": failed,
+        "payload_set_version": set_version,
+        "operation_count": meta.get("operation_count"),
+        "results": results,
+    }
+
+
+def _resolved_path_from_request(request: dict[str, Any]) -> str:
+    """Prefer resolved_path; otherwise substitute path_params into the template."""
+    resolved = str(request.get("resolved_path") or "").strip()
+    if resolved and "{" not in resolved:
+        return resolved.lstrip("/")
+    path = str(request.get("path") or "").strip()
+    pp = request.get("path_params") if isinstance(request.get("path_params"), dict) else {}
+    for k, v in pp.items():
+        if v is None:
+            continue
+        path = path.replace("{" + str(k) + "}", str(v))
+    return path.lstrip("/")
+
+
 async def _try_once(service: str, environment: str, request: dict[str, Any]) -> dict[str, Any]:
-    path = str(request.get("resolved_path") or request.get("path") or "").lstrip("/")
+    path = _resolved_path_from_request(request)
+    # Keep request in sync so UI/MCP see the path that was actually called
+    if path:
+        request["resolved_path"] = "/" + path if not str(request.get("path") or "").startswith("http") else path
     query = request.get("query") if isinstance(request.get("query"), dict) else {}
     qs = build_query_string(query) if query else ""
     body_raw: bytes | None = None

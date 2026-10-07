@@ -550,9 +550,14 @@ async def start_release_ops_now(
     from intelligence.cliq_release_gate import get_pending_store
 
     store = get_pending_store()
-    api_pack = body.api_pack or (
-        "subscription" if body.suite == "subscription_module" else ""
-    )
+    try:
+        from ui_evidence.plugins.loader import resolve_api_pack_default
+
+        api_pack = body.api_pack or resolve_api_pack_default(body.suite)
+    except Exception:  # noqa: BLE001
+        api_pack = body.api_pack or (
+            "subscription" if body.suite == "subscription_module" else ""
+        )
     req = store.create(
         release_id=body.release_id or "",
         release_name=body.release_name or body.release_id or "n8n-release-ops",
@@ -604,9 +609,14 @@ async def request_release_ops(
         raise HTTPException(503, "QA_AGENT_RELEASE_ADMIN must be set (single Cliq approver)")
 
     store = get_pending_store()
-    api_pack = body.api_pack or (
-        "subscription" if body.suite == "subscription_module" else ""
-    )
+    try:
+        from ui_evidence.plugins.loader import resolve_api_pack_default
+
+        api_pack = body.api_pack or resolve_api_pack_default(body.suite)
+    except Exception:  # noqa: BLE001
+        api_pack = body.api_pack or (
+            "subscription" if body.suite == "subscription_module" else ""
+        )
     req = store.create(
         release_id=body.release_id or "",
         release_name=body.release_name or body.release_id or "",
@@ -743,6 +753,57 @@ async def cliq_release_webhook(
         notes=parsed.get("notes") or "",
         require_token=require_token,
     )
+
+
+class ServiceOnboardBody(BaseModel):
+    service: str | None = None
+    environment: str = "dev"
+    strict_payloads: bool = False
+    strict_smoke: bool = False
+    allow_llm: bool = True
+    plugin_id: str | None = None
+    use_temporal: bool = Field(
+        default=True,
+        description="If false, run activities inline (no Temporal worker required)",
+    )
+    wait: bool = Field(
+        default=False,
+        description="If true with Temporal, wait for workflow result (or use inline)",
+    )
+
+
+@app.post("/v2/workflows/service-onboard")
+async def start_service_onboard_v2(
+    body: ServiceOnboardBody,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Start ServiceOnboardPrepWorkflow (or inline fallback)."""
+    _require_token(authorization)
+    if not (body.service or "").strip():
+        raise HTTPException(400, "service required")
+    return await tapi.start_or_run_service_onboard(
+        service=body.service or "",
+        environment=body.environment,
+        strict_payloads=body.strict_payloads,
+        strict_smoke=body.strict_smoke,
+        allow_llm=body.allow_llm,
+        plugin_id=body.plugin_id,
+        use_temporal=body.use_temporal,
+        wait=body.wait,
+    )
+
+
+@app.get("/v2/workflows/service-onboard/{workflow_id}")
+async def get_service_onboard_v2(
+    workflow_id: str,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Poll Temporal (or return hint to read latest.json via Specs)."""
+    _require_token(authorization)
+    try:
+        return await tapi.get_service_onboard_result(workflow_id)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(404, f"workflow not found or Temporal unavailable: {exc}") from exc
 
 
 def main() -> None:

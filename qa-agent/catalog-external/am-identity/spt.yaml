@@ -5,12 +5,12 @@ label: am-identity
 enabled: true
 runtime: python
 owners: [identity-team]
-description: Identity service load-test registration (OpenAPI via FastAPI)
+description: Identity service — Specs onboard feed (OpenAPI via FastAPI)
 createdBy: identity-team
 updatedBy: identity-team
 createdAt: "2026-07-24"
-updatedAt: "2026-07-24"
-tags: [auth, python, fastapi]
+updatedAt: "2026-10-07"
+tags: [auth, python, fastapi, onboard]
 source:
   repo: am-platform
   path: am-identity/spt.yaml
@@ -18,9 +18,16 @@ source:
 traces:
   - name: openapi
     ref: /openapi.json
+  - name: onboard
+    ref: docs/qa-agent/SERVICE_ONBOARD_PREP.md
 targets:
+  # dig laptop uses public_* / HTTPS; dig env normalizes to dev in onboard workflow
+  dig: "https://am-dev.asrax.in/identity"
   dev: "https://am-dev.asrax.in/identity"
+  public_dev: "https://am-dev.asrax.in/identity"
   preprod: "https://am-preprod.asrax.in/identity"
+  public_preprod: "https://am-preprod.asrax.in/identity"
   prod: "https://am.asrax.in/identity"
+  public_prod: "https://am.asrax.in/identity"
 openapi:
   path: /openapi.json
