@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from specs.flows.authored_store import AuthoredFlowError, delete_authored, upsert_authored
-from specs.flows.catalog import get_flow, list_flows
+from specs.flows.catalog import get_flow, query_flows
 from specs.flows.graph import build_graph
 from specs.flows import executions as ex_store
 from specs.flows.runner import start_execution
@@ -32,6 +32,7 @@ class CredentialUpsert(BaseModel):
     password: Optional[str] = None
     token: Optional[str] = None
     base_url: str = ""
+    app_id: str = ""
 
 
 class FlowUpsert(BaseModel):
@@ -45,6 +46,7 @@ class FlowUpsert(BaseModel):
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     created_by: str = "authored"
+    api_pack: Optional[str] = None
     variables: dict[str, Any] = Field(default_factory=dict)
     payload_set_version: Optional[int] = None
     nodes: list[dict[str, Any]] = Field(default_factory=list)
@@ -145,6 +147,25 @@ def api_delete_credential(cred_id: str) -> dict:
     return {"deleted": cred_id}
 
 
+@router.post("/api/credentials/probe-all")
+def api_probe_all_credentials(env: Optional[str] = None) -> dict:
+    """Probe every credential (optional env filter)."""
+    from specs.security.credential_probe import probe_all
+
+    return probe_all(env=env)
+
+
+@router.post("/api/credentials/{cred_id}/probe")
+def api_probe_credential(cred_id: str) -> dict:
+    """Live connectivity check for one credential / resource."""
+    from specs.security.credential_probe import probe_credential
+
+    out = probe_credential(cred_id)
+    if out.get("status") == "missing":
+        raise HTTPException(status_code=404, detail="credential not found")
+    return out
+
+
 # --- Flows list / executions (static paths before {flow_id}) ---
 
 
@@ -152,9 +173,23 @@ def api_delete_credential(cred_id: str) -> dict:
 def api_list_flows(
     group: Optional[str] = None,
     category: Optional[str] = None,
+    q: Optional[str] = None,
+    api_pack: Optional[str] = None,
+    service: Optional[str] = None,
+    limit: Optional[int] = 100,
+    offset: int = 0,
+    facets: bool = False,
 ) -> dict:
-    rows = list_flows(group=group, category=category)
-    return {"flows": rows, "count": len(rows)}
+    return query_flows(
+        group=group,
+        category=category,
+        q=q,
+        api_pack=api_pack,
+        service=service,
+        limit=limit,
+        offset=offset,
+        facets=facets,
+    )
 
 
 @router.get("/api/flows/executions")
@@ -181,6 +216,26 @@ def api_get_execution(execution_id: str) -> dict:
     if not row:
         raise HTTPException(status_code=404, detail="execution not found")
     return row
+
+
+@router.get("/api/flows/executions/{execution_id}/obs-logs")
+async def api_execution_obs_logs(
+    execution_id: str,
+    limit: int = 100,
+) -> dict:
+    """Platform logs (Grafana/Loki) for an API flow execution."""
+    row = ex_store.get_execution(execution_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="execution not found")
+    from specs.observability.obs_logs import fetch_obs_logs
+
+    out = await fetch_obs_logs(
+        trace_id=row.get("trace_id"),
+        correlation_id=row.get("correlation_id"),
+        limit=limit,
+    )
+    out["execution_id"] = execution_id
+    return out
 
 
 @router.post("/api/flows/executions/{execution_id}/stop")

@@ -105,6 +105,107 @@ def _clean_str_list(vals: Any) -> list[str]:
     return out
 
 
+_TRIGGER_IDS = frozenset({"__manual_trigger__", "manual_trigger", "start"})
+
+
+def _clean_graph(raw: Any) -> dict[str, Any] | None:
+    """Normalize optional n8n-style graph {nodes, edges}."""
+    if not isinstance(raw, dict):
+        return None
+    nodes_out: list[dict[str, Any]] = []
+    for n in raw.get("nodes") or []:
+        if not isinstance(n, dict):
+            continue
+        nid = str(n.get("id") or "").strip()
+        if not nid:
+            continue
+        node: dict[str, Any] = {
+            "id": nid,
+            "kind": str(n.get("kind") or "ui_step"),
+            "label": str(n.get("label") or nid).strip() or nid,
+            "method": str(n.get("method") or "").strip() or None,
+        }
+        if n.get("x") is not None:
+            try:
+                node["x"] = float(n["x"])
+            except (TypeError, ValueError):
+                pass
+        if n.get("y") is not None:
+            try:
+                node["y"] = float(n["y"])
+            except (TypeError, ValueError):
+                pass
+        nodes_out.append({k: v for k, v in node.items() if v is not None})
+    ids = {n["id"] for n in nodes_out}
+    edges_out: list[dict[str, Any]] = []
+    for e in raw.get("edges") or []:
+        if not isinstance(e, dict):
+            continue
+        frm = str(e.get("from") or "").strip()
+        to = str(e.get("to") or "").strip()
+        if not frm or not to or frm not in ids or to not in ids:
+            continue
+        edges_out.append(
+            {
+                "id": str(e.get("id") or f"{frm}->{to}"),
+                "from": frm,
+                "to": to,
+                **({"trigger": True} if e.get("trigger") else {}),
+            }
+        )
+    if not nodes_out:
+        return None
+    return {"nodes": nodes_out, "edges": edges_out}
+
+
+def lists_from_graph(graph: dict[str, Any] | None) -> tuple[list[str], list[str]]:
+    """Derive documentation steps/verifications from graph node order."""
+    if not graph:
+        return [], []
+    nodes = {str(n.get("id")): n for n in (graph.get("nodes") or []) if isinstance(n, dict)}
+    outs: dict[str, list[str]] = {}
+    for e in graph.get("edges") or []:
+        if not isinstance(e, dict):
+            continue
+        frm = str(e.get("from") or "")
+        to = str(e.get("to") or "")
+        if frm and to:
+            outs.setdefault(frm, []).append(to)
+    start = next(
+        (nid for nid in nodes if nid in _TRIGGER_IDS or str(nodes[nid].get("kind")) == "manual_trigger"),
+        None,
+    )
+    order: list[str] = []
+    if start:
+        cur = start
+        seen = {cur}
+        while True:
+            nxts = outs.get(cur) or []
+            if not nxts:
+                break
+            nxt = nxts[0]
+            if nxt in seen:
+                break
+            seen.add(nxt)
+            order.append(nxt)
+            cur = nxt
+    if not order:
+        order = [nid for nid in nodes if nid not in _TRIGGER_IDS and str(nodes[nid].get("kind")) != "manual_trigger"]
+    steps: list[str] = []
+    verifications: list[str] = []
+    for nid in order:
+        n = nodes.get(nid) or {}
+        kind = str(n.get("kind") or "ui_step")
+        label = str(n.get("label") or nid).strip()
+        if not label or kind == "manual_trigger":
+            continue
+        if kind == "verification":
+            verifications.append(label)
+        else:
+            steps.append(label)
+    return steps, verifications
+
+
 def upsert_flow(
     body: dict[str, Any],
     *,
@@ -128,6 +229,9 @@ def upsert_flow(
     if create and (is_builtin or is_custom):
         raise UiCatalogError(f"Flow {fid!r} already exists")
 
+    graph = _clean_graph(body.get("graph")) if "graph" in body else None
+    derived_steps, derived_verifs = lists_from_graph(graph)
+
     if is_builtin and not is_custom:
         # Metadata override only
         patch = {
@@ -143,6 +247,13 @@ def upsert_flow(
             clean["steps"] = _clean_str_list(body.get("steps"))
         if "verifications" in body:
             clean["verifications"] = _clean_str_list(body.get("verifications"))
+        if graph is not None:
+            clean["graph"] = graph
+            # Write-through documentation lists from graph unless client sent explicit lists
+            if "steps" not in body:
+                clean["steps"] = derived_steps
+            if "verifications" not in body:
+                clean["verifications"] = derived_verifs
         overrides[fid] = {**(overrides.get(fid) or {}), **clean}
         store["flow_overrides"] = overrides
         save_store(store)
@@ -186,6 +297,14 @@ def upsert_flow(
             row["verifications"] = list(prev.get("verifications") or [])
         if "runs_as" not in body:
             row["runs_as"] = prev.get("runs_as") or runs_as
+        if "graph" not in body and isinstance(prev.get("graph"), dict):
+            row["graph"] = prev["graph"]
+    if graph is not None:
+        row["graph"] = graph
+        if "steps" not in body:
+            row["steps"] = derived_steps
+        if "verifications" not in body:
+            row["verifications"] = derived_verifs
 
     customs[fid] = row
     store["flows"] = customs
@@ -333,7 +452,7 @@ def merge_catalog(base: dict[str, Any]) -> dict[str, Any]:
         fid = str(f.get("id") or "")
         ov = flow_overrides.get(fid) or {}
         row = dict(f)
-        for key in ("label", "group", "summary", "steps", "verifications"):
+        for key in ("label", "group", "summary", "steps", "verifications", "graph"):
             if key in ov and ov[key] is not None:
                 row[key] = ov[key]
         row["custom"] = False
@@ -360,6 +479,8 @@ def merge_catalog(base: dict[str, Any]) -> dict[str, Any]:
             "deletable": True,
             "resettable": False,
         }
+        if isinstance(raw.get("graph"), dict):
+            row["graph"] = raw["graph"]
         flows.append(row)
         seen.add(fid)
 

@@ -61,8 +61,7 @@ ingress:
           pathType: Prefix
         - path: /ui-test
           pathType: Prefix
-        - path: /qa/ui
-          pathType: Prefix
+        # /qa/ui served by separate am-qa-portal-ui-dev (priority 200)
 
 env:
   APP_ENV: dev
@@ -87,14 +86,16 @@ env:
   KEYCLOAK_TOKEN_URL: "https://auth.asrax.in/realms/am-dev-realm/protocol/openid-connect/token"
   OIDC_TOKEN_URL: "https://auth.asrax.in/realms/am-dev-realm/protocol/openid-connect/token"
   OIDC_ISSUER: "https://auth.asrax.in/realms/am-dev-realm"
-  SPT_CATALOG_EXTERNAL: "/app/qa-agent/catalog-external"
+  SPT_CATALOG_EXTERNAL: "/catalog-external"
   TEMPORAL_UI_EXTERNAL_URL: "https://temporal.asrax.in"
   AM_MCP_CLIENT_ID: "am-mcp-service"
   SPT_PUBLIC_BASE_URL: "https://am-dev.asrax.in/qa"
   SPT_UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_BASE_URL: "http://127.0.0.1:8150"
-  SPT_PORTAL_FLUTTER: "true"
+  # Portal SPA is a separate dig Deployment (am-qa-portal-ui-dev). Agent may still
+  # bake web for fallback/local; dig Ingress routes /qa/ui to the portal pod.
+  SPT_PORTAL_FLUTTER: "false"
   # Soft dependency — avoid localhost default noise in cluster
   QDRANT_HOST: "qdrant.am-ai.svc.cluster.local"
   # Release mixed smoke: 1 shared iteration across catalog APIs (not 50× load)

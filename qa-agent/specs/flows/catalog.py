@@ -214,10 +214,65 @@ def _summary_row(f: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _flow_service_key(row: dict[str, Any]) -> str:
+    """Primary service bucket for sidebar (api_pack, else first node service, else group)."""
+    pack = str(row.get("api_pack") or "").strip()
+    if pack:
+        return pack
+    services = row.get("services")
+    if isinstance(services, list) and services:
+        return str(services[0]).strip()
+    return str(row.get("group") or "other").strip() or "other"
+
+
+def _match_q(row: dict[str, Any], q: str) -> bool:
+    blob = " ".join(
+        [
+            str(row.get("id") or ""),
+            str(row.get("title") or ""),
+            str(row.get("description") or ""),
+            str(row.get("api_pack") or ""),
+            str(row.get("group") or ""),
+            str(row.get("category") or ""),
+            " ".join(str(t) for t in (row.get("tags") or [])),
+            " ".join(str(s) for s in (row.get("services") or [])),
+        ]
+    ).lower()
+    return q in blob
+
+
+def build_flow_facets(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    services: dict[str, int] = {}
+    groups: dict[str, int] = {}
+    categories: dict[str, int] = {}
+    for r in rows:
+        sk = _flow_service_key(r)
+        services[sk] = services.get(sk, 0) + 1
+        g = str(r.get("group") or "other")
+        groups[g] = groups.get(g, 0) + 1
+        c = str(r.get("category") or "general")
+        categories[c] = categories.get(c, 0) + 1
+    return {
+        "services": [
+            {"id": k, "count": services[k]} for k in sorted(services, key=str.lower)
+        ],
+        "groups": [
+            {"id": k, "count": groups[k]} for k in sorted(groups, key=str.lower)
+        ],
+        "categories": [
+            {"id": k, "count": categories[k]}
+            for k in sorted(categories, key=str.lower)
+        ],
+    }
+
+
 def list_flows(
     *,
     group: str | None = None,
     category: str | None = None,
+    q: str | None = None,
+    api_pack: str | None = None,
+    service: str | None = None,
 ) -> list[dict[str, Any]]:
     builtin = _load_builtin_flows()
     authored = list_authored()
@@ -236,11 +291,72 @@ def list_flows(
         summaries.append(row)
     g = (group or "").strip().lower() or None
     c = (category or "").strip().lower() or None
+    pack = (api_pack or "").strip().lower() or None
+    svc = (service or "").strip().lower() or None
+    query = (q or "").strip().lower() or None
     if g:
         summaries = [r for r in summaries if str(r.get("group") or "").lower() == g]
     if c:
         summaries = [r for r in summaries if str(r.get("category") or "").lower() == c]
+    if pack:
+        summaries = [
+            r
+            for r in summaries
+            if str(r.get("api_pack") or "").lower() == pack
+            or _flow_service_key(r).lower() == pack
+        ]
+    if svc:
+        summaries = [
+            r
+            for r in summaries
+            if svc == str(r.get("api_pack") or "").lower()
+            or svc == _flow_service_key(r).lower()
+            or any(str(s).lower() == svc for s in (r.get("services") or []))
+        ]
+    if query:
+        summaries = [r for r in summaries if _match_q(r, query)]
     return summaries
+
+
+def query_flows(
+    *,
+    group: str | None = None,
+    category: str | None = None,
+    q: str | None = None,
+    api_pack: str | None = None,
+    service: str | None = None,
+    limit: int | None = 100,
+    offset: int = 0,
+    facets: bool = False,
+) -> dict[str, Any]:
+    """Filtered + paginated flow summaries for the portal sidebar."""
+    rows = list_flows(
+        group=group,
+        category=category,
+        q=q,
+        api_pack=api_pack,
+        service=service,
+    )
+    total = len(rows)
+    off = max(0, int(offset or 0))
+    lim: int | None
+    if limit is None:
+        lim = None
+        page = rows[off:]
+    else:
+        lim = max(1, min(int(limit), 500))
+        page = rows[off : off + lim]
+    out: dict[str, Any] = {
+        "flows": page,
+        "count": len(page),
+        "total": total,
+        "offset": off,
+        "limit": lim,
+    }
+    if facets:
+        # Facets from the same filter set (pre-pagination) for accurate rail counts.
+        out["facets"] = build_flow_facets(rows)
+    return out
 
 
 def get_flow(flow_id: str) -> dict[str, Any] | None:

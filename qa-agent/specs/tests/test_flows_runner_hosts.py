@@ -45,6 +45,33 @@ def test_creds_for_run_pairs_prod_hosts(monkeypatch):
     assert gateway == "https://am.asrax.in"
 
 
+def test_service_base_url_uses_catalog_for_market(monkeypatch):
+    monkeypatch.setattr(
+        "specs.catalog.catalog_loader.default_target_for_service",
+        lambda service, environment: {
+            ("am-market-data", "dev"): "https://am-dev.asrax.in/market",
+            ("am-market-data", "prod"): "https://am.asrax.in/market",
+        }.get((service, environment), ""),
+    )
+    dig = runner._service_base_url(
+        "am-market-data",
+        env="dev",
+        identity_base="https://am-dev.asrax.in/identity",
+        gateway_host="https://am-dev.asrax.in",
+    )
+    assert dig == "https://am-dev.asrax.in/market"
+    # identity services stay on identity surface
+    assert (
+        runner._service_base_url(
+            "am-identity",
+            env="dev",
+            identity_base="https://am-dev.asrax.in/identity",
+            gateway_host="https://am-dev.asrax.in",
+        )
+        == "https://am-dev.asrax.in/identity"
+    )
+
+
 def test_subscription_health_falls_back_to_plans(monkeypatch):
     class _Resp:
         def __init__(self, status: int, body: dict):

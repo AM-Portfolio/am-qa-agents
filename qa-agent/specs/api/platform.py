@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Query, Request, Response
+import asyncio
+
+from fastapi import APIRouter, Body, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import JSONResponse
 
 from specs.load import load_ops
@@ -163,9 +165,10 @@ async def api_service_apis(
     environment: str | None = Query(default=None, description="dev|preprod|prod — picks targets[env]"),
 ) -> dict:
     env = environment or settings.default_environment
-    data = load_service_apis(service, env)
-    reg = load_registration(service)
-    target = reachable_target_for_service(service, env)
+    # Sync OpenAPI HTTP must not block the event loop (UI fans out many /apis).
+    data = await asyncio.to_thread(load_service_apis, service, env)
+    reg = await asyncio.to_thread(load_registration, service)
+    target = await asyncio.to_thread(reachable_target_for_service, service, env)
     # target_url last so registration/baked payloads cannot overwrite the reachable URL
     return {
         "service": service,
@@ -205,7 +208,7 @@ async def api_service_openapi_document(
     effective: bool = Query(default=False, description="Merge SPT overlay examples into document"),
 ):
     """Raw OpenAPI JSON proxied by SPT (browser-reachable; cluster DNS is not)."""
-    meta = load_openapi_document(service, environment)
+    meta = await asyncio.to_thread(load_openapi_document, service, environment)
     if not meta.get("ok") or not isinstance(meta.get("document"), dict):
         raise HTTPException(
             status_code=502,
@@ -214,7 +217,7 @@ async def api_service_openapi_document(
     doc = meta["document"]
     env = str(meta.get("environment") or environment or settings.default_environment)
     if effective:
-        doc, _overlay = merge_effective_document(doc, service, env)
+        doc, _overlay = await asyncio.to_thread(merge_effective_document, doc, service, env)
     return JSONResponse(
         content=doc,
         headers={
@@ -233,13 +236,13 @@ async def api_service_openapi_effective(
 ) -> dict:
     """Live OpenAPI merged with SPT-local overlay (examples from ensure-working / sets)."""
     env = environment or settings.default_environment
-    meta = load_openapi_document(service, env)
+    meta = await asyncio.to_thread(load_openapi_document, service, env)
     if not meta.get("ok") or not isinstance(meta.get("document"), dict):
         raise HTTPException(
             status_code=502,
             detail=meta.get("error") or f"OpenAPI unavailable for {service}",
         )
-    doc, overlay = merge_effective_document(meta["document"], service, env)
+    doc, overlay = await asyncio.to_thread(merge_effective_document, meta["document"], service, env)
     return {
         "service": service,
         "environment": env,
@@ -262,10 +265,10 @@ async def api_service_openapi(
     effective: bool = Query(default=False, description="Merge SPT overlay into document"),
 ) -> dict:
     """Live OpenAPI document + registration config for Swagger-style Specs UI."""
-    meta = load_openapi_document(service, environment)
+    meta = await asyncio.to_thread(load_openapi_document, service, environment)
     if include_document and effective and isinstance(meta.get("document"), dict):
         env = str(meta.get("environment") or environment or settings.default_environment)
-        doc, overlay = merge_effective_document(meta["document"], service, env)
+        doc, overlay = await asyncio.to_thread(merge_effective_document, meta["document"], service, env)
         meta = {**meta, "document": doc, "overlay": {
             "updated_at": overlay.get("updated_at"),
             "operation_count": len(overlay.get("operations") or {}),
@@ -289,20 +292,88 @@ async def api_service_openapi_sync(
     from specs.catalog.openapi_sync import sync_openapi_for_service
     from specs.openapi_tools.registry import tools_from_openapi_document
 
-    out = sync_openapi_for_service(service, environment, force=force)
+    out = await asyncio.to_thread(sync_openapi_for_service, service, environment, force=force)
     env = str(out.get("environment") or environment or settings.default_environment)
-    meta = load_openapi_document(service, env)
+    meta = await asyncio.to_thread(load_openapi_document, service, env)
     doc = meta.get("document") if isinstance(meta.get("document"), dict) else None
     if out.get("ok") and doc:
-        tools_meta = tools_from_openapi_document(
-            doc,
-            service=service,
-            base_url=str(meta.get("target_url") or ""),
-            environment=env,
-            persist=True,
-        )
+
+        def _persist_tools() -> dict:
+            return tools_from_openapi_document(
+                doc,
+                service=service,
+                base_url=str(meta.get("target_url") or ""),
+                environment=env,
+                persist=True,
+            )
+
+        tools_meta = await asyncio.to_thread(_persist_tools)
         out["tools_count"] = tools_meta.get("count")
         out["operation_count"] = tools_meta.get("operation_count") or out.get("operation_count")
+    return out
+
+
+@router.post("/api/catalog/{service}/openapi/seed")
+async def api_service_openapi_seed(
+    service: str,
+    environment: str | None = Query(default=None, description="dev|preprod|prod"),
+    from_payload_set: bool = Query(
+        default=True,
+        description="Build OpenAPI from active payload set when document not provided",
+    ),
+    body: dict | None = Body(default=None),
+) -> dict:
+    """Seed OpenAPI sync cache from payload set or an explicit document.
+
+    Use when live ``/v3/api-docs`` fails (e.g. Spring StackOverflow) so Specs
+    Swagger + APIs rail still show the service surface.
+    """
+    from specs.catalog.openapi_sync import seed_openapi_document, seed_openapi_from_payload_set
+    from specs.openapi_tools.registry import tools_from_openapi_document
+
+    env = (environment or settings.default_environment or "dev").lower()
+    clear_platform_caches()
+    payload = body if isinstance(body, dict) else {}
+    doc_in = payload.get("document") if isinstance(payload.get("document"), dict) else None
+
+    def _seed() -> dict:
+        if doc_in:
+            return seed_openapi_document(
+                service,
+                env,
+                document=doc_in,
+                openapi_url=str(payload.get("openapi_url") or ""),
+                target_url=str(payload.get("target_url") or ""),
+            )
+        if from_payload_set:
+            return seed_openapi_from_payload_set(
+                service,
+                env,
+                version=payload.get("version") if isinstance(payload.get("version"), int) else None,
+            )
+        return {"ok": False, "error": "provide document or from_payload_set=true"}
+
+    out = await asyncio.to_thread(_seed)
+    if not out.get("ok"):
+        raise HTTPException(status_code=400, detail=out)
+
+    meta = await asyncio.to_thread(load_openapi_document, service, env)
+    doc = meta.get("document") if isinstance(meta.get("document"), dict) else None
+    if doc:
+
+        def _persist_tools() -> dict:
+            return tools_from_openapi_document(
+                doc,
+                service=service,
+                base_url=str(meta.get("target_url") or ""),
+                environment=env,
+                persist=True,
+            )
+
+        tools_meta = await asyncio.to_thread(_persist_tools)
+        out["tools_count"] = tools_meta.get("count")
+    out["catalog_source"] = meta.get("source")
+    out["operation_count"] = out.get("operation_count") or meta.get("operation_count")
     return out
 
 
@@ -316,34 +387,41 @@ async def api_service_openapi_tools(
     from specs.openapi_tools.registry import tools_from_openapi_document
 
     env = environment or settings.default_environment
-    meta = load_openapi_document(service, env)
-    doc = meta.get("document") if isinstance(meta.get("document"), dict) else None
-    if not meta.get("ok") or not doc:
-        raise HTTPException(
-            status_code=502,
-            detail=meta.get("error") or f"OpenAPI unavailable for {service}",
+
+    def _build() -> dict:
+        meta = load_openapi_document(service, env)
+        doc = meta.get("document") if isinstance(meta.get("document"), dict) else None
+        if not meta.get("ok") or not doc:
+            return {
+                "ok": False,
+                "error": meta.get("error") or f"OpenAPI unavailable for {service}",
+            }
+        target = str(meta.get("target_url") or reachable_target_for_service(service, env) or "")
+        tools_meta = tools_from_openapi_document(
+            doc,
+            service=service,
+            base_url=target,
+            environment=env,
+            persist=True,
         )
-    target = str(meta.get("target_url") or reachable_target_for_service(service, env) or "")
-    tools_meta = tools_from_openapi_document(
-        doc,
-        service=service,
-        base_url=target,
-        environment=env,
-        persist=True,
-    )
-    apis = openapi_to_apis(doc, include_mutating=True)
-    return {
-        "service": service,
-        "environment": str(meta.get("environment") or env),
-        "ok": True,
-        "openapi_url": meta.get("openapi_url"),
-        "target_url": target,
-        "count": tools_meta.get("count"),
-        "operation_count": tools_meta.get("operation_count")
-        or count_openapi_operations(doc),
-        "apis_count": len(apis),
-        "tools": tools_meta.get("tools") or [],
-    }
+        apis = openapi_to_apis(doc, include_mutating=True)
+        return {
+            "service": service,
+            "environment": str(meta.get("environment") or env),
+            "ok": True,
+            "openapi_url": meta.get("openapi_url"),
+            "target_url": target,
+            "count": tools_meta.get("count"),
+            "operation_count": tools_meta.get("operation_count")
+            or count_openapi_operations(doc),
+            "apis_count": len(apis),
+            "tools": tools_meta.get("tools") or [],
+        }
+
+    out = await asyncio.to_thread(_build)
+    if not out.get("ok"):
+        raise HTTPException(status_code=502, detail=out.get("error") or "OpenAPI unavailable")
+    return out
 
 
 def _ensure_openapi_tools_for_service(service: str, environment: str | None) -> dict:
@@ -658,21 +736,131 @@ async def api_payloads_generate_all(body: PayloadGenerateAllRequest) -> dict:
 
 @router.post("/api/payloads/import")
 async def api_payloads_import(body: PayloadImportRequest) -> dict:
-    """Import Postman (or other registered) collection + env into a payload set."""
+    """Import Postman or am-specs-dataset payload set into a service payload set.
+
+    Large sets: send ``zip_b64`` (deflated ``payload.json``) instead of raw JSON.
+    """
     from specs.import_adapters import import_collection_to_payload_set
+    from specs.payloads.zip_codec import ZipCodecError, maybe_expand_import_fields
 
     try:
-        return import_collection_to_payload_set(
-            service=body.service,
-            collection=body.collection,
-            environment=body.environment,
-            format=body.format,
-            label=body.label,
+        expanded = maybe_expand_import_fields(body.model_dump())
+    except ZipCodecError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    service = str(expanded.get("service") or body.service)
+    fmt = (expanded.get("format") or body.format or "").strip().lower() or None
+    collection = expanded.get("collection")
+    payload_set = expanded.get("payload_set")
+    environment = expanded.get("environment", body.environment)
+    label = expanded.get("label") or body.label
+    profile = expanded.get("profile") or body.profile
+
+    if payload_set is not None:
+        collection = {
+            "format": "am-specs-dataset",
+            "service": service,
+            "label": label,
+            "profile": profile,
+            "payload_set": payload_set,
+            "env": environment if isinstance(environment, dict) else None,
+        }
+        fmt = fmt or "am-specs-dataset"
+    if collection is None:
+        raise HTTPException(status_code=400, detail="collection, payload_set, or zip_b64 required")
+
+    try:
+        out = import_collection_to_payload_set(
+            service=service,
+            collection=collection,
+            environment=environment,
+            format=fmt,
+            label=label,
             make_active=body.make_active,
             bump_set=body.bump_set,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+    if fmt == "am-specs-dataset" and body.sync_workflows and out.get("ok"):
+        from specs.data_gen.workflows import sync_cross_flow_workflows
+
+        examples: list = []
+        ps = payload_set or {}
+        if isinstance(ps.get("apis"), dict):
+            examples.extend(list(ps["apis"].values()))
+        elif isinstance(collection, dict):
+            inner = collection.get("payload_set") or {}
+            if isinstance(inner.get("apis"), dict):
+                examples.extend(list(inner["apis"].values()))
+        prof = profile or "prod"
+        if isinstance(ps.get("source"), dict):
+            prof = str(ps["source"].get("profile") or prof)
+        out["workflow_sync"] = sync_cross_flow_workflows(
+            service=service,
+            profile=str(prof),
+            examples=[e for e in examples if isinstance(e, dict)],
+            payload_set_version=int(out.get("payload_set_version") or 0),
+            prune=True,
+        )
+    if not out.get("ok"):
+        raise HTTPException(status_code=400, detail=out)
+    return out
+
+
+@router.post("/api/payloads/import-zip")
+async def api_payloads_import_zip(
+    file: UploadFile = File(...),
+    service: str = Form(...),
+    format: str | None = Form(None),
+    label: str | None = Form(None),
+    profile: str | None = Form(None),
+    make_active: bool = Form(True),
+    bump_set: bool = Form(True),
+    sync_workflows: bool = Form(True),
+) -> dict:
+    """Multipart .zip / .gz / .json import (preferred for large payload sets)."""
+    from specs.payloads.zip_codec import ZipCodecError, unpack_blob
+
+    raw = await file.read()
+    try:
+        doc = unpack_blob(raw, filename=file.filename)
+    except ZipCodecError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not isinstance(doc, dict):
+        raise HTTPException(status_code=400, detail="zip JSON root must be an object")
+
+    payload_set = doc.get("payload_set") if isinstance(doc.get("payload_set"), dict) else None
+    collection = doc.get("collection") if doc.get("collection") is not None else None
+    environment = doc.get("environment") or doc.get("env")
+    if payload_set is None and "apis" in doc:
+        payload_set = doc
+    if collection is None and payload_set is None:
+        collection = doc
+
+    req = PayloadImportRequest(
+        service=(service or str(doc.get("service") or "")).strip(),
+        collection=None if payload_set is not None else collection,
+        payload_set=payload_set,
+        environment=environment if isinstance(environment, dict) else None,
+        format=format or (doc.get("format") if isinstance(doc.get("format"), str) else None),
+        label=label or (doc.get("label") if isinstance(doc.get("label"), str) else None),
+        profile=profile or (doc.get("profile") if isinstance(doc.get("profile"), str) else None),
+        make_active=make_active,
+        bump_set=bump_set,
+        sync_workflows=sync_workflows,
+    )
+    out = await api_payloads_import(req)
+    out["transfer"] = {
+        "filename": file.filename,
+        "bytes_in": len(raw),
+        "encoding": (
+            "zip"
+            if raw[:2] == b"PK"
+            else ("gzip" if raw[:2] == b"\x1f\x8b" else "json")
+        ),
+    }
+    return out
 
 
 @router.post("/api/payloads/prepare-mcp")

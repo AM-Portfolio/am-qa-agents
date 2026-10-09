@@ -3,13 +3,21 @@ import 'package:equatable/equatable.dart';
 class FlowsState extends Equatable {
   const FlowsState({
     this.loading = false,
+    this.loadingMore = false,
     this.error,
     this.flows = const [],
+    this.flowsTotal = 0,
+    this.flowQuery = '',
+    this.groupFilter = '',
+    this.categoryFilter = '',
+    this.apiPackFilter = '',
+    this.facets,
+    this.catalogServices = const [],
     this.credentials = const [],
     this.selectedFlowId,
     this.graph,
     this.credentialId,
-    this.env = 'prod',
+    this.env = 'dev',
     this.executionId,
     this.execution,
     this.executing = false,
@@ -25,8 +33,16 @@ class FlowsState extends Equatable {
   });
 
   final bool loading;
+  final bool loadingMore;
   final String? error;
   final List<Map<String, dynamic>> flows;
+  final int flowsTotal;
+  final String flowQuery;
+  final String groupFilter;
+  final String categoryFilter;
+  final String apiPackFilter;
+  final Map<String, dynamic>? facets;
+  final List<String> catalogServices;
   final List<Map<String, dynamic>> credentials;
   final String? selectedFlowId;
   final Map<String, dynamic>? graph;
@@ -46,10 +62,24 @@ class FlowsState extends Equatable {
   final bool graphDirty;
   final Map<String, Map<String, dynamic>> nodeQuickResults;
 
+  bool get hasMoreFlows => flows.length < flowsTotal;
+
+  /// Local unpublished canvas (New flow) — no server id yet.
+  bool get isDraft =>
+      selectedFlowId == null && graph != null && graph!.isNotEmpty;
+
   FlowsState copyWith({
     bool? loading,
+    bool? loadingMore,
     String? error,
     List<Map<String, dynamic>>? flows,
+    int? flowsTotal,
+    String? flowQuery,
+    String? groupFilter,
+    String? categoryFilter,
+    String? apiPackFilter,
+    Map<String, dynamic>? facets,
+    List<String>? catalogServices,
     List<Map<String, dynamic>>? credentials,
     String? selectedFlowId,
     Map<String, dynamic>? graph,
@@ -72,13 +102,24 @@ class FlowsState extends Equatable {
     bool clearCredentialId = false,
     bool clearRuntime = false,
     bool clearQuickResults = false,
+    bool clearFacets = false,
+    bool clearSelectedFlowId = false,
   }) {
     return FlowsState(
       loading: loading ?? this.loading,
+      loadingMore: loadingMore ?? this.loadingMore,
       error: clearError ? null : (error ?? this.error),
       flows: flows ?? this.flows,
+      flowsTotal: flowsTotal ?? this.flowsTotal,
+      flowQuery: flowQuery ?? this.flowQuery,
+      groupFilter: groupFilter ?? this.groupFilter,
+      categoryFilter: categoryFilter ?? this.categoryFilter,
+      apiPackFilter: apiPackFilter ?? this.apiPackFilter,
+      facets: clearFacets ? null : (facets ?? this.facets),
+      catalogServices: catalogServices ?? this.catalogServices,
       credentials: credentials ?? this.credentials,
-      selectedFlowId: selectedFlowId ?? this.selectedFlowId,
+      selectedFlowId:
+          clearSelectedFlowId ? null : (selectedFlowId ?? this.selectedFlowId),
       graph: graph ?? this.graph,
       credentialId: clearCredentialId
           ? null
@@ -106,8 +147,16 @@ class FlowsState extends Equatable {
   @override
   List<Object?> get props => [
         loading,
+        loadingMore,
         error,
         flows,
+        flowsTotal,
+        flowQuery,
+        groupFilter,
+        categoryFilter,
+        apiPackFilter,
+        facets,
+        catalogServices,
         credentials,
         selectedFlowId,
         graph,
@@ -127,4 +176,3 @@ class FlowsState extends Equatable {
         nodeQuickResults,
       ];
 }
-

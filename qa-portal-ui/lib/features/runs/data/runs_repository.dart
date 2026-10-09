@@ -143,6 +143,14 @@ class RunsRepository {
     return mapList(res.data, keys: const ['traces', 'items']);
   }
 
+  Future<Map<String, dynamic>> obsLogs(String id, {int limit = 100}) async {
+    final res = await _api.get(
+      '/api/runs/$id/obs-logs',
+      query: {'limit': limit},
+    );
+    return asMap(res.data);
+  }
+
   Future<Map<String, dynamic>> traceAt(String id, int index) async {
     final res = await _api.get('/api/runs/$id/traces/$index');
     return asMap(res.data);

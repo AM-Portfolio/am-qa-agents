@@ -4,7 +4,10 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/config/portal_config.dart';
+import '../../../../core/di/injection.dart';
 import '../../../../core/network/json_lists.dart';
 import '../../../execute/data/execute_repository.dart';
 import '../../data/specs_repository.dart';
@@ -194,19 +197,36 @@ class SpecsCubit extends Cubit<SpecsState>
     required String env,
   }) async {
     if (ids.isEmpty) return;
+    // Parallel /apis on remotedev starves Specs (sync OpenAPI on the event loop)
+    // and Dio hits connectTimeout 45s with APIs (0). Skip prune when not local.
+    final base = dio.options.baseUrl.toLowerCase();
+    final remotedev = base.startsWith('https://') ||
+        base == '/qa' ||
+        base.startsWith('/qa/') ||
+        (base.isNotEmpty && !base.contains('localhost') && !base.contains('127.0.0.1'));
+    if (remotedev) return;
+
+    // Local Specs: still cap concurrency so selectService keeps a free slot.
+    const maxConcurrent = 2;
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (isClosed) return;
     final empty = <String>{};
-    await Future.wait(
-      ids.map((id) async {
-        try {
-          final apis = await repo
-              .apis(id, environment: env)
-              .timeout(const Duration(seconds: 25));
-          if (!_serviceHasRealApis(apis)) empty.add(id);
-        } catch (_) {
-          // Keep on timeout/error — e.g. am-subscription OpenAPI sync is slow.
-        }
-      }),
-    );
+    for (var i = 0; i < ids.length; i += maxConcurrent) {
+      final batch = ids.skip(i).take(maxConcurrent).toList(growable: false);
+      await Future.wait(
+        batch.map((id) async {
+          try {
+            final apis = await repo
+                .apis(id, environment: env)
+                .timeout(const Duration(seconds: 25));
+            if (!_serviceHasRealApis(apis)) empty.add(id);
+          } catch (_) {
+            // Keep on timeout/error — e.g. am-subscription OpenAPI sync is slow.
+          }
+        }),
+      );
+      if (isClosed) return;
+    }
     if (empty.isEmpty) return;
     final selected = state.selectedService;
     final kept = _orderServices(
@@ -764,6 +784,97 @@ class SpecsCubit extends Cubit<SpecsState>
       );
     } catch (e) {
       emit(state.copyWith(generating: false, message: 'Import failed: $e'));
+    }
+  }
+
+  /// Import a .zip / .gz / large JSON pack via multipart (compressed on the wire).
+  Future<void> importPayloadZip({
+    required List<int> bytes,
+    required String filename,
+  }) async {
+    final svc = state.selectedService;
+    if (svc == null) {
+      emit(state.copyWith(message: 'Select a service first'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        generating: true,
+        message: 'Importing ${filename} (${bytes.length} bytes)…',
+      ),
+    );
+    try {
+      final out = await repo.importPayloadZip(
+        service: svc,
+        bytes: bytes,
+        filename: filename,
+      );
+      final ver = '${out['payload_set_version'] ?? ''}';
+      await _loadPayloadSets(svc, resetVersion: true);
+      if (ver.isNotEmpty) {
+        await setPayloadVersion(ver);
+      }
+      final xfer = out['transfer'] is Map
+          ? Map<String, dynamic>.from(out['transfer'] as Map)
+          : null;
+      emit(
+        state.copyWith(
+          generating: false,
+          message:
+              'Imported ${out['imported'] ?? 0} → set v${out['payload_set_version'] ?? '?'}'
+              '${xfer != null ? ' · ${xfer['encoding']} ${xfer['bytes_in']}B' : ''}',
+        ),
+      );
+    } catch (e) {
+      emit(state.copyWith(generating: false, message: 'Zip import failed: $e'));
+    }
+  }
+
+  Future<List<int>?> exportPayloadZip() async {
+    final svc = state.selectedService;
+    final ver = state.selectedPayloadVersion;
+    if (svc == null || ver == null) {
+      emit(state.copyWith(message: 'Select a service and payload version'));
+      return null;
+    }
+    try {
+      final bytes = await repo.exportPayloadSetZip(service: svc, version: ver);
+      emit(
+        state.copyWith(
+          message: 'Exported $svc v$ver zip (${bytes.length} bytes)',
+        ),
+      );
+      return bytes;
+    } catch (e) {
+      emit(state.copyWith(message: 'Export zip failed: $e'));
+      return null;
+    }
+  }
+
+  /// Open compressed export in the browser (same-origin download).
+  Future<void> downloadPayloadZip() async {
+    final svc = state.selectedService;
+    final ver = state.selectedPayloadVersion;
+    if (svc == null || ver == null) {
+      emit(state.copyWith(message: 'Select a service and payload version'));
+      return;
+    }
+    try {
+      final cfg = getIt.isRegistered<PortalConfig>()
+          ? getIt<PortalConfig>()
+          : null;
+      final base = (cfg?.apiBase ?? '/qa').replaceAll(RegExp(r'/$'), '');
+      final uri = Uri.parse('$base/api/payload-sets/$svc/$ver/export.zip');
+      final ok = await launchUrl(uri, webOnlyWindowName: '_blank');
+      emit(
+        state.copyWith(
+          message: ok
+              ? 'Downloading $svc v$ver.zip'
+              : 'Could not open export URL',
+        ),
+      );
+    } catch (e) {
+      emit(state.copyWith(message: 'Export zip failed: $e'));
     }
   }
 

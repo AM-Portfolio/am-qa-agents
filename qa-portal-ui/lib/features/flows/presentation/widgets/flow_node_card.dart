@@ -17,6 +17,7 @@ class FlowNodeData {
     this.quickResponse,
     this.quickError,
     this.quickTesting = false,
+    this.durationMs,
   });
 
   final String id;
@@ -32,9 +33,12 @@ class FlowNodeData {
   final Object? quickResponse;
   final Object? quickError;
   final bool quickTesting;
+  final double? durationMs;
 
   bool get isManualTrigger =>
       kind == 'manual_trigger' || id == '__manual_trigger__';
+
+  bool get isComposeDraft => kind == 'compose' || id == '__compose_draft__';
 
   FlowNodeData copyWith({
     String? status,
@@ -43,6 +47,7 @@ class FlowNodeData {
     Object? quickResponse,
     Object? quickError,
     bool? quickTesting,
+    double? durationMs,
     bool clearQuick = false,
   }) {
     return FlowNodeData(
@@ -59,6 +64,7 @@ class FlowNodeData {
       quickResponse: clearQuick ? null : (quickResponse ?? this.quickResponse),
       quickError: clearQuick ? null : (quickError ?? this.quickError),
       quickTesting: quickTesting ?? this.quickTesting,
+      durationMs: clearQuick ? null : (durationMs ?? this.durationMs),
     );
   }
 }
@@ -88,6 +94,7 @@ class FlowNodeCard extends StatefulWidget {
 class _FlowNodeCardState extends State<FlowNodeCard>
     with SingleTickerProviderStateMixin {
   var _expanded = false;
+  var _hover = false;
   late final TabController _tabs;
 
   @override
@@ -132,167 +139,306 @@ class _FlowNodeCardState extends State<FlowNodeCard>
     }
     final border = _statusColor(context);
     final req = _reqMap;
-    return SizedBox(
-      width: _expanded ? 320 : 240,
-      height: _expanded ? 340 : null,
-      child: Card(
-        elevation: 1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(
-            color: border,
-            width: widget.data.status != null || widget.data.quickTesting ? 2 : 1,
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: _expanded ? MainAxisSize.max : MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      widget.data.method,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
+    final showPlus = _hover && widget.onAdd != null;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: SizedBox(
+        width: _expanded ? 320 : 240,
+        height: _expanded ? 340 : null,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(
+                  color: border,
+                  width: widget.data.status != null || widget.data.quickTesting
+                      ? 2
+                      : 1,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize:
+                      _expanded ? MainAxisSize.max : MainAxisSize.min,
+                  children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              widget.data.method,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          if (widget.data.optional) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              'optional',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          ],
+                          const Spacer(),
+                          if (widget.data.quickTesting)
+                            const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          else if (widget.data.status != null)
+                            Text(
+                              widget.data.httpStatus != null
+                                  ? '${widget.data.status} ${widget.data.httpStatus}'
+                                  : '${widget.data.status}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: border,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                        ],
                       ),
-                    ),
-                  ),
-                  if (widget.data.optional) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      'optional',
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
+                      const SizedBox(height: 6),
+                      Text(
+                        widget.data.label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      if (widget.data.service.isNotEmpty)
+                        Text(
+                          widget.data.service,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      if (widget.data.path.isNotEmpty)
+                        Text(
+                          widget.data.path,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                      if (widget.data.durationMs != null)
+                        Text(
+                          '${widget.data.durationMs!.toStringAsFixed(widget.data.durationMs! >= 100 ? 0 : 1)} ms',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 2,
+                        children: [
+                          _NodeAction(
+                            tooltip: _expanded
+                                ? 'Collapse'
+                                : 'Headers / body / response',
+                            icon: _expanded
+                                ? Icons.unfold_less
+                                : Icons.unfold_more,
+                            onPressed: () =>
+                                setState(() => _expanded = !_expanded),
+                          ),
+                          _NodeAction(
+                            tooltip: 'Quick test this node',
+                            icon: Icons.bolt,
+                            color: const Color(0xFFF9A825),
+                            onPressed: widget.data.quickTesting ||
+                                    widget.onQuickTest == null
+                                ? null
+                                : () {
+                                    setState(() => _expanded = true);
+                                    _tabs.animateTo(2);
+                                    widget.onQuickTest!();
+                                  },
+                          ),
+                          _NodeAction(
+                            tooltip: 'Add step after',
+                            icon: Icons.add_circle_outline,
+                            color: Theme.of(context).colorScheme.primary,
+                            onPressed: widget.onAdd,
+                          ),
+                          _NodeAction(
+                            tooltip: 'Delete node',
+                            icon: Icons.delete_outline,
+                            color: Theme.of(context).colorScheme.error,
+                            onPressed: widget.onDelete,
+                          ),
+                        ],
+                      ),
+                      if (_expanded) ...[
+                        const Divider(height: 8),
+                        TabBar(
+                          controller: _tabs,
+                          labelPadding: EdgeInsets.zero,
+                          tabs: const [
+                            Tab(text: 'Headers'),
+                            Tab(text: 'Body'),
+                            Tab(text: 'Response'),
+                          ],
+                        ),
+                        Expanded(
+                          child: TabBarView(
+                            controller: _tabs,
+                            children: [
+                              JsonPreview(
+                                value: req?['headers'],
+                                emptyLabel: 'No headers yet — Quick test',
+                                maxLines: 40,
+                              ),
+                              JsonPreview(
+                                value: req?['body'],
+                                emptyLabel: 'No body yet — Quick test',
+                                maxLines: 40,
+                              ),
+                              JsonPreview(
+                                value: widget.data.quickError ??
+                                    widget.data.quickResponse,
+                                emptyLabel: 'No response yet — Quick test',
+                                maxLines: 40,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                   ],
-                  const Spacer(),
-                  if (widget.data.quickTesting)
-                    const SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else if (widget.data.status != null)
-                    Text(
-                      widget.data.httpStatus != null
-                          ? '${widget.data.status} ${widget.data.httpStatus}'
-                          : '${widget.data.status}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: border,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                widget.data.label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              if (widget.data.service.isNotEmpty)
-                Text(
-                  widget.data.service,
-                  style: Theme.of(context).textTheme.bodySmall,
                 ),
-              if (widget.data.path.isNotEmpty)
-                Text(
-                  widget.data.path,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 2,
-                children: [
-                  _NodeAction(
-                    tooltip: _expanded ? 'Collapse' : 'Headers / body / response',
-                    icon: _expanded ? Icons.unfold_less : Icons.unfold_more,
-                    onPressed: () => setState(() => _expanded = !_expanded),
-                  ),
-                  _NodeAction(
-                    tooltip: 'Quick test this node',
-                    icon: Icons.bolt,
-                    color: const Color(0xFFF9A825),
-                    onPressed: widget.data.quickTesting ||
-                            widget.onQuickTest == null
-                        ? null
-                        : () {
-                            setState(() => _expanded = true);
-                            _tabs.animateTo(2);
-                            widget.onQuickTest!();
-                          },
-                  ),
-                  _NodeAction(
-                    tooltip: 'Add API / MCP tool after',
-                    icon: Icons.add_circle_outline,
+              ),
+            ),
+            if (showPlus)
+              Positioned(
+                right: -14,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Material(
                     color: Theme.of(context).colorScheme.primary,
-                    onPressed: widget.onAdd,
+                    shape: const CircleBorder(),
+                    elevation: 3,
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: widget.onAdd,
+                      child: const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: Icon(Icons.add, size: 18, color: Colors.white),
+                      ),
+                    ),
                   ),
-                  _NodeAction(
-                    tooltip: 'Delete node',
-                    icon: Icons.delete_outline,
-                    color: Theme.of(context).colorScheme.error,
-                    onPressed: widget.onDelete,
-                  ),
-                ],
+                ),
               ),
-              if (_expanded) ...[
-                const Divider(height: 8),
-                TabBar(
-                  controller: _tabs,
-                  labelPadding: EdgeInsets.zero,
-                  tabs: const [
-                    Tab(text: 'Headers'),
-                    Tab(text: 'Body'),
-                    Tab(text: 'Response'),
-                  ],
-                ),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabs,
-                    children: [
-                      JsonPreview(
-                        value: req?['headers'],
-                        emptyLabel: 'No headers yet — Quick test',
-                        maxLines: 40,
-                      ),
-                      JsonPreview(
-                        value: req?['body'],
-                        emptyLabel: 'No body yet — Quick test',
-                        maxLines: 40,
-                      ),
-                      JsonPreview(
-                        value: widget.data.quickError ?? widget.data.quickResponse,
-                        emptyLabel: 'No response yet — Quick test',
-                        maxLines: 40,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
 
+  Widget _buildTrigger(BuildContext context) {
+    final border = _statusColor(context);
+    final showPlus = _hover && widget.onAdd != null;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: SizedBox(
+        width: 200,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Material(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              elevation: 1,
+              borderRadius: BorderRadius.circular(28),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(28),
+                onTap: widget.onTrigger,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: border, width: 2),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        widget.busy
+                            ? Icons.hourglass_top
+                            : Icons.play_circle_filled,
+                        color: border,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.data.label,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              widget.busy
+                                  ? 'running…'
+                                  : (widget.onTrigger == null
+                                      ? 'save to run'
+                                      : 'click to start'),
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (showPlus)
+              Positioned(
+                right: -14,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Material(
+                    color: Theme.of(context).colorScheme.primary,
+                    shape: const CircleBorder(),
+                    elevation: 3,
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: widget.onAdd,
+                      child: const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: Icon(Icons.add, size: 18, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _NodeAction extends StatelessWidget {
@@ -318,57 +464,6 @@ class _NodeAction extends StatelessWidget {
       iconSize: 18,
       onPressed: onPressed,
       icon: Icon(icon, color: onPressed == null ? null : color),
-    );
-  }
-}
-
-extension on _FlowNodeCardState {
-  Widget _buildTrigger(BuildContext context) {
-    final border = _statusColor(context);
-    return SizedBox(
-      width: 200,
-      child: Material(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        elevation: 1,
-        borderRadius: BorderRadius.circular(28),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(28),
-          onTap: widget.onTrigger,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: border, width: 2),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  widget.busy ? Icons.hourglass_top : Icons.play_circle_filled,
-                  color: border,
-                  size: 28,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        widget.data.label,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      Text(
-                        widget.busy ? 'running…' : 'click to start',
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

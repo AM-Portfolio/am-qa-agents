@@ -1,0 +1,20 @@
+# Dig/laptop deploy: Flutter portal only (nginx). Backend stays am-qa-agents.
+#
+#   cd qa-portal-ui
+#   flutter build web --release --base-href=/qa/ui/ --dart-define=API_BASE=/qa --dart-define=ROOT_PATH=/qa
+#   am deploy --env dig --via helm   # or kubectl apply -f k8s/dev.yaml
+
+name: am-qa-portal-ui
+release: am-qa-portal-ui
+runtime: static
+language: flutter
+dockerfile: qa-portal-ui/Dockerfile
+context: .
+image: ghcr.io/am-portfolio/am-qa-agents/am-qa-portal-ui
+github:
+  repo: AM-Portfolio/am-qa-agents
+  service: am-qa-portal-ui
+  ref: main
+deploy:
+  via: helm
+  rebuild: always

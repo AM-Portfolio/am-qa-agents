@@ -23,6 +23,22 @@ def test_list_flows_includes_subscription_builtin_and_pack():
     assert all(r["group"] == "identity" for r in filtered)
 
 
+def test_query_flows_q_and_facets():
+    from specs.flows.catalog import query_flows
+
+    page = query_flows(q="subscription", limit=50, facets=True)
+    assert page["total"] >= 1
+    assert page["count"] == len(page["flows"])
+    assert all(
+        "subscription" in (
+            f"{r.get('id')} {r.get('title')} {r.get('group')} {r.get('api_pack')}"
+        ).lower()
+        for r in page["flows"]
+    )
+    assert "facets" in page
+    assert page["facets"]["services"] or page["facets"]["groups"]
+
+
 def test_pack_subscription_only_in_pack_members():
     doc = get_flow("pack:subscription")
     assert doc is not None

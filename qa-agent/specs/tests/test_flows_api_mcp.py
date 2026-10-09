@@ -56,6 +56,37 @@ def test_credentials_and_flows_http(client: TestClient):
     assert any(e.get("pack_join") for e in body["edges"])
 
 
+def test_credential_probe_endpoints(client: TestClient):
+    created = client.post(
+        "/api/credentials",
+        json={
+            "id": "cred_probe_cliq",
+            "name": "cliq probe",
+            "kind": "cliq_webhook",
+            "env": "dev",
+            "app_id": "resource-cliq",
+            "token": "https://example.invalid/cliq/hook",
+        },
+    )
+    assert created.status_code == 200, created.text
+
+    one = client.post("/api/credentials/cred_probe_cliq/probe")
+    assert one.status_code == 200, one.text
+    body = one.json()
+    assert body["id"] == "cred_probe_cliq"
+    assert "status" in body
+    assert "ok" in body
+
+    missing = client.post("/api/credentials/does-not-exist/probe")
+    assert missing.status_code == 404
+
+    all_r = client.post("/api/credentials/probe-all")
+    assert all_r.status_code == 200, all_r.text
+    payload = all_r.json()
+    assert payload["count"] >= 1
+    assert any(r.get("id") == "cred_probe_cliq" for r in payload["results"])
+
+
 def test_mcp_flow_tools_importable():
     from specs.mcp.control import (
         qa_credential_list,

@@ -96,6 +96,16 @@ def _normalize_doc(doc: dict[str, Any], *, fid: str) -> dict[str, Any]:
                 "credential_id": (raw.get("credential_id") or None),
                 "base_url_override": raw.get("base_url_override"),
                 "body_override": raw.get("body_override"),
+                "payload_api_id": (
+                    str(raw.get("payload_api_id")).strip()
+                    if raw.get("payload_api_id")
+                    else None
+                ),
+                "payload_name": (
+                    str(raw.get("payload_name")).strip()
+                    if raw.get("payload_name")
+                    else None
+                ),
                 "expect_status": expect,
                 "label": raw.get("label") or nid,
             }

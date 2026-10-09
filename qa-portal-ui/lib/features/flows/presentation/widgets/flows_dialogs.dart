@@ -4,10 +4,143 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubit/flows_cubit.dart';
-import 'flow_tool_picker.dart';
+import 'flow_payload_picker.dart';
+
+void startNewFlowDraft(BuildContext context) {
+  context.read<FlowsCubit>().startDraftFlow();
+}
+
+/// Meta dialog for first save of an untitled draft (n8n-style name-on-save).
+Future<void> showSaveNewFlowDialog(BuildContext context) async {
+  final cubit = context.read<FlowsCubit>();
+  if (!cubit.state.isDraft) return;
+  final idCtrl = TextEditingController();
+  final titleCtrl = TextEditingController(
+    text: '${cubit.state.graph?['title'] ?? ''}'.replaceAll('Untitled', ''),
+  );
+  var group = 'data_gen';
+  var services = List<String>.from(cubit.state.catalogServices);
+  if (services.isEmpty) {
+    try {
+      services = await cubit.listCatalogServices();
+    } catch (_) {}
+  }
+  if (services.isEmpty) {
+    services = const [
+      'am-market-data',
+      'am-subscription',
+      'am-identity',
+    ];
+  }
+  var service = services.contains('am-market-data')
+      ? 'am-market-data'
+      : services.first;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setLocal) => AlertDialog(
+        title: const Text('Save flow'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: idCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'ID (optional)',
+                  border: OutlineInputBorder(),
+                  helperText: 'Leave blank to auto-generate AUTH_*',
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: titleCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: group,
+                decoration: const InputDecoration(
+                  labelText: 'Group',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'market', child: Text('market')),
+                  DropdownMenuItem(
+                    value: 'subscription',
+                    child: Text('subscription'),
+                  ),
+                  DropdownMenuItem(value: 'identity', child: Text('identity')),
+                  DropdownMenuItem(value: 'data_gen', child: Text('data_gen')),
+                  DropdownMenuItem(value: 'other', child: Text('other')),
+                ],
+                onChanged: (v) {
+                  if (v == null) return;
+                  setLocal(() => group = v);
+                },
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                key: ValueKey('save-svc-$service'),
+                initialValue: service,
+                decoration: const InputDecoration(
+                  labelText: 'Primary service',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final s in services)
+                    DropdownMenuItem(value: s, child: Text(s)),
+                ],
+                onChanged: (v) {
+                  if (v != null) setLocal(() => service = v);
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+  try {
+    final id = await cubit.persistDraft(
+      id: idCtrl.text,
+      title: titleCtrl.text,
+      group: group,
+      service: service,
+    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(id == null ? 'Save failed' : 'Saved $id')),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+}
 
 Future<void> saveFlowsGraph(BuildContext context) async {
   final cubit = context.read<FlowsCubit>();
+  if (cubit.state.isDraft) {
+    await showSaveNewFlowDialog(context);
+    return;
+  }
   try {
     final id = await cubit.saveGraph();
     if (context.mounted) {
@@ -22,39 +155,64 @@ Future<void> saveFlowsGraph(BuildContext context) async {
   }
 }
 
-Future<void> addFlowToolAfter(
+void commitFlowToolAfter(
   BuildContext context,
   String afterNodeId,
-) async {
+  Map<String, dynamic> stub,
+) {
   final cubit = context.read<FlowsCubit>();
-  final graph = cubit.state.graph;
-  String svc = 'am-subscription';
-  if (graph != null && graph['nodes'] is List) {
-    for (final raw in graph['nodes'] as List) {
-      if (raw is Map && '${raw['id']}' == afterNodeId) {
-        final s = '${raw['service'] ?? ''}';
-        if (s.isNotEmpty) svc = s;
+  cubit.addNodeAfter(afterNodeId, stub);
+  final g = cubit.state.graph;
+  final nodes = g?['nodes'];
+  if (nodes is List && nodes.isNotEmpty) {
+    final last = nodes.last;
+    if (last is Map) {
+      cubit.selectLogNode('${last['id']}');
+    }
+  }
+}
+
+Future<void> pickPayloadForSelectedNode(BuildContext context) async {
+  final cubit = context.read<FlowsCubit>();
+  final id = cubit.state.selectedLogNodeId;
+  if (id == null || id == '__manual_trigger__') return;
+  Map<String, dynamic>? node;
+  final nodes = cubit.state.graph?['nodes'];
+  if (nodes is List) {
+    for (final raw in nodes) {
+      if (raw is Map && '${raw['id']}' == id) {
+        node = Map<String, dynamic>.from(raw);
         break;
       }
     }
   }
-  if (svc.isEmpty) {
-    final g = '${graph?['group'] ?? ''}';
-    svc = g == 'identity' ? 'am-identity' : 'am-subscription';
-  }
-  final stub = await showFlowToolPicker(
+  if (node == null) return;
+  final service = '${node['service'] ?? ''}'.trim();
+  if (service.isEmpty) return;
+  final pick = await showFlowPayloadPicker(
     context,
-    listTools: cubit.listOpenApiTools,
-    initialService: svc,
+    preferredApiId: '${node['payload_api_id'] ?? ''}',
+    method: '${node['method'] ?? ''}',
+    path: '${node['exact_path'] ?? node['path'] ?? ''}',
+    loadPayloadSet: () => cubit.loadPayloadSet(service),
   );
-  if (stub != null) {
-    cubit.addNodeAfter(afterNodeId, stub);
+  if (pick != null) {
+    cubit.updateSelectedNode(pick);
   }
 }
 
 Future<void> showFlowsSuiteDialog(BuildContext context) async {
   final cubit = context.read<FlowsCubit>();
-  var group = 'subscription';
+  var group = cubit.state.groupFilter.isNotEmpty
+      ? cubit.state.groupFilter
+      : 'data_gen';
+  var apiPack = cubit.state.apiPackFilter;
+  var services = List<String>.from(cubit.state.catalogServices);
+  if (services.isEmpty) {
+    try {
+      services = await cubit.listCatalogServices();
+    } catch (_) {}
+  }
   var loading = false;
   var error = '';
   var flows = <Map<String, dynamic>>[];
@@ -66,7 +224,10 @@ Future<void> showFlowsSuiteDialog(BuildContext context) async {
       error = '';
     });
     try {
-      final rows = await cubit.suitePreview(group: group);
+      final rows = await cubit.suitePreview(
+        group: group.isEmpty ? null : group,
+        apiPack: apiPack.isEmpty ? null : apiPack,
+      );
       setSt(() {
         flows = rows;
         selected
@@ -102,7 +263,7 @@ Future<void> showFlowsSuiteDialog(BuildContext context) async {
                     key: ValueKey('suite-group-$group'),
                     initialValue: group,
                     decoration: const InputDecoration(
-                      labelText: 'Service / group',
+                      labelText: 'Group',
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -115,10 +276,46 @@ Future<void> showFlowsSuiteDialog(BuildContext context) async {
                         value: 'subscription',
                         child: Text('subscription'),
                       ),
+                      DropdownMenuItem(
+                        value: 'data_gen',
+                        child: Text('data_gen'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'market',
+                        child: Text('market'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'other',
+                        child: Text('other'),
+                      ),
                     ],
                     onChanged: (v) {
                       if (v == null) return;
                       setSt(() => group = v);
+                      unawaited(preview(setSt));
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String?>(
+                    key: ValueKey('suite-pack-$apiPack'),
+                    initialValue: apiPack.isEmpty
+                        ? null
+                        : (services.contains(apiPack) ? apiPack : null),
+                    decoration: const InputDecoration(
+                      labelText: 'Service / api_pack (optional)',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('Any service'),
+                      ),
+                      for (final s in services)
+                        DropdownMenuItem<String?>(value: s, child: Text(s)),
+                    ],
+                    onChanged: (v) {
+                      setSt(() => apiPack = v ?? '');
                       unawaited(preview(setSt));
                     },
                   ),
@@ -200,7 +397,18 @@ Future<void> showFlowsSuiteDialog(BuildContext context) async {
 
 Future<void> showFlowsProposeDialog(BuildContext context) async {
   final cubit = context.read<FlowsCubit>();
-  var service = 'am-subscription';
+  var services = List<String>.from(cubit.state.catalogServices);
+  if (services.isEmpty) {
+    try {
+      services = await cubit.listCatalogServices();
+    } catch (_) {}
+  }
+  if (services.isEmpty) {
+    services = const ['am-market-data', 'am-subscription', 'am-identity'];
+  }
+  var service = services.contains('am-market-data')
+      ? 'am-market-data'
+      : services.first;
   final proposals = <Map<String, dynamic>>[];
   var loading = false;
   var error = '';
@@ -219,15 +427,9 @@ Future<void> showFlowsProposeDialog(BuildContext context) async {
                 children: [
                   DropdownButtonFormField<String>(
                     initialValue: service,
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'am-subscription',
-                        child: Text('am-subscription'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'am-identity',
-                        child: Text('am-identity'),
-                      ),
+                    items: [
+                      for (final s in services)
+                        DropdownMenuItem(value: s, child: Text(s)),
                     ],
                     onChanged: (v) {
                       if (v != null) setLocal(() => service = v);

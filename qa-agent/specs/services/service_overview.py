@@ -232,30 +232,121 @@ def _plugin_use_cases(service_key: str) -> list[dict[str, Any]]:
     return out
 
 
+def _data_gen_flows_for_service(service_key: str) -> list[dict[str, Any]]:
+    """Authored/synced group=data_gen cross_flow workflows for this service."""
+    try:
+        from specs.data_gen.workflows import list_data_gen_workflows
+
+        rows = list_data_gen_workflows(service=service_key)
+    except Exception:  # noqa: BLE001
+        return []
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        out.append(
+            {
+                "id": r.get("id"),
+                "title": r.get("title") or r.get("id"),
+                "source": "data_gen_flow",
+                "group": r.get("group") or "data_gen",
+                "category": r.get("category"),
+                "gate": r.get("gate"),
+                "node_count": r.get("node_count") or len(r.get("nodes") or []),
+                "tags": r.get("tags") or [],
+                "api_pack": r.get("api_pack"),
+                "services": r.get("services") or [],
+            }
+        )
+    return out
+
+
+def _payload_use_cases(
+    service_key: str, payloads: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Surface active payload-set rows as use-case entries when invent bank is empty."""
+    sets = payloads.get("sets") if isinstance(payloads.get("sets"), list) else []
+    out: list[dict[str, Any]] = []
+    active = payloads.get("active_version")
+    api_count = int(payloads.get("api_count") or 0)
+    if active is not None and api_count:
+        out.append(
+            {
+                "id": f"payload_set:v{active}",
+                "title": payloads.get("active_label")
+                or f"Payload set v{active} ({api_count} APIs)",
+                "source": "payload_set",
+                "skill": "data_generator",
+                "gate": None,
+                "steps_count": api_count,
+                "steps_preview": [
+                    f"Active payload set version {active}",
+                    f"{api_count} API payload rows",
+                ],
+                "scenarios_count": api_count,
+                "tags": ["data_gen", "payload_set"],
+                "payload_set_version": active,
+            }
+        )
+    for row in sets[:12]:
+        if not isinstance(row, dict):
+            continue
+        ver = row.get("version")
+        if ver is not None and active is not None and int(ver) == int(active):
+            continue
+        label = row.get("label") or f"Payload set v{ver}"
+        out.append(
+            {
+                "id": f"payload_set:v{ver}",
+                "title": label,
+                "source": "payload_set",
+                "skill": "data_generator",
+                "gate": None,
+                "steps_count": int(row.get("api_count") or 0),
+                "steps_preview": [],
+                "scenarios_count": int(row.get("api_count") or 0),
+                "tags": ["data_gen", "payload_set"],
+                "payload_set_version": ver,
+            }
+        )
+    return out
+
+
 def _build_use_cases(
     *,
     features: list[dict[str, Any]],
     invent_profile: dict[str, Any] | None,
     scenarios_detail: list[dict[str, Any]],
     plugin_cases: list[dict[str, Any]],
+    data_gen_flows: list[dict[str, Any]] | None = None,
+    payload_cases: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """Prefer invent scenarios (with steps) for portal; features are title fallbacks only."""
     out: list[dict[str, Any]] = []
 
     def _annotate(case: dict[str, Any]) -> dict[str, Any]:
         sk = str(case.get("skill") or "")
-        disp = skill_display(sk) if sk else {
-            "label": "Catalog · Flows",
-            "name": "Catalog flows",
-            "level": "—",
-            "category": "Catalog",
-        }
+        src = str(case.get("source") or "")
+        if src in {"data_gen_flow", "payload_set"} and not sk:
+            disp = {
+                "label": "Data gen · Flows",
+                "name": "Data-gen workflows",
+                "level": "—",
+                "category": "Data gen",
+            }
+        else:
+            disp = skill_display(sk) if sk else {
+                "label": "Catalog · Flows",
+                "name": "Catalog flows",
+                "level": "—",
+                "category": "Catalog",
+            }
         return {
             **case,
             "display_label": disp.get("label"),
             "display_name": disp.get("name"),
             "display_level": disp.get("level"),
-            "category": disp.get("category"),
+            "category": case.get("category") or disp.get("category"),
         }
 
     # Scenarios first — rich steps for modern coverage UI
@@ -308,6 +399,43 @@ def _build_use_cases(
         if title and title in seen_titles:
             continue
         out.append(_annotate(case))
+        if title:
+            seen_titles.add(title)
+
+    for case in payload_cases or []:
+        title = str(case.get("title") or "").lower()
+        if title and title in seen_titles:
+            continue
+        out.append(_annotate(case))
+        if title:
+            seen_titles.add(title)
+
+    for flow in data_gen_flows or []:
+        title = str(flow.get("title") or "").lower()
+        if title and title in seen_titles:
+            continue
+        steps_preview = [
+            f"{flow.get('node_count') or 0} nodes",
+            str(flow.get("group") or "data_gen"),
+        ]
+        out.append(
+            _annotate(
+                {
+                    "id": flow.get("id"),
+                    "title": flow.get("title") or flow.get("id"),
+                    "source": "data_gen_flow",
+                    "skill": "data_generator",
+                    "gate": flow.get("gate"),
+                    "steps_count": int(flow.get("node_count") or 0),
+                    "steps_preview": steps_preview,
+                    "scenarios_count": 1,
+                    "tags": flow.get("tags") or ["data_gen"],
+                    "flow_id": flow.get("id"),
+                }
+            )
+        )
+        if title:
+            seen_titles.add(title)
 
     if invent_profile and not out:
         domain = str(invent_profile.get("domain") or "").strip()
@@ -660,11 +788,16 @@ def build_service_overview(
         environment=env,
     )
     plugin_cases = _plugin_use_cases(service_key)
+    payloads = _payload_summary(service_key)
+    data_gen_flows = _data_gen_flows_for_service(service_key)
+    payload_cases = _payload_use_cases(service_key, payloads)
     use_cases = _build_use_cases(
         features=features,
         invent_profile=invent_profile,
         scenarios_detail=scenario_samples,
         plugin_cases=plugin_cases,
+        data_gen_flows=data_gen_flows,
+        payload_cases=payload_cases,
     )
 
     runs_rows: list[dict[str, Any]] = []
@@ -692,9 +825,14 @@ def build_service_overview(
         # Not a failure — OpenAPI page does the live fetch; keep overview snappy.
         pass
     if scenarios.get("count", 0) == 0 and not features:
-        warnings.append(
-            "bank: no invented scenarios/features yet — showing plugin catalog flows"
-        )
+        if data_gen_flows or (payloads.get("api_count") or 0) > 0:
+            warnings.append(
+                "bank: no invented scenarios yet — showing data_gen flows / payload sets"
+            )
+        else:
+            warnings.append(
+                "bank: no invented scenarios/features yet — showing plugin catalog flows"
+            )
 
     return {
         "ok": True,
@@ -708,7 +846,8 @@ def build_service_overview(
             "openapi_version": apis_data.get("openapi_version"),
         },
         "openapi": openapi_meta,
-        "payloads": _payload_summary(service_key),
+        "payloads": payloads,
+        "data_gen_flows": data_gen_flows,
         "skills": skills,
         "invent_profile": invent_profile,
         "features": features,

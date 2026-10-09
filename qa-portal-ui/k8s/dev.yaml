@@ -1,0 +1,91 @@
+# Dig Kind (kubeconfig.dev / dig-apps) — portal separate from am-qa-agents.
+# Apply: kubectl --kubeconfig ~/.asrax/kubeconfig.dev -n am-agents-dig apply -f qa-portal-ui/k8s/dig.yaml
+# (namespace on dig is am-agents-dev)
+apiVersion: v1
+kind: Service
+metadata:
+  name: am-qa-portal-ui-dev
+  namespace: am-agents-dev
+  labels:
+    app.kubernetes.io/name: am-qa-portal-ui
+    app.kubernetes.io/instance: am-qa-portal-ui-dev
+spec:
+  selector:
+    app.kubernetes.io/instance: am-qa-portal-ui-dev
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: am-qa-portal-ui-dev
+  namespace: am-agents-dev
+  labels:
+    app.kubernetes.io/name: am-qa-portal-ui
+    app.kubernetes.io/instance: am-qa-portal-ui-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: am-qa-portal-ui-dev
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: am-qa-portal-ui
+        app.kubernetes.io/instance: am-qa-portal-ui-dev
+    spec:
+      imagePullSecrets:
+        - name: ghcr-creds
+        - name: github-registry-secret
+        - name: regcred
+      containers:
+        - name: portal
+          image: ghcr.io/am-portfolio/am-qa-agents/am-qa-portal-ui:local-dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: am-qa-portal-ui-dev
+  namespace: am-agents-dev
+  annotations:
+    # Higher than am-qa-agents-dev (/qa priority 100) so /qa/ui hits nginx, not Python.
+    traefik.ingress.kubernetes.io/router.priority: "200"
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-dev-dev-global-cors@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: am-dev.asrax.in
+      http:
+        paths:
+          - path: /qa/ui
+            pathType: Prefix
+            backend:
+              service:
+                name: am-qa-portal-ui-dev
+                port:
+                  number: 80

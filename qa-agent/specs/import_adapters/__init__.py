@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from specs.import_adapters.base import AmImportBundle, merge_bundle_env
+from specs.import_adapters.base import AmImportBundle, merge_bundle_env  # noqa: F401 — re-export
 from specs.import_adapters.registry import get_adapter, list_formats
 from specs.payloads.payload_store import create_payload_set, upsert_api_in_payload_set
 
@@ -57,22 +57,31 @@ def import_collection_to_payload_set(
             "headers": item.headers,
             "body": item.body,
         }
+        extra_meta = getattr(item, "extra_meta", None)
+        meta: dict[str, Any] = {
+            "source": f"import:{bundle.source}",
+            "name": item.name,
+            "auth_hint": item.auth_hint,
+        }
+        if isinstance(extra_meta, dict):
+            meta.update(extra_meta)
+        extra_resp = getattr(item, "extra_response", None)
+        response = dict(extra_resp) if isinstance(extra_resp, dict) else {}
         upsert_api_in_payload_set(
             service,
             item.api_id,
             version=version,
             request=request,
-            response={},
-            meta={
-                "source": f"import:{bundle.source}",
-                "name": item.name,
-                "auth_hint": item.auth_hint,
-            },
-            name="imported",
+            response=response,
+            meta=meta,
+            name=str((extra_meta or {}).get("case_kind") or "imported")
+            if isinstance(extra_meta, dict)
+            else "imported",
             bump_set=False,
         )
         imported += 1
 
+    # Persist env keys onto set meta via a sentinel api is overkill; return env for caller
     return {
         "ok": imported > 0,
         "service": service,
@@ -82,6 +91,7 @@ def import_collection_to_payload_set(
         "imported": imported,
         "skipped": skipped,
         "warnings": warnings,
+        "env": dict(bundle.env),
         "formats_available": list_formats(),
         "bundle_preview": {
             "item_count": len(bundle.items),

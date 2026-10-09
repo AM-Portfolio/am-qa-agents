@@ -9,8 +9,17 @@ class ApiClient {
   Future<Response<dynamic>> get(
     String path, {
     Map<String, dynamic>? query,
+    Options? options,
   }) {
-    return _dio.get<dynamic>(path, queryParameters: query);
+    return _dio.get<dynamic>(path, queryParameters: query, options: options);
+  }
+
+  Future<Response<T>> getTyped<T>(
+    String path, {
+    Map<String, dynamic>? query,
+    Options? options,
+  }) {
+    return _dio.get<T>(path, queryParameters: query, options: options);
   }
 
   Future<Response<dynamic>> post(
@@ -18,14 +27,17 @@ class ApiClient {
     Object? data,
     Map<String, dynamic>? query,
     Duration? receiveTimeout,
+    Options? options,
   }) {
+    Options? opts = options;
+    if (receiveTimeout != null) {
+      opts = (opts ?? Options()).copyWith(receiveTimeout: receiveTimeout);
+    }
     return _dio.post<dynamic>(
       path,
       data: data,
       queryParameters: query,
-      options: receiveTimeout == null
-          ? null
-          : Options(receiveTimeout: receiveTimeout),
+      options: opts,
     );
   }
 

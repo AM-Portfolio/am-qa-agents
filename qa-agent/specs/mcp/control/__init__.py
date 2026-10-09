@@ -324,6 +324,144 @@ def spt_generate_all_payloads(
         return pool.submit(asyncio.run, coro).result()
 
 
+@mcp.tool(name="spt_data_gen_import")
+def spt_data_gen_import(
+    service: str,
+    profile: str = "default",
+    environment: str = "dev",
+    pack_path: Optional[str] = None,
+    payload_set_json: Optional[str] = None,
+    make_active: bool = True,
+    sync_workflows: bool = True,
+) -> dict[str, Any]:
+    """Import am-specs data-gen pack → payload set (+ cross_flow workflows). Returns handoff."""
+    from specs.data_gen.import_svc import import_data_gen
+
+    body = None
+    if payload_set_json:
+        body = {"payload_set": json.loads(payload_set_json)}
+    return import_data_gen(
+        service=service,
+        profile=profile,
+        environment=environment,
+        body=body,
+        pack_path=pack_path,
+        make_active=make_active,
+        sync_workflows=sync_workflows,
+    )
+
+
+@mcp.tool(name="spt_data_gen_gapfill")
+def spt_data_gen_gapfill(
+    service: str,
+    environment: str = "dev",
+    payload_set_version: Optional[int] = None,
+    allow_llm: bool = True,
+) -> dict[str, Any]:
+    """LLM/schema gap-fill after data-gen import (prefer_stored). Returns handoff."""
+    from specs.data_gen.pipeline import data_gen_gapfill
+
+    return data_gen_gapfill(
+        service=service,
+        environment=environment,
+        payload_set_version=payload_set_version,
+        allow_llm=allow_llm,
+    )
+
+
+@mcp.tool(name="spt_data_gen_run_suite")
+def spt_data_gen_run_suite(
+    service: str,
+    profile: str = "default",
+    environment: str = "dev",
+    payload_set_version: Optional[int] = None,
+    wait: bool = False,
+) -> dict[str, Any]:
+    """Run SPT k6 suite for data-gen profile (cross_flow excluded). Returns handoff."""
+    from specs.data_gen.pipeline import data_gen_run_suite
+
+    return data_gen_run_suite(
+        service=service,
+        profile=profile,
+        environment=environment,
+        payload_set_version=payload_set_version,
+        wait=wait,
+    )
+
+
+@mcp.tool(name="spt_data_gen_run_workflows")
+def spt_data_gen_run_workflows(
+    service: str,
+    profile: str = "default",
+    environment: str = "dev",
+    flow_id: Optional[str] = None,
+    payload_set_version: Optional[int] = None,
+    strict_workflows: bool = False,
+) -> dict[str, Any]:
+    """Run group=data_gen cross_flow workflows filtered by service+profile."""
+    from specs.data_gen.pipeline import data_gen_run_workflows
+
+    return data_gen_run_workflows(
+        service=service,
+        profile=profile,
+        environment=environment,
+        flow_id=flow_id,
+        payload_set_version=payload_set_version,
+        strict_workflows=strict_workflows,
+    )
+
+
+@mcp.tool(name="spt_data_gen_list_workflows")
+def spt_data_gen_list_workflows(
+    service: Optional[str] = None,
+    profile: Optional[str] = None,
+    flow_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """List group=data_gen cross_flow workflows (optional service/profile/flow filter)."""
+    from specs.data_gen.workflows import list_data_gen_workflows
+
+    rows = list_data_gen_workflows(
+        service=service, profile=profile, flow_id=flow_id
+    )
+    return {"ok": True, "workflows": rows, "count": len(rows)}
+
+
+@mcp.tool(name="spt_data_gen_pipeline")
+def spt_data_gen_pipeline(
+    service: Optional[str] = None,
+    services_json: Optional[str] = None,
+    profile: Optional[str] = None,
+    environment: Optional[str] = None,
+    git_ref: Optional[str] = None,
+    pack_path: Optional[str] = None,
+    fill_gaps: bool = True,
+    run_suite: bool = True,
+    run_workflows: bool = True,
+    allow_llm: Optional[bool] = None,
+    resume_from: Optional[str] = None,
+    prior_receipt_json: Optional[str] = None,
+) -> dict[str, Any]:
+    """Orchestrate import→gapfill→suite→workflows. Branch omits profile → default suite."""
+    from specs.data_gen.pipeline import data_gen_pipeline
+
+    services = json.loads(services_json) if services_json else None
+    prior = json.loads(prior_receipt_json) if prior_receipt_json else None
+    return data_gen_pipeline(
+        service=service,
+        services=services,
+        profile=profile,
+        environment=environment,
+        git_ref=git_ref,
+        pack_path=pack_path,
+        fill_gaps=fill_gaps,
+        run_suite=run_suite,
+        run_workflows=run_workflows,
+        allow_llm=allow_llm,
+        resume_from=resume_from,
+        prior_receipt=prior,
+    )
+
+
 @mcp.tool(name="spt_prepare_mcp_payloads")
 def spt_prepare_mcp_payloads(
     service: Optional[str] = None,
@@ -690,12 +828,27 @@ def qa_credential_delete(credential_id: str) -> dict[str, Any]:
 def qa_flow_list(
     group: Optional[str] = None,
     category: Optional[str] = None,
+    q: Optional[str] = None,
+    api_pack: Optional[str] = None,
+    service: Optional[str] = None,
+    limit: Optional[int] = 100,
+    offset: int = 0,
+    facets: bool = False,
 ) -> dict[str, Any]:
-    """List builtin FLOW_*, pack: joins, and authored flows (optional group/category)."""
-    from specs.flows.catalog import list_flows
+    """List builtin FLOW_*, pack: joins, and authored flows (filter + page)."""
+    from specs.flows.catalog import query_flows
 
-    rows = list_flows(group=group, category=category)
-    return {"ok": True, "flows": rows, "count": len(rows)}
+    out = query_flows(
+        group=group,
+        category=category,
+        q=q,
+        api_pack=api_pack,
+        service=service,
+        limit=limit,
+        offset=offset,
+        facets=facets,
+    )
+    return {"ok": True, **out}
 
 
 @mcp.tool(name="qa_flow_get")
@@ -734,8 +887,14 @@ def qa_flow_upsert(
     description: str = "",
     tags: Optional[list[str]] = None,
     created_by: str = "authored",
+    variables: Optional[dict[str, Any]] = None,
+    payload_set_version: Optional[int] = None,
+    api_pack: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Create/update an authored flow (MCP/headless)."""
+    """Create/update an authored flow (MCP/headless).
+
+    Parity with HTTP FlowUpsert / portal Save: variables, payload_set_version, api_pack.
+    """
     from specs.flows.authored_store import AuthoredFlowError, upsert_authored
 
     try:
@@ -753,6 +912,9 @@ def qa_flow_upsert(
                 "created_by": created_by,
                 "nodes": nodes,
                 "edges": edges,
+                "variables": variables or {},
+                "payload_set_version": payload_set_version,
+                "api_pack": api_pack,
             },
             flow_id=flow_id,
         )

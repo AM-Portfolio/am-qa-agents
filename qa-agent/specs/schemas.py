@@ -218,15 +218,29 @@ class PayloadGenerateAllRequest(BaseModel):
 
 
 class PayloadImportRequest(BaseModel):
-    """Import external collection (+ optional env) into a service payload set."""
+    """Import external collection (+ optional env) into a service payload set.
+
+    For ``format=am-specs-dataset``, pass ``payload_set`` (export_qa shape) and/or
+    ``collection`` holding the same document. ``collection`` may be omitted when
+    ``payload_set`` is set.
+
+    Prefer ``zip_b64`` (deflated JSON zip) for large sets — much smaller than raw JSON.
+    """
 
     service: str
-    collection: dict[str, Any] | list[Any] | str
+    collection: dict[str, Any] | list[Any] | str | None = None
+    payload_set: dict[str, Any] | None = None
     environment: dict[str, Any] | str | None = None
-    format: str | None = None  # postman | auto-detect
+    format: str | None = None  # postman | am-specs-dataset | auto-detect
     label: str | None = None
     make_active: bool = True
     bump_set: bool = True
+    profile: str | None = None
+    sync_workflows: bool = True
+    # Compressed transfer (zip of payload.json, or gzip JSON). Takes precedence.
+    zip_b64: str | None = None
+    gzip_b64: str | None = None
+    zip_filename: str | None = None
 
 
 class PayloadPrepareMcpRequest(BaseModel):

@@ -15,6 +15,7 @@ with workflow.unsafe.imports_passed_through():
         activity_onboard_auth,
         activity_onboard_contract,
         activity_onboard_generate_payloads,
+        activity_onboard_import_data_gen,
         activity_onboard_llm_status,
         activity_onboard_openapi_sync,
         activity_onboard_overview,
@@ -116,6 +117,13 @@ class ServiceOnboardPrepWorkflow:
         if not step.get("ok") or str(step.get("status") or "").startswith("warn"):
             if step.get("error") or str(step.get("status") or "").startswith("warn"):
                 warnings.append(f"prepare_mcp:{step.get('status')}")
+
+        step = await _run("import_data_gen", activity_onboard_import_data_gen, base)
+        if str(step.get("status") or "").startswith("warn"):
+            warnings.append(f"import_data_gen:{step.get('status')}")
+        ev_imp = step.get("evidence") or {}
+        if ev_imp.get("payload_set_version") is not None:
+            payload_set_version = int(ev_imp["payload_set_version"])
 
         step = await _run(
             "generate_all_payloads",

@@ -11,31 +11,138 @@ class FlowsCubit extends Cubit<FlowsState> {
 
   final FlowsRepository _repo;
   Timer? _poll;
+  Timer? _queryDebounce;
+  static const _pageSize = 100;
 
   Future<void> load() async {
     emit(state.copyWith(loading: true, clearError: true));
     try {
-      final flows = await _repo.listFlows();
+      final page = await _repo.listFlowsPage(
+        group: state.groupFilter.isEmpty ? null : state.groupFilter,
+        category:
+            state.categoryFilter.isEmpty ? null : state.categoryFilter,
+        q: state.flowQuery.isEmpty ? null : state.flowQuery,
+        apiPack: state.apiPackFilter.isEmpty ? null : state.apiPackFilter,
+        limit: _pageSize,
+        offset: 0,
+        facets: true,
+      );
+      final flows = (page['flows'] is List)
+          ? (page['flows'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+          : <Map<String, dynamic>>[];
+      final total = page['total'] is int
+          ? page['total'] as int
+          : int.tryParse('${page['total']}') ?? flows.length;
+      final facets = page['facets'] is Map
+          ? Map<String, dynamic>.from(page['facets'] as Map)
+          : null;
       final creds = await _repo.listCredentials();
-      final prefer = flows.cast<Map<String, dynamic>?>().firstWhere(
-            (f) => '${f?['id']}' == 'pack:subscription',
-            orElse: () => flows.isNotEmpty ? flows.first : null,
-          );
+      List<String> catalog = state.catalogServices;
+      try {
+        catalog = await _repo.listCatalogServices();
+      } catch (_) {}
       final matched = _preferCredential(creds, state.env);
+      final keepSelection = state.selectedFlowId != null &&
+          flows.any((f) => '${f['id']}' == state.selectedFlowId);
       emit(
         state.copyWith(
           loading: false,
           flows: flows,
+          flowsTotal: total,
+          facets: facets,
+          catalogServices: catalog,
           credentials: creds,
           credentialId: matched ?? state.credentialId,
+          clearError: true,
         ),
       );
-      if (prefer != null) {
-        await selectFlow('${prefer['id']}');
+      if (keepSelection) {
+        return;
+      }
+      if (flows.isNotEmpty) {
+        await selectFlow('${flows.first['id']}');
       }
     } catch (e) {
       emit(state.copyWith(loading: false, error: friendlyApiError(e)));
     }
+  }
+
+  Future<void> loadMoreFlows() async {
+    if (state.loadingMore || !state.hasMoreFlows) return;
+    emit(state.copyWith(loadingMore: true));
+    try {
+      final page = await _repo.listFlowsPage(
+        group: state.groupFilter.isEmpty ? null : state.groupFilter,
+        category:
+            state.categoryFilter.isEmpty ? null : state.categoryFilter,
+        q: state.flowQuery.isEmpty ? null : state.flowQuery,
+        apiPack: state.apiPackFilter.isEmpty ? null : state.apiPackFilter,
+        limit: _pageSize,
+        offset: state.flows.length,
+        facets: false,
+      );
+      final more = (page['flows'] is List)
+          ? (page['flows'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+          : <Map<String, dynamic>>[];
+      final total = page['total'] is int
+          ? page['total'] as int
+          : state.flowsTotal;
+      emit(
+        state.copyWith(
+          loadingMore: false,
+          flows: [...state.flows, ...more],
+          flowsTotal: total,
+        ),
+      );
+    } catch (e) {
+      emit(state.copyWith(loadingMore: false, error: friendlyApiError(e)));
+    }
+  }
+
+  /// Fetch remaining pages until [flows] matches [flowsTotal] (capped).
+  Future<void> loadAllFlows({int maxPages = 50}) async {
+    var pages = 0;
+    while (state.hasMoreFlows && pages < maxPages) {
+      pages++;
+      await loadMoreFlows();
+      if (state.error != null) break;
+    }
+  }
+
+  void setFlowQuery(String q) {
+    emit(state.copyWith(flowQuery: q));
+    _queryDebounce?.cancel();
+    _queryDebounce = Timer(const Duration(milliseconds: 250), () {
+      unawaited(load());
+    });
+  }
+
+  void setGroupFilter(String group) {
+    emit(state.copyWith(groupFilter: group));
+    unawaited(load());
+  }
+
+  void setCategoryFilter(String category) {
+    emit(state.copyWith(categoryFilter: category));
+    unawaited(load());
+  }
+
+  void setApiPackFilter(String apiPack) {
+    emit(state.copyWith(apiPackFilter: apiPack));
+    unawaited(load());
+  }
+
+  Future<Map<String, dynamic>?> loadPayloadSet(
+    String service, {
+    int? version,
+  }) {
+    return _repo.getPayloadSet(service, version: version);
   }
 
   String? _preferCredential(List<Map<String, dynamic>> creds, String env) {
@@ -80,7 +187,7 @@ class FlowsCubit extends Cubit<FlowsState> {
 
   Future<void> quickTestNode(String nodeId) async {
     final fid = state.selectedFlowId;
-    if (fid == null) return;
+    if (fid == null || state.isDraft) return;
     final testing = Map<String, Map<String, dynamic>>.from(state.nodeQuickResults);
     testing[nodeId] = {
       ...?testing[nodeId],
@@ -195,28 +302,8 @@ class FlowsCubit extends Cubit<FlowsState> {
     final fid = state.selectedFlowId;
     final g = state.graph;
     if (fid == null || g == null) return null;
-    final nodes = (g['nodes'] is List)
-        ? (g['nodes'] as List)
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .where((n) {
-              final kind = '${n['kind'] ?? ''}';
-              final id = '${n['id'] ?? ''}';
-              return kind != 'manual_trigger' && id != '__manual_trigger__';
-            })
-            .toList()
-        : <Map<String, dynamic>>[];
-    final edges = (g['edges'] is List)
-        ? (g['edges'] as List)
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .where((e) {
-              final from = '${e['from'] ?? ''}';
-              final to = '${e['to'] ?? ''}';
-              return from != '__manual_trigger__' && to != '__manual_trigger__';
-            })
-            .toList()
-        : <Map<String, dynamic>>[];
+    final nodes = _persistableNodes(g);
+    final edges = _persistableEdges(g);
 
     final isPack = fid.startsWith('pack:');
     final saveId = isPack
@@ -231,6 +318,7 @@ class FlowsCubit extends Cubit<FlowsState> {
       'description': g['description'] ?? '',
       'tags': g['tags'] ?? [],
       'created_by': 'authored',
+      'api_pack': g['api_pack'],
       'credential_id': state.credentialId,
       'env_default': state.env,
       'variables': state.runtime?['variables'] ?? {},
@@ -254,6 +342,13 @@ class FlowsCubit extends Cubit<FlowsState> {
 
   Future<List<Map<String, dynamic>>> listOpenApiTools(String service) {
     return _repo.listOpenApiTools(service, environment: state.env);
+  }
+
+  Future<List<String>> listCatalogServices() async {
+    if (state.catalogServices.isNotEmpty) return state.catalogServices;
+    final rows = await _repo.listCatalogServices();
+    emit(state.copyWith(catalogServices: rows));
+    return rows;
   }
 
   void setEnv(String env) {
@@ -355,6 +450,14 @@ class FlowsCubit extends Cubit<FlowsState> {
     }
   }
 
+  Future<Map<String, dynamic>> loadExecutionObsLogs() async {
+    final eid = state.executionId;
+    if (eid == null || eid.isEmpty) {
+      return {'available': false, 'reason': 'no_execution', 'lines': []};
+    }
+    return _repo.executionObsLogs(eid);
+  }
+
   Future<List<Map<String, dynamic>>> suitePreview({
     String? group,
     String? apiPack,
@@ -409,7 +512,7 @@ class FlowsCubit extends Cubit<FlowsState> {
 
   Future<void> runSelected() async {
     final fid = state.selectedFlowId;
-    if (fid == null || fid.isEmpty) return;
+    if (fid == null || fid.isEmpty || state.isDraft) return;
     if (state.executing) return;
     emit(state.copyWith(executing: true, clearExecution: true, clearError: true, bottomTab: 0));
     try {
@@ -481,11 +584,20 @@ class FlowsCubit extends Cubit<FlowsState> {
     String kind = 'identity_login',
     String? token,
     String baseUrl = '',
+    String appId = '',
   }) async {
     final isToken = {
       'bearer_token',
       'llm_api_key',
       'api_key_header',
+      'grafana_token',
+      'prometheus_endpoint',
+      'cliq_webhook',
+      'temporal_endpoint',
+    }.contains(kind);
+    final optionalToken = {
+      'prometheus_endpoint',
+      'temporal_endpoint',
     }.contains(kind);
     await _repo.upsertCredential(
       {
@@ -494,8 +606,11 @@ class FlowsCubit extends Cubit<FlowsState> {
         'env': env,
         'username': username,
         'base_url': baseUrl,
+        if (appId.isNotEmpty) 'app_id': appId,
         if (!isToken && password.isNotEmpty) 'password': password,
         if (isToken && token != null && token.isNotEmpty) 'token': token,
+        if (isToken && optionalToken && (token == null || token.isEmpty))
+          'token': '',
       },
       id: id,
     );
@@ -505,6 +620,17 @@ class FlowsCubit extends Cubit<FlowsState> {
 
   Future<List<Map<String, dynamic>>> loadCredentialApps() =>
       _repo.listCredentialApps();
+
+  Future<void> refreshCredentials() async {
+    final creds = await _repo.listCredentials();
+    emit(state.copyWith(credentials: creds));
+  }
+
+  Future<Map<String, dynamic>> probeCredential(String id) =>
+      _repo.probeCredential(id);
+
+  Future<Map<String, dynamic>> probeAllCredentials({String? env}) =>
+      _repo.probeAllCredentials(env: env);
 
   Future<void> deleteCredential(String id) async {
     await _repo.deleteCredential(id);
@@ -523,12 +649,171 @@ class FlowsCubit extends Cubit<FlowsState> {
     required String service,
     String? category,
   }) {
+    String group = 'other';
+    final s = service.toLowerCase();
+    if (s.contains('identity')) {
+      group = 'identity';
+    } else if (s.contains('subscription')) {
+      group = 'subscription';
+    } else if (s.contains('market')) {
+      group = 'market';
+    }
     return _repo.proposeScenarios(
       service: service,
-      group: service == 'am-identity' ? 'identity' : 'subscription',
+      group: group,
       category: category,
       env: state.env,
     );
+  }
+
+  void startDraftFlow() {
+    _poll?.cancel();
+    emit(
+      state.copyWith(
+        clearSelectedFlowId: true,
+        clearExecution: true,
+        clearRuntime: true,
+        clearQuickResults: true,
+        executing: false,
+        graphDirty: true,
+        graph: {
+          'id': 'draft',
+          'title': 'Untitled',
+          'nodes': [
+            {
+              'id': '__manual_trigger__',
+              'kind': 'manual_trigger',
+              'label': 'Manual Trigger',
+              'method': 'START',
+              'path': 'click to run',
+              'service': '',
+              'x': 40.0,
+              'y': 160.0,
+            },
+          ],
+          'edges': <Map<String, dynamic>>[],
+        },
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _persistableNodes(Map<String, dynamic> g) {
+    if (g['nodes'] is! List) return [];
+    return (g['nodes'] as List)
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .where((n) {
+          final kind = '${n['kind'] ?? ''}';
+          final id = '${n['id'] ?? ''}';
+          return kind != 'manual_trigger' &&
+              kind != 'compose' &&
+              id != '__manual_trigger__' &&
+              id != '__compose_draft__';
+        })
+        .toList();
+  }
+
+  List<Map<String, dynamic>> _persistableEdges(Map<String, dynamic> g) {
+    if (g['edges'] is! List) return [];
+    return (g['edges'] as List)
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .where((e) {
+          final from = '${e['from'] ?? ''}';
+          final to = '${e['to'] ?? ''}';
+          return from != '__manual_trigger__' &&
+              to != '__manual_trigger__' &&
+              from != '__compose_draft__' &&
+              to != '__compose_draft__';
+        })
+        .toList();
+  }
+
+  /// First save of a draft canvas: upsert with meta + current nodes, then select.
+  Future<String?> persistDraft({
+    required String id,
+    required String title,
+    String group = 'other',
+    String category = 'general',
+    String? service,
+  }) async {
+    final g = state.graph;
+    if (g == null || !state.isDraft) return null;
+    final fid = id.trim().isEmpty
+        ? 'AUTH_${DateTime.now().millisecondsSinceEpoch}'
+        : id.trim();
+    final svc = (service ?? '').trim();
+    await _repo.upsertFlow({
+      'id': fid,
+      'title': title.trim().isEmpty ? fid : title.trim(),
+      'gate': 'prod_safe',
+      'group': group,
+      'category': category,
+      'description': '',
+      'tags': ['authored'],
+      'created_by': 'authored',
+      'api_pack': svc.isNotEmpty ? svc : null,
+      'credential_id': state.credentialId,
+      'env_default': state.env,
+      'variables': <String, dynamic>{},
+      'nodes': _persistableNodes(g),
+      'edges': _persistableEdges(g),
+    });
+    await load();
+    await selectFlow(fid);
+    return fid;
+  }
+
+  Future<String?> createFlow({
+    required String id,
+    required String title,
+    String group = 'other',
+    String category = 'general',
+    String? service,
+    List<Map<String, dynamic>>? nodes,
+    List<Map<String, dynamic>>? edges,
+  }) async {
+    final fid = id.trim().isEmpty
+        ? 'AUTH_${DateTime.now().millisecondsSinceEpoch}'
+        : id.trim();
+    final svc = (service ?? '').trim();
+    await _repo.upsertFlow({
+      'id': fid,
+      'title': title.trim().isEmpty ? fid : title.trim(),
+      'gate': 'prod_safe',
+      'group': group,
+      'category': category,
+      'description': '',
+      'tags': ['authored'],
+      'created_by': 'authored',
+      'api_pack': svc.isNotEmpty ? svc : null,
+      'credential_id': state.credentialId,
+      'env_default': state.env,
+      'variables': <String, dynamic>{},
+      'nodes': nodes ?? <Map<String, dynamic>>[],
+      'edges': edges ?? <Map<String, dynamic>>[],
+    });
+    await load();
+    await selectFlow(fid);
+    return fid;
+  }
+
+  void updateSelectedNode(Map<String, dynamic> patch) {
+    final nid = state.selectedLogNodeId;
+    final g = state.graph;
+    if (nid == null || g == null || nid == '__manual_trigger__') return;
+    final nodes = List<Map<String, dynamic>>.from(
+      (g['nodes'] is List)
+          ? (g['nodes'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+          : const [],
+    );
+    final idx = nodes.indexWhere((n) => '${n['id']}' == nid);
+    if (idx < 0) return;
+    nodes[idx] = {...nodes[idx], ...patch};
+    final nextGraph = Map<String, dynamic>.from(g)..['nodes'] = nodes;
+    emit(state.copyWith(graph: nextGraph, graphDirty: true));
   }
 
   Future<void> saveProposedFlow(Map<String, dynamic> proposal) async {
@@ -566,6 +851,7 @@ class FlowsCubit extends Cubit<FlowsState> {
   @override
   Future<void> close() {
     _poll?.cancel();
+    _queryDebounce?.cancel();
     return super.close();
   }
 }

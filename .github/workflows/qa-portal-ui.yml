@@ -44,10 +44,35 @@ jobs:
 
       - name: Build web
         working-directory: am-qa-agents/qa-portal-ui
-        run: flutter build web --release --base-href=/qa/ui/
+        run: |
+          flutter build web --release \
+            --base-href=/qa/ui/ \
+            --dart-define=API_BASE=/qa \
+            --dart-define=ROOT_PATH=/qa \
+            --no-wasm-dry-run
+          test -f build/web/index.html
 
       - name: Upload web artifact
         uses: actions/upload-artifact@v4
         with:
           name: qa-portal-ui-web
           path: am-qa-agents/qa-portal-ui/build/web
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push portal nginx image
+        if: github.event_name != 'pull_request'
+        working-directory: am-qa-agents/qa-portal-ui
+        run: |
+          TAG="sha-${GITHUB_SHA::7}"
+          IMG="ghcr.io/am-portfolio/am-qa-agents/am-qa-portal-ui"
+          docker build -t "$IMG:$TAG" -t "$IMG:latest" .
+          docker push "$IMG:$TAG"
+          docker push "$IMG:latest"
+          echo "Pushed $IMG:$TAG"

@@ -151,19 +151,24 @@ def merge_bundle_env(bundle: AmImportBundle, env: dict[str, str] | None) -> AmIm
             **(substitute_vars(item.path_params, merged_env) or {}),
             **extracted,
         }
-        items.append(
-            AmImportItem(
-                api_id=substitute_vars(item.api_id, merged_env),
-                name=substitute_vars(item.name, merged_env),
-                method=item.method,
-                path=path,
-                path_params=path_params,
-                query=substitute_vars(item.query, merged_env),
-                headers=substitute_vars(item.headers, merged_env),
-                body=substitute_vars(item.body, merged_env),
-                auth_hint=item.auth_hint,
-            )
+        new_item = AmImportItem(
+            api_id=substitute_vars(item.api_id, merged_env),
+            name=substitute_vars(item.name, merged_env),
+            method=item.method,
+            path=path,
+            path_params=path_params,
+            query=substitute_vars(item.query, merged_env),
+            headers=substitute_vars(item.headers, merged_env),
+            body=substitute_vars(item.body, merged_env),
+            auth_hint=item.auth_hint,
         )
+        extra_meta = getattr(item, "extra_meta", None)
+        if isinstance(extra_meta, dict):
+            setattr(new_item, "extra_meta", substitute_vars(extra_meta, merged_env))
+        extra_resp = getattr(item, "extra_response", None)
+        if isinstance(extra_resp, dict):
+            setattr(new_item, "extra_response", extra_resp)
+        items.append(new_item)
     return AmImportBundle(
         source=bundle.source,
         service=bundle.service,

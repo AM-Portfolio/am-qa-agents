@@ -443,6 +443,15 @@ class SpecsDataTab extends StatelessWidget {
                 label: const Text('Import'),
               ),
               TextButton.icon(
+                onPressed: state.generating ||
+                        state.selectedService == null ||
+                        state.selectedPayloadVersion == null
+                    ? null
+                    : () => cubit.downloadPayloadZip(),
+                icon: const Icon(Icons.folder_zip_outlined, size: 16),
+                label: const Text('Export zip'),
+              ),
+              TextButton.icon(
                 onPressed: state.generating || state.selectedService == null
                     ? null
                     : () => pickAndImportPostman(context, cubit, envOnly: true),

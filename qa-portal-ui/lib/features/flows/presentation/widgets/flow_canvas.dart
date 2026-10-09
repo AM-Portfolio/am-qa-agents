@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:node_flow/node_flow.dart';
 
 import 'flow_node_card.dart';
+import 'flow_node_compose_card.dart';
 
 class FlowCanvas extends StatefulWidget {
   const FlowCanvas({
@@ -14,8 +15,14 @@ class FlowCanvas extends StatefulWidget {
     required this.onRun,
     required this.onSelectNode,
     required this.onQuickTest,
-    required this.onAddAfter,
+    required this.onCommitAdd,
     required this.onDelete,
+    required this.listTools,
+    required this.listServices,
+    required this.loadPayloadSet,
+    this.defaultService = '',
+    this.autoOpenCompose = false,
+    this.allowRun = true,
   });
 
   final Map<String, dynamic> graph;
@@ -27,17 +34,31 @@ class FlowCanvas extends StatefulWidget {
   final VoidCallback onRun;
   final ValueChanged<String> onSelectNode;
   final ValueChanged<String> onQuickTest;
-  final ValueChanged<String> onAddAfter;
+  final void Function(String afterNodeId, Map<String, dynamic> stub)
+      onCommitAdd;
   final ValueChanged<String> onDelete;
+  final Future<List<Map<String, dynamic>>> Function(String service) listTools;
+  final Future<List<String>> Function() listServices;
+  final Future<Map<String, dynamic>?> Function(String service, {int? version})
+      loadPayloadSet;
+  final String defaultService;
+  /// When true and the graph has only a Manual Trigger, open Add-step beside it.
+  final bool autoOpenCompose;
+  final bool allowRun;
 
   @override
   State<FlowCanvas> createState() => _FlowCanvasState();
 }
 
 class _FlowCanvasState extends State<FlowCanvas> {
+  static const _composeId = '__compose_draft__';
+  static const _composeEdgeId = '__compose_draft_edge__';
+
   late FlowController<FlowNodeData, void> _controller;
   String? _loadedFor;
   Object? _epoch;
+  String? _composeAfterId;
+  String _composeInitialService = '';
 
   @override
   void initState() {
@@ -52,11 +73,83 @@ class _FlowCanvasState extends State<FlowCanvas> {
     final gid = '${widget.graph['id']}';
     final epochChanged = widget.graphEpoch != _epoch;
     if (gid != _loadedFor || epochChanged) {
+      _composeAfterId = null;
       _rebuildGraph();
     } else {
       _applyExecutionStatus();
       _applyQuickResults();
     }
+  }
+
+  void _dismissCompose() {
+    if (_composeAfterId == null) return;
+    _controller.removeNode(_composeId);
+    _composeAfterId = null;
+    _composeInitialService = '';
+  }
+
+  void _openCompose(String afterId) {
+    if (_composeAfterId == afterId) {
+      setState(_dismissCompose);
+      return;
+    }
+    final src = _controller.getNode(afterId);
+    if (src == null) return;
+
+    _dismissCompose();
+
+    var svc = src.data.service.trim();
+    if (svc.isEmpty) svc = widget.defaultService.trim();
+
+    final origin = src.position.value.offset;
+    // Seed sizes so port anchors match the rendered cards (default 256×100
+    // leaves the Manual Trigger output floating past the pill).
+    final srcW = src.measuredSize.value.width;
+    final gap = 48.0;
+    _controller.addNode(
+      FlowNode<FlowNodeData>(
+        id: _composeId,
+        type: 'compose',
+        data: FlowNodeData(
+          id: _composeId,
+          label: 'Add step',
+          kind: 'compose',
+          method: 'NEW',
+          path: '',
+          service: svc,
+        ),
+        position: GraphPosition.fromXY(origin.dx + srcW + gap, origin.dy),
+        size: const Size(320, 420),
+        ports: const [
+          FlowPort(
+            id: 'in',
+            side: PortSide.left,
+            kind: PortKind.input,
+          ),
+        ],
+      ),
+    );
+    _controller.addEdge(
+      FlowEdge<void>(
+        id: _composeEdgeId,
+        sourceNodeId: afterId,
+        sourcePortId: 'out',
+        targetNodeId: _composeId,
+        targetPortId: 'in',
+        accent: const Color(0xFF7B1FA2),
+      ),
+    );
+    setState(() {
+      _composeAfterId = afterId;
+      _composeInitialService = svc;
+    });
+  }
+
+  void _confirmCompose(Map<String, dynamic> stub) {
+    final afterId = _composeAfterId;
+    if (afterId == null) return;
+    setState(_dismissCompose);
+    widget.onCommitAdd(afterId, stub);
   }
 
   void _rebuildGraph() {
@@ -101,8 +194,15 @@ class _FlowCanvasState extends State<FlowCanvas> {
               quickResponse: quick?['response'],
               quickError: quick?['error'],
               quickTesting: quick?['quickTesting'] == true,
+              durationMs: quick?['duration_ms'] is num
+                  ? (quick!['duration_ms'] as num).toDouble()
+                  : double.tryParse('${quick?['duration_ms'] ?? ''}'),
             ),
             position: GraphPosition(Offset(x, y)),
+            // Match FlowNodeCard / trigger pill so the out-port sits on the edge.
+            size: isTrigger
+                ? const Size(200, 56)
+                : const Size(240, 120),
             ports: isTrigger
                 ? const [
                     FlowPort(
@@ -154,8 +254,25 @@ class _FlowCanvasState extends State<FlowCanvas> {
     }
     _applyExecutionStatus();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _controller.fitView();
+      if (!mounted) return;
+      _controller.fitView();
+      // Wait one more frame so trigger size is measured before wiring compose.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _maybeAutoOpenCompose();
+      });
     });
+  }
+
+  void _maybeAutoOpenCompose() {
+    if (!widget.autoOpenCompose) return;
+    if (_composeAfterId != null) return;
+    var apiCount = 0;
+    for (final n in _controller.nodes) {
+      if (!n.data.isManualTrigger && !n.data.isComposeDraft) apiCount++;
+    }
+    if (apiCount > 0) return;
+    if (_controller.getNode('__manual_trigger__') == null) return;
+    _openCompose('__manual_trigger__');
   }
 
   void _applyQuickResults() {
@@ -173,6 +290,9 @@ class _FlowCanvasState extends State<FlowCanvas> {
           quickResponse: st['response'],
           quickError: st['error'],
           quickTesting: st['quickTesting'] == true,
+          durationMs: st['duration_ms'] is num
+              ? (st['duration_ms'] as num).toDouble()
+              : double.tryParse('${st['duration_ms'] ?? ''}'),
         ),
       );
     }
@@ -198,6 +318,9 @@ class _FlowCanvasState extends State<FlowCanvas> {
           quickRequest: req,
           quickResponse: st['response'],
           quickError: st['error'],
+          durationMs: st['duration_ms'] is num
+              ? (st['duration_ms'] as num).toDouble()
+              : double.tryParse('${st['duration_ms'] ?? ''}'),
         ),
       );
       final status = '${st['status'] ?? ''}';
@@ -240,28 +363,44 @@ class _FlowCanvasState extends State<FlowCanvas> {
       controller: _controller,
       theme: theme,
       onNodeTap: (node) {
-        if (node.data.isManualTrigger && !widget.executing) {
+        if (node.data.isComposeDraft) return;
+        if (node.data.isManualTrigger &&
+            widget.allowRun &&
+            !widget.executing) {
           widget.onRun();
           return;
         }
         widget.onSelectNode(node.id);
       },
-      nodeBuilder: (context, node) => FlowNodeCard(
-        data: node.data,
-        busy: widget.executing,
-        onTrigger: node.data.isManualTrigger && !widget.executing
-            ? widget.onRun
-            : null,
-        onQuickTest: node.data.isManualTrigger
-            ? null
-            : () => widget.onQuickTest(node.id),
-        onAdd: node.data.isManualTrigger
-            ? null
-            : () => widget.onAddAfter(node.id),
-        onDelete: node.data.isManualTrigger
-            ? null
-            : () => widget.onDelete(node.id),
-      ),
+      nodeBuilder: (context, node) {
+        if (node.data.isComposeDraft) {
+          return FlowNodeComposeCard(
+            key: ValueKey('compose-$_composeAfterId-$_composeInitialService'),
+            listTools: widget.listTools,
+            listServices: widget.listServices,
+            loadPayloadSet: widget.loadPayloadSet,
+            initialService: _composeInitialService,
+            onCancel: () => setState(_dismissCompose),
+            onConfirm: _confirmCompose,
+          );
+        }
+        return FlowNodeCard(
+          data: node.data,
+          busy: widget.executing,
+          onTrigger: node.data.isManualTrigger &&
+                  widget.allowRun &&
+                  !widget.executing
+              ? widget.onRun
+              : null,
+          onQuickTest: node.data.isManualTrigger || !widget.allowRun
+              ? null
+              : () => widget.onQuickTest(node.id),
+          onAdd: () => _openCompose(node.id),
+          onDelete: node.data.isManualTrigger
+              ? null
+              : () => widget.onDelete(node.id),
+        );
+      },
     );
   }
 }

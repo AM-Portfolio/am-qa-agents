@@ -28,7 +28,9 @@ class FlowsToolbar extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(
-            state.selectedFlowId ?? '—',
+            state.isDraft
+                ? 'Untitled (draft)'
+                : (state.selectedFlowId ?? '—'),
             style: Theme.of(context).textTheme.titleSmall,
           ),
           DropdownButton<String>(
@@ -62,7 +64,9 @@ class FlowsToolbar extends StatelessWidget {
             onChanged: cubit.setCredentialId,
           ),
           FilledButton.icon(
-            onPressed: state.executing || state.selectedFlowId == null
+            onPressed: state.executing ||
+                    state.isDraft ||
+                    state.selectedFlowId == null
                 ? null
                 : () => cubit.runSelected(),
             icon: state.executing
@@ -75,9 +79,17 @@ class FlowsToolbar extends StatelessWidget {
             label: Text(state.executing ? 'Running…' : 'Run'),
           ),
           OutlinedButton.icon(
-            onPressed: state.graphDirty ? onSaveGraph : null,
+            onPressed: (state.graphDirty || state.isDraft) &&
+                    state.graph != null &&
+                    state.graph!.isNotEmpty
+                ? onSaveGraph
+                : null,
             icon: const Icon(Icons.save_outlined, size: 18),
-            label: Text(state.graphDirty ? 'Save graph*' : 'Save graph'),
+            label: Text(
+              state.isDraft
+                  ? 'Save flow…'
+                  : (state.graphDirty ? 'Save graph*' : 'Save graph'),
+            ),
           ),
           OutlinedButton.icon(
             onPressed: onSuite,
@@ -85,7 +97,9 @@ class FlowsToolbar extends StatelessWidget {
             label: const Text('Run suite…'),
           ),
           OutlinedButton.icon(
-            onPressed: state.selectedFlowId == null ? null : onSchedule,
+            onPressed: state.isDraft || state.selectedFlowId == null
+                ? null
+                : onSchedule,
             icon: const Icon(Icons.schedule, size: 18),
             label: const Text('Schedule'),
           ),

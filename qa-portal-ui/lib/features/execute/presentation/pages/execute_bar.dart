@@ -162,6 +162,7 @@ class _ExecuteCubit extends Cubit<_ExecuteState> {
           if (s is String) suites.add(s);
         }
       }
+      if (isClosed) return;
       emit(
         state.copyWith(
           configs: configs,
@@ -172,7 +173,7 @@ class _ExecuteCubit extends Cubit<_ExecuteState> {
       );
       await _syncFromConfig(state.configId);
     } catch (e) {
-      emit(state.copyWith(message: e.toString()));
+      if (!isClosed) emit(state.copyWith(message: e.toString()));
     }
   }
 

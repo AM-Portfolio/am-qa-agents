@@ -21,6 +21,94 @@ def _json_body(value: Any) -> str:
     return json.dumps(value, indent=2, default=str)
 
 
+def _duration_ms(value: Any) -> float:
+    if value is None:
+        return 0.0
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _normalize_ui_step_trace(trace: dict[str, Any]) -> dict[str, Any]:
+    """Ensure every ui_step has request/response maps and timings.duration_ms."""
+    out = dict(trace)
+    out.setdefault("kind", "ui_step")
+    req = out.get("request")
+    if not isinstance(req, dict):
+        out["request"] = {"headers": {}, "body": _json_body(req) if req is not None else ""}
+    else:
+        out["request"] = {
+            "headers": req.get("headers") if isinstance(req.get("headers"), dict) else {},
+            "body": req.get("body") if req.get("body") is not None else "",
+        }
+    resp = out.get("response")
+    if not isinstance(resp, dict):
+        out["response"] = {
+            "status": 200 if out.get("checks_passed") is not False else 500,
+            "headers": {},
+            "body": _json_body(resp) if resp is not None else "",
+        }
+    else:
+        out["response"] = {
+            "status": resp.get("status", 200 if out.get("checks_passed") is not False else 500),
+            "headers": resp.get("headers") if isinstance(resp.get("headers"), dict) else {},
+            "body": resp.get("body") if resp.get("body") is not None else "",
+        }
+    timings = out.get("timings") if isinstance(out.get("timings"), dict) else {}
+    ms = timings.get("duration_ms")
+    if ms is None:
+        ms = out.get("duration_ms")
+    out["timings"] = {"duration_ms": _duration_ms(ms)}
+    shot = out.get("screenshot_url")
+    if shot is not None and str(shot).strip():
+        out["screenshot_url"] = str(shot).strip()
+    elif "screenshot_url" in out and not out.get("screenshot_url"):
+        out.pop("screenshot_url", None)
+    return out
+
+
+def _attach_failure_screenshots(
+    traces: list[dict[str, Any]],
+    failures: list[Any],
+) -> None:
+    """Copy failure screenshot_url onto matching step traces when missing."""
+    by_index: dict[int, str] = {}
+    by_name: dict[str, str] = {}
+    for f in failures or []:
+        if not isinstance(f, dict):
+            continue
+        shot = f.get("screenshot_url")
+        if not shot:
+            continue
+        shot_s = str(shot)
+        idx = f.get("step_index")
+        if idx is not None:
+            try:
+                by_index[int(idx)] = shot_s
+            except (TypeError, ValueError):
+                pass
+        step = f.get("step")
+        if isinstance(step, dict) and step.get("name"):
+            by_name[str(step["name"]).lower()] = shot_s
+        elif f.get("name"):
+            by_name[str(f["name"]).lower()] = shot_s
+    for i, t in enumerate(traces):
+        if t.get("screenshot_url"):
+            continue
+        ci = t.get("call_index")
+        try:
+            ci_i = int(ci) if ci is not None else i + 1
+        except (TypeError, ValueError):
+            ci_i = i + 1
+        # step_index in executor is 0-based; call_index is 1-based
+        shot = by_index.get(ci_i - 1) or by_index.get(ci_i)
+        if not shot:
+            shot = by_name.get(str(t.get("name") or "").lower())
+        if shot:
+            t["screenshot_url"] = shot
+
+
 def _action_by_step(action_log: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     """Best-effort group action_log entries under step names when present."""
     by: dict[str, list[dict[str, Any]]] = {}
@@ -101,6 +189,7 @@ def map_status_to_traces(
                     "checks_passed": ok and soft_n == 0,
                 }
             )
+        traces = [_normalize_ui_step_trace(t) for t in traces]
         index = _index_from_traces(traces)
         summary = {
             "kind": "suite",
@@ -200,33 +289,36 @@ def map_status_to_traces(
             if shot:
                 trace_row["screenshot_url"] = str(shot)
             traces.append(trace_row)
+        _attach_failure_screenshots(traces, failures)
     elif action_log:
         for i, entry in enumerate(action_log):
             if not isinstance(entry, dict):
                 continue
             action = str(entry.get("action") or "ACTION").upper()
             name = str(entry.get("name") or entry.get("step") or action)
-            traces.append(
-                {
-                    "kind": "ui_step",
-                    "call_index": i + 1,
-                    "api_id": _slug(f"{profile}_{name}_{i}", fallback=f"action_{i}"),
-                    "name": name,
-                    "method": action[:24],
-                    "path": f"/{_slug(name)}",
-                    "url": str(entry.get("url") or status.get("targetUrl") or ""),
-                    "vu": 1,
-                    "iter": 0,
-                    "request": {"headers": {}, "body": _json_body(entry)},
-                    "response": {
-                        "status": 200,
-                        "headers": {},
-                        "body": _json_body({"ok": True}),
-                    },
-                    "timings": {"duration_ms": entry.get("duration_ms")},
-                    "checks_passed": True,
-                }
-            )
+            row = {
+                "kind": "ui_step",
+                "call_index": i + 1,
+                "api_id": _slug(f"{profile}_{name}_{i}", fallback=f"action_{i}"),
+                "name": name,
+                "method": action[:24],
+                "path": f"/{_slug(name)}",
+                "url": str(entry.get("url") or status.get("targetUrl") or ""),
+                "vu": 1,
+                "iter": 0,
+                "request": {"headers": {}, "body": _json_body(entry)},
+                "response": {
+                    "status": 200,
+                    "headers": {},
+                    "body": _json_body({"ok": True}),
+                },
+                "timings": {"duration_ms": entry.get("duration_ms")},
+                "checks_passed": True,
+            }
+            if entry.get("screenshot_url"):
+                row["screenshot_url"] = str(entry["screenshot_url"])
+            traces.append(row)
+        _attach_failure_screenshots(traces, failures)
     else:
         # Single summary row so inspector is never empty
         agent_status = str(status.get("status") or "").upper()
@@ -268,6 +360,7 @@ def map_status_to_traces(
             }
         )
 
+    traces = [_normalize_ui_step_trace(t) for t in traces]
     index = _index_from_traces(traces)
     summary = {
         "kind": "profile",

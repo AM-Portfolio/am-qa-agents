@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from specs.security.acl import AclMiddleware, Caller, seed_bootstrap_keys
 from specs.api.platform import router as platform_router
 from specs.api.flows_api import router as flows_router
+from specs.api.data_gen_api import router as data_gen_router
 from specs.config import settings
 from specs.load.config_builder import config_from_request, ensure_default_config
 from specs.portal.dashboard import render_portal
@@ -150,6 +151,7 @@ if _STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 app.include_router(platform_router)
 app.include_router(flows_router)
+app.include_router(data_gen_router)
 # Flutter web on another origin (e.g. localhost:8151 → :8150) needs CORS.
 # Cluster traffic is same-origin via Traefik; local allow-list is for portal dev.
 app.add_middleware(
@@ -331,6 +333,12 @@ async def api_get_run(run_id: str) -> dict:
         finished_at=row.get("finished_at"),
         run_id=run_id,
     )
+    try:
+        from specs.observability.run_correlation import attach_obs_to_row
+
+        attach_obs_to_row(row)
+    except Exception:  # noqa: BLE001
+        pass
     if row.get("api_pass_count") is None or row.get("api_fail_count") is None:
         counts = api_outcome_counts(row.get("api_summary"))
         row.setdefault("api_pass_count", counts["api_pass_count"])
@@ -443,6 +451,28 @@ async def api_run_traces(
     return {"run_id": run_id, "traces": traces, "count": len(traces), "total": total}
 
 
+@app.get("/api/runs/{run_id}/obs-logs")
+async def api_run_obs_logs(
+    run_id: str,
+    limit: int = Query(100, le=500),
+) -> dict:
+    """Platform logs (Grafana/Loki) keyed by run trace_id / correlation_id."""
+    row = get_run(run_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Run not found")
+    from specs.observability.obs_logs import fetch_obs_logs
+
+    out = await fetch_obs_logs(
+        trace_id=row.get("trace_id"),
+        correlation_id=row.get("correlation_id"),
+        started_at=row.get("started_at"),
+        finished_at=row.get("finished_at"),
+        limit=limit,
+    )
+    out["run_id"] = run_id
+    return out
+
+
 @app.get("/api/runs/{run_id}/traces/{index}")
 async def api_run_trace_at_index(run_id: str, index: int) -> dict:
     row = get_run(run_id)
@@ -552,6 +582,32 @@ async def api_get_payload_set(service: str, version: int) -> dict:
     if not row:
         raise HTTPException(status_code=404, detail="Payload set not found")
     return row
+
+
+@app.get("/api/payload-sets/{service}/{version}/export.zip")
+async def api_export_payload_set_zip(service: str, version: int):
+    """Download payload set as deflated zip (payload.json) — smaller than raw JSON."""
+    from fastapi.responses import Response as ZipResponse
+
+    from specs.payloads.zip_codec import pack_zip
+
+    row = get_payload_set(service, version)
+    if not row:
+        raise HTTPException(status_code=404, detail="Payload set not found")
+    blob = pack_zip(
+        {
+            "format": "am-specs-dataset",
+            "service": service,
+            "payload_set": row,
+            "label": row.get("label"),
+        }
+    )
+    fname = f"{service}-payload-v{version}.zip"
+    return ZipResponse(
+        content=blob,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
 
 
 @app.post("/api/payload-sets")

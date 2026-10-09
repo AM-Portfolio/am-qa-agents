@@ -19,7 +19,8 @@ When a service catalog is ready (or an operator triggers Specs), **ServiceOnboar
 | `contract` | yes | Plugin `min_tools` if plugin exists; else parity |
 | `auth_try_token` | yes | Platform JWT for env (`dig` → `dev`) |
 | `prepare_mcp` | soft | Warn if `mapped_count=0` |
-| `generate_all_payloads` | yes to start | Per-API soft unless `strict_payloads` |
+| `import_data_gen` | soft | When `AM_SPECS_DATASETS_PATH` or `data_gen_profile` set — seed payload set from am-specs pack |
+| `generate_all_payloads` | yes to start | Per-API soft unless `strict_payloads`; prefers stored data-gen rows |
 | `llm_fallback` | soft | LiteLLM / flag status |
 | `tools_smoke` | soft\* | Health + one GET; \*auth hard |
 | `overview_report` | soft | Attach warnings |

@@ -10,6 +10,7 @@ class FlowsRunLogsPanel extends StatelessWidget {
     this.execution,
     this.graph,
     this.selectedNodeId,
+    this.nodeQuickResults = const {},
     this.recentExecutions = const [],
     this.filterStatus = '',
     this.filterFlowId = '',
@@ -19,6 +20,7 @@ class FlowsRunLogsPanel extends StatelessWidget {
   final Map<String, dynamic>? graph;
   final Map<String, dynamic>? execution;
   final String? selectedNodeId;
+  final Map<String, Map<String, dynamic>> nodeQuickResults;
   final ValueChanged<String> onSelect;
   final List<Map<String, dynamic>> recentExecutions;
   final String filterStatus;
@@ -29,14 +31,33 @@ class FlowsRunLogsPanel extends StatelessWidget {
 
   List<FlowLogEntry> _entries() {
     final ex = execution;
-    if (ex == null) return const [];
-    final nodeStates = ex['nodes'];
+    final nodeStates = ex?['nodes'];
     final byId = <String, Map>{};
     if (nodeStates is Map) {
       for (final e in nodeStates.entries) {
-        if (e.value is Map) byId['${e.key}'] = e.value as Map;
+        if (e.value is Map) byId['${e.key}'] = Map<String, dynamic>.from(e.value as Map);
       }
     }
+    // Quick-test peek overlays / fills when no full execution yet.
+    for (final e in nodeQuickResults.entries) {
+      final q = e.value;
+      final prev = byId[e.key] ?? <String, dynamic>{};
+      byId[e.key] = {
+        ...prev,
+        if (q['status'] != null) 'status': q['status'],
+        if (q['http_status'] != null) 'http_status': q['http_status'],
+        if (q['request'] != null) 'request': q['request'],
+        if (q['response'] != null) 'response': q['response'],
+        if (q['error'] != null) 'error': q['error'],
+        if (q['request'] is Map && (q['request'] as Map)['url'] != null)
+          'url': (q['request'] as Map)['url'],
+        if (q['request'] is Map && (q['request'] as Map)['method'] != null)
+          'method': (q['request'] as Map)['method'],
+        if (q['request'] is Map && (q['request'] as Map)['path'] != null)
+          'path': (q['request'] as Map)['path'],
+      };
+    }
+    if (ex == null && byId.isEmpty) return const [];
     final order = <String>[];
     final gNodes = graph?['nodes'];
     if (gNodes is List) {
@@ -96,6 +117,8 @@ class FlowsRunLogsPanel extends StatelessWidget {
     if (summary is Map) {
       summaryLine =
           '$status · passed=${summary['passed']} · me_plan=${summary['me_plan']} · plans=${summary['plans_count']}';
+    } else if (status.isEmpty && nodeQuickResults.isNotEmpty) {
+      summaryLine = 'Quick-test results · ${nodeQuickResults.length} node(s)';
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -160,13 +183,11 @@ class FlowsRunLogsPanel extends StatelessWidget {
                   onChanged: (v) => onFilter(env: v ?? ''),
                 ),
               ),
-              Expanded(
-                child: Text(
-                  summaryLine,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+              Text(
+                summaryLine,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ),
@@ -197,8 +218,12 @@ class FlowsRunLogsPanel extends StatelessWidget {
             ),
           ),
         Expanded(
-          child: execution == null
-              ? const Center(child: Text('Run a flow or pick an execution above'))
+          child: entries.isEmpty
+              ? const Center(
+                  child: Text(
+                    'Run a flow, quick-test a node, or pick an execution above',
+                  ),
+                )
               : Row(
                   children: [
                     SizedBox(

@@ -16,6 +16,7 @@ REQUIRED_STEPS: dict[str, bool] = {
     "contract": True,
     "auth_try_token": True,
     "prepare_mcp": False,
+    "import_data_gen": False,
     "generate_all_payloads": True,
     "llm_fallback": False,
     "tools_smoke": False,

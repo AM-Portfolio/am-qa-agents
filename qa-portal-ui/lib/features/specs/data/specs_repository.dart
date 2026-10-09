@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/network/json_lists.dart';
 
@@ -437,5 +439,51 @@ class SpecsRepository {
       receiveTimeout: const Duration(minutes: 2),
     );
     return asMap(res.data);
+  }
+
+  /// Multipart zip/gzip/json import — preferred for large payload packs.
+  Future<Map<String, dynamic>> importPayloadZip({
+    required String service,
+    required List<int> bytes,
+    required String filename,
+    String? format,
+    String? label,
+    String? profile,
+    bool makeActive = true,
+    bool bumpSet = true,
+    bool syncWorkflows = true,
+  }) async {
+    final form = FormData.fromMap({
+      'service': service,
+      'make_active': makeActive,
+      'bump_set': bumpSet,
+      'sync_workflows': syncWorkflows,
+      if (format != null && format.isNotEmpty) 'format': format,
+      if (label != null && label.isNotEmpty) 'label': label,
+      if (profile != null && profile.isNotEmpty) 'profile': profile,
+      'file': MultipartFile.fromBytes(bytes, filename: filename),
+    });
+    final res = await _api.post(
+      '/api/payloads/import-zip',
+      data: form,
+      receiveTimeout: const Duration(minutes: 3),
+    );
+    return asMap(res.data);
+  }
+
+  /// Download payload set as deflated zip (bytes).
+  Future<List<int>> exportPayloadSetZip({
+    required String service,
+    required String version,
+  }) async {
+    final res = await _api.getTyped<List<int>>(
+      '/api/payload-sets/$service/$version/export.zip',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final data = res.data;
+    if (data == null || data.isEmpty) {
+      throw StateError('empty zip export');
+    }
+    return data;
   }
 }

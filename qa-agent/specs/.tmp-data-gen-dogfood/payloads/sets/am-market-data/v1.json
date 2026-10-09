@@ -1,0 +1,3283 @@
+{
+  "id": "23d75e16-0b68-4d6f-a1b7-f48b86df6495",
+  "service": "am-market-data",
+  "version": 1,
+  "label": "data-gen-prod",
+  "created_at": "2026-10-08T22:10:51.399675+00:00",
+  "updated_at": "2026-10-08T22:10:51.663733+00:00",
+  "cloned_from": null,
+  "apis": {
+    "get_v1_fundamentals_symbol": {
+      "api_id": "get_v1_fundamentals_symbol",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/fundamentals/{symbol}",
+        "path_params": {
+          "symbol": "RELIANCE"
+        },
+        "query": {},
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.fundamentals.overview",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.733805+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "FundamentalAnalysis",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mw.fundamentals.overview",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "equity",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "get_v1_fundamentals_symbol",
+            "name": "search_to_fundamentals/step-1",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-search_to_fundamentals-s1-v1_fundamentals__symbol",
+            "request": {
+              "method": "GET",
+              "path": "/v1/fundamentals/{symbol}",
+              "path_params": {
+                "symbol": "RELIANCE"
+              },
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.733805+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "FundamentalAnalysis",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "xf-search_to_fundamentals-s1-v1_fundamentals__symbol",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "equity",
+              "flow_id": "search_to_fundamentals",
+              "flow_step": 1,
+              "flow_modules": [
+                "instrument",
+                "fundamentals"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.411022+00:00"
+    },
+    "get_v1_indices_available": {
+      "api_id": "get_v1_indices_available",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/indices/available",
+        "path_params": {},
+        "query": {},
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.indices.available",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.733805+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "MarketIndex",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mw.indices.available",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "index",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "get_v1_indices_available",
+            "name": "index_quote_cluster/step-0",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-index_quote_cluster-s0-v1_indices_available",
+            "request": {
+              "method": "GET",
+              "path": "/v1/indices/available",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.733805+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketIndex",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "xf-index_quote_cluster-s0-v1_indices_available",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "index",
+              "flow_id": "index_quote_cluster",
+              "flow_step": 0,
+              "flow_modules": [
+                "market_data",
+                "market_index"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.421704+00:00"
+    },
+    "get_v1_market-data_ipo": {
+      "api_id": "get_v1_market-data_ipo",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/market-data/ipo",
+        "path_params": {},
+        "query": {
+          "status": "open",
+          "issueType": "regular",
+          "pageNumber": 1,
+          "records": 30
+        },
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.ipo.list",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "IPO Market Data",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "capture": {
+          "ipoId": "$[0].id"
+        },
+        "discovery": "ipo_list",
+        "variant_id": "mw-mw.ipo.list",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "ipo",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "get_v1_market-data_ipo",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-get-v1_market-data_ipo",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/ipo",
+              "path_params": {},
+              "query": {
+                "status": "open",
+                "issueType": "regular",
+                "pageNumber": 1,
+                "records": 30
+              },
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "IPO Market Data",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "capture": {
+                "ipoId": "$[0].id"
+              },
+              "discovery": "ipo_list",
+              "variant_id": "happy-get-v1_market-data_ipo",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "ipo"
+            }
+          },
+          {
+            "api_id": "get_v1_market-data_ipo",
+            "name": "open_ipo_to_detail/step-0",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-open_ipo_to_detail-s0-v1_market-data_ipo",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/ipo",
+              "path_params": {},
+              "query": {
+                "status": "open",
+                "issueType": "regular",
+                "pageNumber": 1,
+                "records": 30
+              },
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "IPO Market Data",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "capture": {
+                "ipoId": "$[0].id"
+              },
+              "discovery": "ipo_list",
+              "variant_id": "xf-open_ipo_to_detail-s0-v1_market-data_ipo",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "ipo",
+              "flow_id": "open_ipo_to_detail",
+              "flow_step": 0,
+              "flow_modules": [
+                "ipo"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.430736+00:00"
+    },
+    "get_v1_market-data_ipo_counts": {
+      "api_id": "get_v1_market-data_ipo_counts",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/market-data/ipo/counts",
+        "path_params": {},
+        "query": {},
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.ipo.counts",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "IPO Market Data",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mw.ipo.counts",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "ipo",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "get_v1_market-data_ipo_counts",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-get-v1_market-data_ipo_counts",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/ipo/counts",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "IPO Market Data",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "happy-get-v1_market-data_ipo_counts",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "ipo"
+            }
+          },
+          {
+            "api_id": "get_v1_market-data_ipo_counts",
+            "name": "open_ipo_to_detail/step-1",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-open_ipo_to_detail-s1-v1_market-data_ipo_counts",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/ipo/counts",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "IPO Market Data",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "xf-open_ipo_to_detail-s1-v1_market-data_ipo_counts",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "ipo",
+              "flow_id": "open_ipo_to_detail",
+              "flow_step": 1,
+              "flow_modules": [
+                "ipo"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.440952+00:00"
+    },
+    "get_v1_market-data_ipo_id": {
+      "api_id": "get_v1_market-data_ipo_id",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/market-data/ipo/{id}",
+        "path_params": {
+          "id": "{{ipoId}}"
+        },
+        "query": {},
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.ipo.detail",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "IPO Market Data",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "discovery": "ipo_detail",
+        "variant_id": "mw-mw.ipo.detail",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "ipo",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "get_v1_market-data_ipo_id",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-get-v1_market-data_ipo__id",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/ipo/{id}",
+              "path_params": {
+                "id": "{{ipoId}}"
+              },
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "IPO Market Data",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "discovery": "ipo_detail",
+              "variant_id": "happy-get-v1_market-data_ipo__id",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "ipo"
+            }
+          },
+          {
+            "api_id": "get_v1_market-data_ipo_id",
+            "name": "open_ipo_to_detail/step-2",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-open_ipo_to_detail-s2-v1_market-data_ipo__id",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/ipo/{id}",
+              "path_params": {
+                "id": "{{ipoId}}"
+              },
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "IPO Market Data",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "discovery": "ipo_detail",
+              "variant_id": "xf-open_ipo_to_detail-s2-v1_market-data_ipo__id",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "ipo",
+              "flow_id": "open_ipo_to_detail",
+              "flow_step": 2,
+              "flow_modules": [
+                "ipo"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.451560+00:00"
+    },
+    "get_v1_market-data_live-ltp": {
+      "api_id": "get_v1_market-data_live-ltp",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/market-data/live-ltp",
+        "path_params": {},
+        "query": {
+          "symbols": "NIFTY 50",
+          "timeframe": "1D",
+          "isIndexSymbol": "true",
+          "refresh": false
+        },
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.index.ltp",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "MarketData",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mw.index.ltp",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "index",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "get_v1_market-data_live-ltp",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-get-v1_market-data_live-ltp",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/live-ltp",
+              "path_params": {},
+              "query": {
+                "symbols": "NIFTY 50",
+                "timeframe": "1D",
+                "isIndexSymbol": false,
+                "refresh": false
+              },
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "happy-get-v1_market-data_live-ltp",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "both"
+            }
+          },
+          {
+            "api_id": "get_v1_market-data_live-ltp",
+            "name": "index_quote_cluster/step-1",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-index_quote_cluster-s1-v1_market-data_live-ltp",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/live-ltp",
+              "path_params": {},
+              "query": {
+                "symbols": "NIFTY 50",
+                "timeframe": "1D",
+                "isIndexSymbol": "true",
+                "refresh": false
+              },
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "xf-index_quote_cluster-s1-v1_market-data_live-ltp",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "index",
+              "flow_id": "index_quote_cluster",
+              "flow_step": 1,
+              "flow_modules": [
+                "market_data",
+                "market_index"
+              ]
+            }
+          },
+          {
+            "api_id": "get_v1_market-data_live-ltp",
+            "name": "watchlist_to_ltp/step-2",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-watchlist_to_ltp-s2-v1_market-data_live-ltp",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/live-ltp",
+              "path_params": {},
+              "query": {
+                "symbols": "NIFTY 50",
+                "timeframe": "1D",
+                "isIndexSymbol": "false",
+                "refresh": false
+              },
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "xf-watchlist_to_ltp-s2-v1_market-data_live-ltp",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "both",
+              "flow_id": "watchlist_to_ltp",
+              "flow_step": 2,
+              "flow_modules": [
+                "watchlist",
+                "market_data"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.461536+00:00"
+    },
+    "get_v1_market-data_mutual-fund_schemeCode": {
+      "api_id": "get_v1_market-data_mutual-fund_schemeCode",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/market-data/mutual-fund/{schemeCode}",
+        "path_params": {
+          "schemeCode": "102868"
+        },
+        "query": {},
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.mf.detail",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "MarketData",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "discovery": "mf_scheme",
+        "schemeCode": "102868",
+        "variant_id": "mw-mw.mf.detail",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "scheme",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "get_v1_market-data_mutual-fund_schemeCode",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-get-v1_market-data_mutual-fund__schemeCode",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/mutual-fund/{schemeCode}",
+              "path_params": {
+                "schemeCode": "102868"
+              },
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "discovery": "mf_scheme",
+              "schemeCode": "102868",
+              "variant_id": "happy-get-v1_market-data_mutual-fund__schemeCode",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "scheme"
+            }
+          },
+          {
+            "api_id": "get_v1_market-data_mutual-fund_schemeCode",
+            "name": "mf_detail_to_history/step-0",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-mf_detail_to_history-s0-v1_market-data_mutual-fund__schemeCode",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/mutual-fund/{schemeCode}",
+              "path_params": {
+                "schemeCode": "102868"
+              },
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "discovery": "mf_scheme",
+              "schemeCode": "102868",
+              "variant_id": "xf-mf_detail_to_history-s0-v1_market-data_mutual-fund__schemeCode",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "scheme",
+              "flow_id": "mf_detail_to_history",
+              "flow_step": 0,
+              "flow_modules": [
+                "mutual_fund"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.472510+00:00"
+    },
+    "get_v1_market-data_mutual-fund_schemeCode_history": {
+      "api_id": "get_v1_market-data_mutual-fund_schemeCode_history",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/market-data/mutual-fund/{schemeCode}/history",
+        "path_params": {
+          "schemeCode": "102868"
+        },
+        "query": {},
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.mf.history",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "MarketData",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "discovery": "mf_scheme",
+        "schemeCode": "102868",
+        "variant_id": "mw-mw.mf.history",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "scheme",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "get_v1_market-data_mutual-fund_schemeCode_history",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-get-v1_market-data_mutual-fund__schemeCode__history",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/mutual-fund/{schemeCode}/history",
+              "path_params": {
+                "schemeCode": "102868"
+              },
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "discovery": "mf_scheme",
+              "schemeCode": "102868",
+              "variant_id": "happy-get-v1_market-data_mutual-fund__schemeCode__history",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "scheme"
+            }
+          },
+          {
+            "api_id": "get_v1_market-data_mutual-fund_schemeCode_history",
+            "name": "mf_detail_to_history/step-1",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-mf_detail_to_history-s1-v1_market-data_mutual-fund__schemeCode__history",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/mutual-fund/{schemeCode}/history",
+              "path_params": {
+                "schemeCode": "102868"
+              },
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "discovery": "mf_scheme",
+              "schemeCode": "102868",
+              "variant_id": "xf-mf_detail_to_history-s1-v1_market-data_mutual-fund__schemeCode__history",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "scheme",
+              "flow_id": "mf_detail_to_history",
+              "flow_step": 1,
+              "flow_modules": [
+                "mutual_fund"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.484802+00:00"
+    },
+    "get_v1_market-data_quotes": {
+      "api_id": "get_v1_market-data_quotes",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/market-data/quotes",
+        "path_params": {},
+        "query": {
+          "symbols": "RELIANCE",
+          "timeFrame": "5m",
+          "refresh": false
+        },
+        "headers": {},
+        "body": {
+          "symbols": [
+            "RELIANCE"
+          ],
+          "indexSymbol": false
+        }
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.equity.quotes",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "MarketData",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mw.equity.quotes",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "equity",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "get_v1_market-data_quotes",
+            "name": "mw.index.quotes",
+            "case_kind": "must_work",
+            "expect_status": 200,
+            "variant_id": "mw-mw.index.quotes",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/quotes",
+              "path_params": {},
+              "query": {
+                "symbols": "NIFTY 50",
+                "timeFrame": "5m",
+                "refresh": false,
+                "isIndexSymbol": "true"
+              },
+              "headers": {},
+              "body": {
+                "symbols": [
+                  "NIFTY 50"
+                ],
+                "indexSymbol": "true"
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "mw-mw.index.quotes",
+              "case_kind": "must_work",
+              "tier": "working",
+              "symbol_kind": "index"
+            }
+          },
+          {
+            "api_id": "get_v1_market-data_quotes",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-get-v1_market-data_quotes",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/quotes",
+              "path_params": {},
+              "query": {
+                "symbols": "NIFTY 50",
+                "timeFrame": "1D",
+                "refresh": false
+              },
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "happy-get-v1_market-data_quotes",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "both"
+            }
+          },
+          {
+            "api_id": "get_v1_market-data_quotes",
+            "name": "index_quote_cluster/step-2",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-index_quote_cluster-s2-v1_market-data_quotes",
+            "request": {
+              "method": "GET",
+              "path": "/v1/market-data/quotes",
+              "path_params": {},
+              "query": {
+                "symbols": "NIFTY 50",
+                "timeFrame": "5m",
+                "refresh": false,
+                "isIndexSymbol": "true"
+              },
+              "headers": {},
+              "body": {
+                "symbols": [
+                  "NIFTY 50"
+                ],
+                "indexSymbol": "true"
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "xf-index_quote_cluster-s2-v1_market-data_quotes",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "index",
+              "flow_id": "index_quote_cluster",
+              "flow_step": 2,
+              "flow_modules": [
+                "market_data",
+                "market_index"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.496417+00:00"
+    },
+    "get_v1_watchlists": {
+      "api_id": "get_v1_watchlists",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/watchlists",
+        "path_params": {},
+        "query": {},
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.watchlists.list",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "Watchlist",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mw.watchlists.list",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "equity",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "get_v1_watchlists",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-get-v1_watchlists",
+            "request": {
+              "method": "GET",
+              "path": "/v1/watchlists",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "Watchlist",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "happy-get-v1_watchlists",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "equity"
+            }
+          },
+          {
+            "api_id": "get_v1_watchlists",
+            "name": "watchlist_to_ltp/step-0",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-watchlist_to_ltp-s0-v1_watchlists",
+            "request": {
+              "method": "GET",
+              "path": "/v1/watchlists",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "Watchlist",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "xf-watchlist_to_ltp-s0-v1_watchlists",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "equity",
+              "flow_id": "watchlist_to_ltp",
+              "flow_step": 0,
+              "flow_modules": [
+                "watchlist",
+                "market_data"
+              ],
+              "capture": {
+                "watchlistId": "$[0].id"
+              }
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.508586+00:00"
+    },
+    "get_v1_watchlists_watchlistId_items": {
+      "api_id": "get_v1_watchlists_watchlistId_items",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/watchlists/{watchlistId}/items",
+        "path_params": {
+          "watchlistId": "{{watchlistId}}"
+        },
+        "query": {},
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mod-watchlist-GET__v1_watchlists__watchlistId__items",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "Watchlist",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mod-watchlist-GET__v1_watchlists__watchlistId__items",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "equity",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "get_v1_watchlists_watchlistId_items",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-get-v1_watchlists__watchlistId__items",
+            "request": {
+              "method": "GET",
+              "path": "/v1/watchlists/{watchlistId}/items",
+              "path_params": {
+                "watchlistId": "{{watchlistId}}"
+              },
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "Watchlist",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "happy-get-v1_watchlists__watchlistId__items",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "equity"
+            }
+          },
+          {
+            "api_id": "get_v1_watchlists_watchlistId_items",
+            "name": "watchlist_to_ltp/step-1",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-watchlist_to_ltp-s1-v1_watchlists__watchlistId__items",
+            "request": {
+              "method": "GET",
+              "path": "/v1/watchlists/{watchlistId}/items",
+              "path_params": {
+                "watchlistId": "{{watchlistId}}"
+              },
+              "query": {},
+              "headers": {},
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "Watchlist",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "xf-watchlist_to_ltp-s1-v1_watchlists__watchlistId__items",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "equity",
+              "flow_id": "watchlist_to_ltp",
+              "flow_step": 1,
+              "flow_modules": [
+                "watchlist",
+                "market_data"
+              ],
+              "capture": {
+                "symbol": "$.[0].symbol",
+                "symbols": "$.[0].symbol"
+              }
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.524119+00:00"
+    },
+    "post_v1_instruments_search": {
+      "api_id": "post_v1_instruments_search",
+      "name": "must_work",
+      "request": {
+        "method": "POST",
+        "path": "/v1/instruments/search",
+        "path_params": {},
+        "query": {},
+        "headers": {},
+        "body": {
+          "queries": [
+            "RELIANCE",
+            "NIFTY 50"
+          ],
+          "exchanges": [
+            "NSE"
+          ],
+          "provider": "UPSTOX"
+        }
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.instruments.search",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.733805+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "Instrument",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mw.instruments.search",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "both",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "post_v1_instruments_search",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-post-v1_instruments_search",
+            "request": {
+              "method": "POST",
+              "path": "/v1/instruments/search",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "queries": [
+                  "RELIANCE",
+                  "NIFTY 50"
+                ],
+                "exchanges": [
+                  "NSE"
+                ],
+                "provider": "UPSTOX"
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.733805+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "Instrument",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "happy-post-v1_instruments_search",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "both"
+            }
+          },
+          {
+            "api_id": "post_v1_instruments_search",
+            "name": "search_to_fundamentals/step-0",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-search_to_fundamentals-s0-v1_instruments_search",
+            "request": {
+              "method": "POST",
+              "path": "/v1/instruments/search",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "queries": [
+                  "RELIANCE"
+                ],
+                "exchanges": [
+                  "NSE"
+                ],
+                "provider": "UPSTOX",
+                "symbols": [
+                  "RELIANCE"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.733805+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "Instrument",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "xf-search_to_fundamentals-s0-v1_instruments_search",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "equity",
+              "flow_id": "search_to_fundamentals",
+              "flow_step": 0,
+              "flow_modules": [
+                "instrument",
+                "fundamentals"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.542181+00:00"
+    },
+    "post_v1_market-data_ohlc": {
+      "api_id": "post_v1_market-data_ohlc",
+      "name": "must_work",
+      "request": {
+        "method": "POST",
+        "path": "/v1/market-data/ohlc",
+        "path_params": {},
+        "query": {},
+        "headers": {},
+        "body": {
+          "symbols": [
+            "NIFTY 50"
+          ],
+          "isIndexSymbol": "true",
+          "timeFrame": "5m",
+          "refresh": false
+        }
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.index.ohlc",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "MarketData",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mw.index.ohlc",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "index",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "post_v1_market-data_ohlc",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-post-v1_market-data_ohlc",
+            "request": {
+              "method": "POST",
+              "path": "/v1/market-data/ohlc",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "symbols": [
+                  "NIFTY 50"
+                ],
+                "isIndexSymbol": "true",
+                "timeFrame": "5m",
+                "refresh": false,
+                "queries": [
+                  "RELIANCE",
+                  "NIFTY 50"
+                ],
+                "exchanges": [
+                  "NSE"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "happy-post-v1_market-data_ohlc",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "both"
+            }
+          },
+          {
+            "api_id": "post_v1_market-data_ohlc",
+            "name": "index_quote_cluster/step-3",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-index_quote_cluster-s3-v1_market-data_ohlc",
+            "request": {
+              "method": "POST",
+              "path": "/v1/market-data/ohlc",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "symbols": [
+                  "NIFTY 50"
+                ],
+                "isIndexSymbol": "true",
+                "timeFrame": "5m",
+                "refresh": false
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "xf-index_quote_cluster-s3-v1_market-data_ohlc",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "index",
+              "flow_id": "index_quote_cluster",
+              "flow_step": 3,
+              "flow_modules": [
+                "market_data",
+                "market_index"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.555350+00:00"
+    },
+    "post_v1_watchlists": {
+      "api_id": "post_v1_watchlists",
+      "name": "must_work",
+      "request": {
+        "method": "POST",
+        "path": "/v1/watchlists",
+        "path_params": {},
+        "query": {},
+        "headers": {},
+        "body": {
+          "name": "data-gen-dev"
+        }
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.watchlist.create",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "Watchlist",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "capture": {
+          "watchlistId": "$.id"
+        },
+        "discovery": "watchlist_create",
+        "variant_id": "mw-mw.watchlist.create",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "equity",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "post_v1_watchlists",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-post-v1_watchlists",
+            "request": {
+              "method": "POST",
+              "path": "/v1/watchlists",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "name": "data-gen-dev"
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "Watchlist",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "capture": {
+                "watchlistId": "$.id"
+              },
+              "discovery": "watchlist_create",
+              "variant_id": "happy-post-v1_watchlists",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "equity"
+            }
+          },
+          {
+            "api_id": "post_v1_watchlists",
+            "name": "watchlist_create_to_items/step-0",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-watchlist_create_to_items-s0-v1_watchlists",
+            "request": {
+              "method": "POST",
+              "path": "/v1/watchlists",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "name": "data-gen-dev"
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "Watchlist",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "capture": {
+                "watchlistId": "$.id"
+              },
+              "discovery": "watchlist_create",
+              "variant_id": "xf-watchlist_create_to_items-s0-v1_watchlists",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "equity",
+              "flow_id": "watchlist_create_to_items",
+              "flow_step": 0,
+              "flow_modules": [
+                "watchlist"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.566709+00:00"
+    },
+    "post_v1_watchlists_watchlistId_items": {
+      "api_id": "post_v1_watchlists_watchlistId_items",
+      "name": "must_work",
+      "request": {
+        "method": "POST",
+        "path": "/v1/watchlists/{watchlistId}/items",
+        "path_params": {
+          "watchlistId": "{{watchlistId}}"
+        },
+        "query": {},
+        "headers": {},
+        "body": {
+          "symbol": "RELIANCE",
+          "exchange": "NSE"
+        }
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.watchlist.add_item",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "Watchlist",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "discovery": "watchlist_add_item",
+        "variant_id": "mw-mw.watchlist.add_item",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "equity",
+        "capture": {
+          "symbol": "$.symbol"
+        },
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "post_v1_watchlists_watchlistId_items",
+            "name": "oas-seed",
+            "case_kind": "happy",
+            "expect_status": 200,
+            "variant_id": "happy-post-v1_watchlists__watchlistId__items",
+            "request": {
+              "method": "POST",
+              "path": "/v1/watchlists/{watchlistId}/items",
+              "path_params": {
+                "watchlistId": "{{watchlistId}}"
+              },
+              "query": {},
+              "headers": {},
+              "body": {
+                "symbol": "RELIANCE",
+                "exchange": "NSE"
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "Watchlist",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "discovery": "watchlist_add_item",
+              "variant_id": "happy-post-v1_watchlists__watchlistId__items",
+              "tier": "working",
+              "case_kind": "happy",
+              "symbol_kind": "equity"
+            }
+          },
+          {
+            "api_id": "post_v1_watchlists_watchlistId_items",
+            "name": "watchlist_create_to_items/step-1",
+            "case_kind": "cross_flow",
+            "expect_status": 200,
+            "variant_id": "xf-watchlist_create_to_items-s1-v1_watchlists__watchlistId__items",
+            "request": {
+              "method": "POST",
+              "path": "/v1/watchlists/{watchlistId}/items",
+              "path_params": {
+                "watchlistId": "{{watchlistId}}"
+              },
+              "query": {},
+              "headers": {},
+              "body": {
+                "symbol": "RELIANCE",
+                "exchange": "NSE"
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "Watchlist",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "discovery": "watchlist_add_item",
+              "variant_id": "xf-watchlist_create_to_items-s1-v1_watchlists__watchlistId__items",
+              "case_kind": "cross_flow",
+              "tier": "working",
+              "symbol_kind": "equity",
+              "flow_id": "watchlist_create_to_items",
+              "flow_step": 1,
+              "flow_modules": [
+                "watchlist"
+              ]
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.577665+00:00"
+    },
+    "post_v1_market-data_quotes": {
+      "api_id": "post_v1_market-data_quotes",
+      "name": "happy",
+      "request": {
+        "method": "POST",
+        "path": "/v1/market-data/quotes",
+        "path_params": {},
+        "query": {},
+        "headers": {},
+        "body": {
+          "symbols": [
+            "NIFTY 50"
+          ],
+          "indexSymbol": "true",
+          "timeFrame": "5m",
+          "forceRefresh": false,
+          "queries": [
+            "RELIANCE",
+            "NIFTY 50"
+          ],
+          "exchanges": [
+            "NSE"
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "oas-seed",
+        "auth_hint": "happy",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "MarketData",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "happy-post-v1_market-data_quotes",
+        "tier": "working",
+        "case_kind": "happy",
+        "symbol_kind": "both",
+        "expect_status": 200,
+        "variants": [
+          {
+            "api_id": "post_v1_market-data_quotes",
+            "name": "auth_bearer-oas-seed",
+            "case_kind": "technical",
+            "expect_status": 200,
+            "variant_id": "tech-auth_bearer-v1_market-data_quotes-0",
+            "request": {
+              "method": "POST",
+              "path": "/v1/market-data/quotes",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "symbols": [
+                  "NIFTY 50"
+                ],
+                "indexSymbol": "true",
+                "timeFrame": "5m",
+                "forceRefresh": false
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "tech-auth_bearer-v1_market-data_quotes-0",
+              "case_kind": "technical",
+              "technical_case": "auth_bearer",
+              "tier": "working"
+            }
+          },
+          {
+            "api_id": "post_v1_market-data_quotes",
+            "name": "bad_request-oas-seed",
+            "case_kind": "technical",
+            "expect_status": 400,
+            "variant_id": "tech-bad_request-v1_market-data_quotes-4",
+            "request": {
+              "method": "POST",
+              "path": "/v1/market-data/quotes",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "symbols": [
+                  "NIFTY 50"
+                ],
+                "indexSymbol": "true",
+                "timeFrame": "5m",
+                "forceRefresh": false
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "tech-bad_request-v1_market-data_quotes-4",
+              "case_kind": "technical",
+              "technical_case": "bad_request",
+              "tier": "working",
+              "expect_status": 400
+            }
+          },
+          {
+            "api_id": "post_v1_market-data_quotes",
+            "name": "exception_shape-oas-seed",
+            "case_kind": "technical",
+            "expect_status": 200,
+            "variant_id": "tech-exception_shape-v1_market-data_quotes-7",
+            "request": {
+              "method": "POST",
+              "path": "/v1/market-data/quotes",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "symbols": [
+                  "NIFTY 50"
+                ],
+                "indexSymbol": "true",
+                "timeFrame": "5m",
+                "forceRefresh": false
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "tech-exception_shape-v1_market-data_quotes-7",
+              "case_kind": "technical",
+              "technical_case": "exception_shape",
+              "tier": "working"
+            }
+          },
+          {
+            "api_id": "post_v1_market-data_quotes",
+            "name": "forbidden-oas-seed",
+            "case_kind": "technical",
+            "expect_status": 403,
+            "variant_id": "tech-forbidden-v1_market-data_quotes-2",
+            "request": {
+              "method": "POST",
+              "path": "/v1/market-data/quotes",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "symbols": [
+                  "NIFTY 50"
+                ],
+                "indexSymbol": "true",
+                "timeFrame": "5m",
+                "forceRefresh": false
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "tech-forbidden-v1_market-data_quotes-2",
+              "case_kind": "technical",
+              "technical_case": "forbidden",
+              "tier": "working",
+              "expect_status": 403
+            }
+          },
+          {
+            "api_id": "post_v1_market-data_quotes",
+            "name": "internal_error-oas-seed",
+            "case_kind": "technical",
+            "expect_status": 500,
+            "variant_id": "tech-internal_error-v1_market-data_quotes-6",
+            "request": {
+              "method": "POST",
+              "path": "/v1/market-data/quotes",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "symbols": [
+                  "NIFTY 50"
+                ],
+                "indexSymbol": "true",
+                "timeFrame": "5m",
+                "forceRefresh": false
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "tech-internal_error-v1_market-data_quotes-6",
+              "case_kind": "technical",
+              "technical_case": "internal_error",
+              "tier": "working",
+              "expect_status": 500
+            }
+          },
+          {
+            "api_id": "post_v1_market-data_quotes",
+            "name": "not_found-oas-seed",
+            "case_kind": "technical",
+            "expect_status": 404,
+            "variant_id": "tech-not_found-v1_market-data_quotes-3",
+            "request": {
+              "method": "POST",
+              "path": "/v1/market-data/quotes",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "symbols": [
+                  "NIFTY 50"
+                ],
+                "indexSymbol": "true",
+                "timeFrame": "5m",
+                "forceRefresh": false
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "tech-not_found-v1_market-data_quotes-3",
+              "case_kind": "technical",
+              "technical_case": "not_found",
+              "tier": "working",
+              "expect_status": 404
+            }
+          },
+          {
+            "api_id": "post_v1_market-data_quotes",
+            "name": "too_many_requests-oas-seed",
+            "case_kind": "technical",
+            "expect_status": 429,
+            "variant_id": "tech-too_many_requests-v1_market-data_quotes-5",
+            "request": {
+              "method": "POST",
+              "path": "/v1/market-data/quotes",
+              "path_params": {},
+              "query": {},
+              "headers": {},
+              "body": {
+                "symbols": [
+                  "NIFTY 50"
+                ],
+                "indexSymbol": "true",
+                "timeFrame": "5m",
+                "forceRefresh": false
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "tech-too_many_requests-v1_market-data_quotes-5",
+              "case_kind": "technical",
+              "technical_case": "too_many_requests",
+              "tier": "working",
+              "expect_status": 429
+            }
+          },
+          {
+            "api_id": "post_v1_market-data_quotes",
+            "name": "unauthorized-oas-seed",
+            "case_kind": "technical",
+            "expect_status": 401,
+            "variant_id": "tech-unauthorized-v1_market-data_quotes-1",
+            "request": {
+              "method": "POST",
+              "path": "/v1/market-data/quotes",
+              "path_params": {},
+              "query": {},
+              "headers": {
+                "Authorization": ""
+              },
+              "body": {
+                "symbols": [
+                  "NIFTY 50"
+                ],
+                "indexSymbol": "true",
+                "timeFrame": "5m",
+                "forceRefresh": false
+              }
+            },
+            "response": {
+              "status": 200,
+              "sample_keys": []
+            },
+            "meta": {
+              "env": "prod",
+              "source": "data-gen-oas-seed",
+              "captured_at": "2026-10-08T21:50:40.734333+00:00",
+              "notes": "modular template + OpenAPI harvest",
+              "tag": "MarketData",
+              "technical_cases": [
+                "auth_bearer",
+                "unauthorized",
+                "forbidden",
+                "not_found",
+                "bad_request",
+                "conflict",
+                "too_many_requests",
+                "timeout",
+                "internal_error",
+                "bad_gateway",
+                "service_unavailable",
+                "gateway_timeout",
+                "exception_shape"
+              ],
+              "service": "am-market-data",
+              "variant_id": "tech-unauthorized-v1_market-data_quotes-1",
+              "case_kind": "technical",
+              "technical_case": "unauthorized",
+              "tier": "working",
+              "expect_status": 401,
+              "omit_bearer": true
+            }
+          }
+        ],
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.588715+00:00"
+    },
+    "get_v1_fundamentals_symbol_peers": {
+      "api_id": "get_v1_fundamentals_symbol_peers",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/fundamentals/{symbol}/peers",
+        "path_params": {
+          "symbol": "RELIANCE"
+        },
+        "query": {},
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mod-fundamentals-GET__v1_fundamentals__symbol__peers",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.733805+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "FundamentalAnalysis",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mod-fundamentals-GET__v1_fundamentals__symbol__peers",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "equity",
+        "expect_status": 200,
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.601648+00:00"
+    },
+    "get_v1_market-calendar_holidays": {
+      "api_id": "get_v1_market-calendar_holidays",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/market-calendar/holidays",
+        "path_params": {},
+        "query": {},
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mod-market_calendar-GET__v1_market-calendar_holidays",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.733805+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "MarketCalendar",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mod-market_calendar-GET__v1_market-calendar_holidays",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "none",
+        "expect_status": 200,
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.613187+00:00"
+    },
+    "get_v1_market-calendar_status": {
+      "api_id": "get_v1_market-calendar_status",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/market-calendar/status",
+        "path_params": {},
+        "query": {},
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mod-market_calendar-GET__v1_market-calendar_status",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.733805+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "MarketCalendar",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mod-market_calendar-GET__v1_market-calendar_status",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "none",
+        "expect_status": 200,
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.623711+00:00"
+    },
+    "get_v1_securities_search": {
+      "api_id": "get_v1_securities_search",
+      "name": "must_work",
+      "request": {
+        "method": "GET",
+        "path": "/v1/securities/search",
+        "path_params": {},
+        "query": {},
+        "headers": {},
+        "body": {
+          "queries": [
+            "RELIANCE",
+            "NIFTY 50"
+          ],
+          "exchanges": [
+            "NSE"
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mod-security-GET__v1_securities_search",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "Security",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mod-security-GET__v1_securities_search",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "both",
+        "expect_status": 200,
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.635298+00:00"
+    },
+    "post_v1_indices_batch": {
+      "api_id": "post_v1_indices_batch",
+      "name": "must_work",
+      "request": {
+        "method": "POST",
+        "path": "/v1/indices/batch",
+        "path_params": {},
+        "query": {},
+        "headers": {},
+        "body": [
+          "NIFTY 50"
+        ]
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mw.indices.batch",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.733805+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "MarketIndex",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mw.indices.batch",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "index",
+        "expect_status": 200,
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.649327+00:00"
+    },
+    "post_v1_securities_search": {
+      "api_id": "post_v1_securities_search",
+      "name": "must_work",
+      "request": {
+        "method": "POST",
+        "path": "/v1/securities/search",
+        "path_params": {},
+        "query": {},
+        "headers": {},
+        "body": {
+          "queries": [
+            "RELIANCE",
+            "NIFTY 50"
+          ],
+          "exchanges": [
+            "NSE"
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "sample_keys": [],
+        "headers": {}
+      },
+      "meta": {
+        "source": "data-gen-oas-seed",
+        "name": "mod-security-POST__v1_securities_search",
+        "auth_hint": "must_work",
+        "env": "prod",
+        "captured_at": "2026-10-08T21:50:40.734333+00:00",
+        "notes": "modular template + OpenAPI harvest",
+        "tag": "Security",
+        "technical_cases": [
+          "auth_bearer",
+          "unauthorized",
+          "forbidden",
+          "not_found",
+          "bad_request",
+          "conflict",
+          "too_many_requests",
+          "timeout",
+          "internal_error",
+          "bad_gateway",
+          "service_unavailable",
+          "gateway_timeout",
+          "exception_shape"
+        ],
+        "service": "am-market-data",
+        "variant_id": "mw-mod-security-POST__v1_securities_search",
+        "case_kind": "must_work",
+        "tier": "working",
+        "symbol_kind": "both",
+        "expect_status": 200,
+        "profile": "prod"
+      },
+      "updated_at": "2026-10-08T22:10:51.663733+00:00"
+    }
+  }
+}

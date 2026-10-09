@@ -10,7 +10,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/config/portal_config.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../flow_graph/ui_step_flow_canvas.dart';
+import '../../../observability/presentation/widgets/observability_attach.dart';
 import '../../data/runs_repository.dart';
+import '../utils/ui_run_graph.dart';
 
 class RunDetailPage extends StatelessWidget {
   const RunDetailPage({super.key, required this.runId});
@@ -107,6 +110,8 @@ class _RunDetailCubit extends Cubit<_RunDetailState> {
 
   final RunsRepository _repo;
   final String runId;
+
+  Future<Map<String, dynamic>> loadObsLogs() => _repo.obsLogs(runId);
 
   Future<void> load() async {
     emit(state.copyWith(loading: true, error: null));
@@ -539,6 +544,18 @@ class _RunDetailView extends StatelessWidget {
                         label: const Text('Refresh'),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  ObservabilityAttach(
+                    traceId: run['trace_id']?.toString(),
+                    correlationId: run['correlation_id']?.toString(),
+                    observabilityResources: run['observability_resources'] is Map
+                        ? Map<String, dynamic>.from(
+                            run['observability_resources'] as Map,
+                          )
+                        : null,
+                    loadLogs: () =>
+                        context.read<_RunDetailCubit>().loadObsLogs(),
                   ),
                 ],
               ),
@@ -1546,7 +1563,7 @@ bool _traceFailed(Map<String, dynamic> t) {
   return n != null && n >= 400;
 }
 
-class _InspectorTab extends StatelessWidget {
+class _InspectorTab extends StatefulWidget {
   const _InspectorTab({
     required this.traces,
     required this.selected,
@@ -1568,8 +1585,38 @@ class _InspectorTab extends StatelessWidget {
   final String Function(String) absUrl;
 
   @override
+  State<_InspectorTab> createState() => _InspectorTabState();
+}
+
+class _InspectorTabState extends State<_InspectorTab> {
+  var _graphMode = false;
+
+  bool get _hasUiSteps =>
+      widget.traces.any((t) => '${t['kind'] ?? ''}' == 'ui_step');
+
+  @override
+  void initState() {
+    super.initState();
+    _graphMode = _hasUiSteps;
+  }
+
+  @override
+  void didUpdateWidget(covariant _InspectorTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_hasUiSteps && _graphMode) {
+      _graphMode = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final traces = widget.traces;
+    final selected = widget.selected;
+    final failedOnly = widget.failedOnly;
+    final onFailedOnly = widget.onFailedOnly;
+    final onOpen = widget.onOpen;
+    final graph = _hasUiSteps ? uiRunGraphFromTraces(traces) : null;
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Row(
@@ -1590,27 +1637,102 @@ class _InspectorTab extends StatelessWidget {
                         ),
                       ),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          'Calls',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
+                        Row(
+                          children: [
+                            Text(
+                              _graphMode ? 'Graph' : 'Calls',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const Spacer(),
+                            if (_hasUiSteps)
+                              SegmentedButton<bool>(
+                                segments: const [
+                                  ButtonSegment(
+                                    value: true,
+                                    label: Text('Graph'),
+                                    icon: Icon(Icons.account_tree, size: 16),
+                                  ),
+                                  ButtonSegment(
+                                    value: false,
+                                    label: Text('List'),
+                                    icon: Icon(Icons.list, size: 16),
+                                  ),
+                                ],
+                                selected: {_graphMode},
+                                onSelectionChanged: (s) =>
+                                    setState(() => _graphMode = s.first),
+                                style: const ButtonStyle(
+                                  visualDensity: VisualDensity.compact,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
                               ),
+                            if (!_graphMode) ...[
+                              const SizedBox(width: 8),
+                              FilterChip(
+                                label: const Text('Failed only'),
+                                selected: failedOnly,
+                                onSelected: onFailedOnly,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ],
+                          ],
                         ),
-                        const Spacer(),
-                        FilterChip(
-                          label: const Text('Failed only'),
-                          selected: failedOnly,
-                          onSelected: onFailedOnly,
-                          visualDensity: VisualDensity.compact,
-                        ),
+                        if (_graphMode && graph != null) ...[
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                              Chip(
+                                label: Text(
+                                  'Total ${graph.totalLatencyMs.toStringAsFixed(0)} ms',
+                                ),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              Chip(
+                                label: Text('Pass ${graph.passCount}'),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              Chip(
+                                label: Text('Fail ${graph.failCount}'),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
                   Expanded(
                     child: traces.isEmpty
                         ? const Center(child: Text('No traces yet'))
+                        : _graphMode && graph != null
+                            ? UiStepFlowCanvas(
+                                graph: graph.graph,
+                                evidenceByNodeId: graph.evidence,
+                                readOnly: true,
+                                selectedNodeId:
+                                    selected?['api_id']?.toString(),
+                                graphEpoch: Object.hash(
+                                  traces.length,
+                                  selected?['api_id'],
+                                  graph.totalLatencyMs,
+                                ),
+                                resolveScreenshotUrl: widget.absUrl,
+                                onSelectNode: (nodeId) {
+                                  final t = traceForNodeId(
+                                    graph.evidence,
+                                    nodeId,
+                                  );
+                                  if (t != null) onOpen(t);
+                                },
+                              )
                         : ListView.separated(
                             itemCount: traces.length,
                             separatorBuilder: (_, __) => Divider(
@@ -1629,8 +1751,8 @@ class _InspectorTab extends StatelessWidget {
                               final failed = _traceFailed(t);
                               final selectedHere = identical(selected, t) ||
                                   (selected != null &&
-                                      selected!['call_index'] == t['call_index'] &&
-                                      selected!['api_id'] == t['api_id']);
+                                      selected['call_index'] == t['call_index'] &&
+                                      selected['api_id'] == t['api_id']);
                               final ms = t['timings'] is Map
                                   ? (t['timings'] as Map)['duration_ms']
                                   : (t['duration_ms'] ?? t['latency_ms']);
@@ -1744,10 +1866,10 @@ class _InspectorTab extends StatelessWidget {
                       ),
                     )
                   : _TraceDetailPanel(
-                      trace: selected!,
-                      apiId: selectedApiId,
-                      onSavePayload: onSavePayload,
-                      absUrl: absUrl,
+                      trace: selected,
+                      apiId: widget.selectedApiId,
+                      onSavePayload: widget.onSavePayload,
+                      absUrl: widget.absUrl,
                     ),
             ),
           ),

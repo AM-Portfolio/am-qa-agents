@@ -400,6 +400,71 @@ async def activity_onboard_prepare_mcp(args: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+@activity.defn(name="activity_onboard_import_data_gen")
+async def activity_onboard_import_data_gen(args: dict[str, Any]) -> dict[str, Any]:
+    """Soft: import am-specs pack when AM_SPECS_DATASETS_PATH or data_gen_profile set."""
+    import os
+
+    t0 = time.monotonic()
+    service = str(args.get("service") or "").strip()
+    env = normalize_env(args.get("environment"))
+    profile = str(args.get("data_gen_profile") or args.get("profile") or "").strip()
+    path_set = bool((os.environ.get("AM_SPECS_DATASETS_PATH") or "").strip())
+    if not profile and not path_set:
+        return make_step(
+            "import_data_gen",
+            ok=True,
+            status="skipped_no_pack",
+            evidence={"service": service, "environment": env},
+            duration_ms=timed_ms(t0),
+            hard_fail=False,
+        )
+    profile = profile or "default"
+    try:
+        from specs.data_gen.import_svc import import_data_gen
+
+        out = import_data_gen(
+            service=service,
+            profile=profile,
+            environment=env,
+            make_active=True,
+            sync_workflows=True,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return make_step(
+            "import_data_gen",
+            ok=True,
+            status="warn_import_failed",
+            error=str(exc),
+            evidence={"service": service, "profile": profile},
+            duration_ms=timed_ms(t0),
+            hard_fail=False,
+        )
+    if not out.get("ok"):
+        return make_step(
+            "import_data_gen",
+            ok=True,
+            status="warn_empty_or_missing",
+            error=str(out.get("message") or out.get("error") or "import_failed"),
+            evidence=out,
+            duration_ms=timed_ms(t0),
+            hard_fail=False,
+        )
+    return make_step(
+        "import_data_gen",
+        ok=True,
+        status="ok",
+        evidence={
+            "payload_set_version": out.get("payload_set_version"),
+            "imported": out.get("imported"),
+            "profile": out.get("profile"),
+            "workflow_sync": out.get("workflow_sync"),
+        },
+        duration_ms=timed_ms(t0),
+        hard_fail=False,
+    )
+
+
 @activity.defn(name="activity_onboard_generate_payloads")
 async def activity_onboard_generate_payloads(args: dict[str, Any]) -> dict[str, Any]:
     from specs.payloads.payload_pipeline import generate_all_payloads

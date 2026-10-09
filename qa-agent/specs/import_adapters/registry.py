@@ -3,12 +3,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from specs.import_adapters.am_specs_dataset import AmSpecsDatasetAdapter
 from specs.import_adapters.base import CollectionAdapter
 from specs.import_adapters.postman_v2 import PostmanV2Adapter
 
 _ADAPTERS: list[CollectionAdapter] = [
+    AmSpecsDatasetAdapter(),
     PostmanV2Adapter(),
 ]
+_DEFAULT = PostmanV2Adapter()
 
 
 def list_formats() -> list[str]:
@@ -27,4 +30,4 @@ def get_adapter(format_id: str | None = None, *, raw: Any = None) -> CollectionA
             if a.detect(raw):
                 return a
     # Default Postman for explicit UI uploads
-    return _ADAPTERS[0]
+    return _DEFAULT

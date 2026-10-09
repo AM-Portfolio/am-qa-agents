@@ -563,6 +563,12 @@ async def run_k6_local(
     process_registry.begin_run(run_id)
     profile = _run_profile(config)
     test_type = str(config.get("test_type") or "k6").lower()
+    try:
+        from specs.observability.run_correlation import capture_run_correlation
+
+        _corr = capture_run_correlation()
+    except Exception:  # noqa: BLE001
+        _corr = {"trace_id": "", "span_id": "", "correlation_id": ""}
 
     def _live(phase: str, message: str, **extra: Any) -> None:
         if progress:
@@ -593,6 +599,9 @@ async def run_k6_local(
             "test_type": "playwright",
             "triggered_by": triggered_by,
             "target_url": target,
+            "trace_id": _corr.get("trace_id") or "",
+            "span_id": _corr.get("span_id") or "",
+            "correlation_id": _corr.get("correlation_id") or "",
             "api_count": 0,
             "payloads_used": {
                 "bench_run": {},
@@ -682,6 +691,8 @@ async def run_k6_local(
             "environment": config.get("environment", settings.default_environment),
             "test_type": config.get("test_type", "k6"),
             "triggered_by": triggered_by,
+            "trace_id": _corr.get("trace_id") or "",
+            "correlation_id": _corr.get("correlation_id") or "",
             "target_url": config.get("target_url") or settings.poc_target_url,
             "api_count": 0,
             "payloads_used": {"bench_run": {}},
@@ -732,6 +743,9 @@ async def run_k6_local(
         "test_type": config.get("test_type", "k6"),
         "triggered_by": triggered_by,
         "target_url": target,
+        "trace_id": _corr.get("trace_id") or "",
+        "span_id": _corr.get("span_id") or "",
+        "correlation_id": _corr.get("correlation_id") or "",
         "api_count": len(apis),
         "payloads_used": {
             # Do not store generated k6 script (contains JWTs + unreadable in UI)

@@ -73,7 +73,20 @@ jobs:
           path: am-modern-ui
           token: ${{ secrets.GH_TOKEN || secrets.GITHUB_PAT || secrets.AM_GITHUB_PAT || secrets.GITHUB_TOKEN }}
 
+      - name: Detect portal path changes
+        id: paths
+        uses: dorny/paths-filter@v3
+        with:
+          working-directory: am-qa-agents
+          filters: |
+            portal:
+              - 'qa-portal-ui/**'
+            agent_only:
+              - 'qa-agent/**'
+              - 'pyproject.toml'
+
       - name: Setup Flutter
+        if: steps.paths.outputs.portal == 'true'
         uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -81,6 +94,7 @@ jobs:
 
       - name: Build Flutter portal (cluster)
         id: portal
+        if: steps.paths.outputs.portal == 'true'
         continue-on-error: true
         working-directory: am-qa-agents/qa-portal-ui
         run: |
@@ -96,7 +110,11 @@ jobs:
 
       - name: Portal bake status
         run: |
-          if [ "${{ steps.portal.outcome }}" != "success" ]; then
+          if [ "${{ steps.paths.outputs.portal }}" != "true" ]; then
+            echo "Portal paths unchanged — skipping Flutter bake (separate am-qa-portal-ui image)."
+            mkdir -p am-qa-agents/qa-portal-ui/build/web
+            echo "built=skipped" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.portal.outcome }}" != "success" ]; then
             echo "::warning::Flutter portal bake failed (am-modern-ui). Publishing agent image without SPA; Specs/k6 still ship."
             rm -rf am-qa-agents/qa-portal-ui/build/web || true
           else

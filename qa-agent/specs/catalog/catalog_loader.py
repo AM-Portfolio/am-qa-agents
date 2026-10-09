@@ -726,13 +726,30 @@ def _try_base_candidates(service: str, environment: str, reg: dict[str, Any]) ->
     add(targets.get(f"public_{env}"))
     add(targets.get("public"))
 
-    if env == "dev" and settings.poc_target_url:
-        add(settings.poc_target_url)
+    # Do not add poc_target_url — it is analysis-only and poisons Try/OpenAPI for others.
 
     if not _running_in_cluster():
         add(default_target_for_service(service, env))
 
     return bases
+
+
+def _openapi_url_belongs(service: str, bases: list[str], openapi_url: str) -> bool:
+    """True when openapi_url was pulled from this service's target base (not another app)."""
+    url = (openapi_url or "").split("?", 1)[0].rstrip("/")
+    if not url:
+        return False
+    for base in bases:
+        b = (base or "").rstrip("/")
+        if not b:
+            continue
+        if url == b or url.startswith(b + "/"):
+            return True
+    # Soft allow only when service itself is the analysis POC target
+    poc = (settings.poc_target_url or "").rstrip("/")
+    if poc and service in {"am-analysis"} and (url == poc or url.startswith(poc + "/")):
+        return True
+    return False
 
 
 def _apis_from_openapi_registration(
@@ -769,6 +786,10 @@ def _apis_from_openapi_registration(
             last_url = url
             try:
                 doc = fetch_openapi_sync(url, headers=headers, timeout=12.0)
+                if not _openapi_url_belongs(service, bases, url):
+                    last_err = ValueError(f"openapi url not for {service}: {url}")
+                    logger.warning("Rejecting foreign OpenAPI for %s: %s", service, url)
+                    continue
                 try:
                     from specs.catalog.openapi_overlay import merge_effective_document
 
@@ -815,9 +836,19 @@ def _apis_from_openapi_registration(
 
     logger.warning("OpenAPI fetch failed for %s after %s: %s", service, path_candidates, last_err)
     try:
-        from specs.catalog.openapi_sync import load_synced_openapi
+        from specs.catalog.openapi_sync import delete_synced_openapi, load_synced_openapi
 
         synced = load_synced_openapi(service, environment)
+        if synced and not _openapi_url_belongs(
+            service, bases, str(synced.get("openapi_url") or "")
+        ):
+            logger.warning(
+                "Dropping poisoned OpenAPI sync for %s: %s",
+                service,
+                synced.get("openapi_url"),
+            )
+            delete_synced_openapi(service, environment)
+            synced = None
     except Exception:
         synced = None
     if synced and isinstance(synced.get("document"), dict):
@@ -835,6 +866,32 @@ def _apis_from_openapi_registration(
             "count": len(apis),
             "synced_at": synced.get("synced_at"),
         }
+    # Payload-set synthesis when live OpenAPI is down (market /v3/api-docs 500).
+    try:
+        from specs.catalog.openapi_sync import seed_openapi_from_payload_set
+
+        seeded = seed_openapi_from_payload_set(service, environment)
+        if seeded.get("ok"):
+            from specs.catalog.openapi_sync import load_synced_openapi
+
+            synced_ps = load_synced_openapi(service, environment)
+            if synced_ps and isinstance(synced_ps.get("document"), dict):
+                apis = openapi_to_apis(synced_ps["document"], include_mutating=True)
+                return {
+                    "base_url": "{{target_url}}",
+                    "apis": apis,
+                    "source": "payload-set",
+                    "openapi_url": synced_ps.get("openapi_url") or last_url,
+                    "openapi_error": str(last_err),
+                    "openapi_version": synced_ps.get("version"),
+                    "openapi_title": synced_ps.get("title"),
+                    "runtime": runtime,
+                    "count": len(apis),
+                    "synced_at": synced_ps.get("synced_at"),
+                }
+    except Exception as seed_exc:
+        logger.info("API list payload-set seed skipped for %s: %s", service, seed_exc)
+
     # Legacy escape hatch only — do not add new per-service files under resources/.
     baked = _load_baked_apis(service)
     if baked.get("apis"):
@@ -876,8 +933,8 @@ def _openapi_base_candidates(service: str, environment: str, reg: dict[str, Any]
     # Only this env's public_* (do not fall back to public_dev for preprod/prod)
     add(targets.get(f"public_{env}"))
     add(targets.get("public"))
-    if env == "dev" and settings.poc_target_url:
-        add(settings.poc_target_url)
+    # Never fall back to poc_target_url (defaults to am-analysis). That made
+    # market/trade/corp Specs + MCP tools show the analysis OpenAPI.
     if _running_in_cluster():
         pass
     else:
@@ -943,6 +1000,10 @@ def load_openapi_document(
             last_url = url
             try:
                 doc = fetch_openapi_sync(url, headers=headers, timeout=12.0)
+                if not _openapi_url_belongs(service, bases, url):
+                    last_err = f"openapi url not for {service}: {url}"
+                    logger.warning("Rejecting foreign OpenAPI for %s: %s", service, url)
+                    continue
                 info = doc.get("info") if isinstance(doc.get("info"), dict) else {}
                 paths = doc.get("paths") if isinstance(doc.get("paths"), dict) else {}
                 result = {
@@ -992,9 +1053,19 @@ def load_openapi_document(
                 logger.info("OpenAPI document fetch failed %s %s: %s", service, url, exc)
 
     try:
-        from specs.catalog.openapi_sync import load_synced_openapi
+        from specs.catalog.openapi_sync import delete_synced_openapi, load_synced_openapi
 
         synced = load_synced_openapi(service, env)
+        if synced and not _openapi_url_belongs(
+            service, bases or ([primary_target] if primary_target else []), str(synced.get("openapi_url") or "")
+        ):
+            logger.warning(
+                "Dropping poisoned OpenAPI sync for %s: %s",
+                service,
+                synced.get("openapi_url"),
+            )
+            delete_synced_openapi(service, env)
+            synced = None
     except Exception:
         synced = None
     if synced and isinstance(synced.get("document"), dict):
@@ -1024,13 +1095,60 @@ def load_openapi_document(
                 if m in item
             ),
             "document": doc,
-            "source": "synced-cache",
+            "source": synced.get("source") or "synced-cache",
             "synced_at": synced.get("synced_at"),
             "live_error": last_err,
             "registration": _registration_payload(service, reg, oas, runtime),
         }
         _openapi_doc_cache[cache_key] = (time.time(), result)
         return result
+
+    # Live docs down (e.g. Spring StackOverflow) — synthesize from payload set.
+    try:
+        from specs.catalog.openapi_sync import seed_openapi_from_payload_set
+
+        seeded = seed_openapi_from_payload_set(service, env)
+        if seeded.get("ok"):
+            from specs.catalog.openapi_sync import load_synced_openapi as _load_sync
+
+            synced2 = _load_sync(service, env)
+            if synced2 and isinstance(synced2.get("document"), dict):
+                doc = synced2["document"]
+                info = doc.get("info") if isinstance(doc.get("info"), dict) else {}
+                paths = doc.get("paths") if isinstance(doc.get("paths"), dict) else {}
+                result = {
+                    "service": service,
+                    "environment": env,
+                    "runtime": runtime,
+                    "target_url": synced2.get("target_url") or primary_target,
+                    "openapi_url": synced2.get("openapi_url") or last_url,
+                    "openapi_url_cluster": last_url or synced2.get("openapi_url"),
+                    "openapi_path": preferred,
+                    "ok": True,
+                    "openapi": str(doc.get("openapi") or ""),
+                    "title": info.get("title") or synced2.get("title"),
+                    "version": info.get("version") or synced2.get("version"),
+                    "description": info.get("description"),
+                    "servers": doc.get("servers") or [],
+                    "path_count": len(paths),
+                    "operation_count": seeded.get("operation_count")
+                    or sum(
+                        1
+                        for item in paths.values()
+                        if isinstance(item, dict)
+                        for m in ("get", "post", "put", "patch", "delete", "head", "options")
+                        if m in item
+                    ),
+                    "document": doc,
+                    "source": "payload-set",
+                    "synced_at": synced2.get("synced_at"),
+                    "live_error": last_err,
+                    "registration": _registration_payload(service, reg, oas, runtime),
+                }
+                _openapi_doc_cache[cache_key] = (time.time(), result)
+                return result
+    except Exception as seed_exc:
+        logger.info("OpenAPI payload-set seed skipped for %s: %s", service, seed_exc)
 
     result = {
         "service": service,

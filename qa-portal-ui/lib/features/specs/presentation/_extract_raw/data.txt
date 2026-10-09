@@ -1,0 +1,242 @@
+class _DataPane extends StatelessWidget {
+  const _DataPane({required this.state});
+
+  final SpecsState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<SpecsCubit>();
+    final summary = state.generateSummary;
+    final rows = state.generateResults;
+    final maxAttempts = 3;
+
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Data generator',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: state.generating || state.selectedService == null
+                    ? null
+                    : cubit.generateAllPayloads,
+                icon: state.generating
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.playlist_add_check, size: 18),
+                label: Text(
+                  state.generating
+                      ? 'Working…'
+                      : 'Generate for all APIs (${state.apis.length})',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              OutlinedButton.icon(
+                onPressed: state.generating || state.selectedService == null
+                    ? null
+                    : () => _pickAndImport(context, cubit, envOnly: false),
+                icon: const Icon(Icons.upload_file, size: 16),
+                label: const Text('Import collection'),
+              ),
+              OutlinedButton.icon(
+                onPressed: state.generating || state.selectedService == null
+                    ? null
+                    : () => _pickAndImport(context, cubit, envOnly: true),
+                icon: const Icon(Icons.tune, size: 16),
+                label: const Text('Import env'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Schema → Try → LLM (up to $maxAttempts attempts), or import Postman '
+            'collection + env into a versioned payload set for Test.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondaryDark,
+                ),
+          ),
+          if (summary != null) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                Chip(
+                  label: Text(
+                    'passed ${summary['passed'] ?? 0} / ${summary['total'] ?? rows.length}',
+                  ),
+                ),
+                Chip(
+                  label: Text('failed ${summary['failed'] ?? 0}'),
+                ),
+                Chip(
+                  label: Text(
+                    'set v${summary['payload_set_version'] ?? '?'}'
+                    '${summary['from_file'] == true ? ' · file' : ''}'
+                    ' · ${rows.length} APIs',
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 10),
+          Expanded(
+            child: rows.isEmpty
+                ? Center(
+                    child: Text(
+                      state.generating
+                          ? 'Running data prep…'
+                          : 'No payload-set data yet. Generate for all APIs or Import collection.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: rows.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final r = rows[i];
+                      final ok = r['ok'] == true;
+                      final method = '${r['method'] ?? 'GET'}'.toUpperCase();
+                      final path = '${r['path'] ?? ''}';
+                      final used = r['attempts_used'] ?? (r['attempts'] is List
+                          ? (r['attempts'] as List).length
+                          : 0);
+                      final source = '${r['source'] ?? ''}';
+                      final status = r['final_status'];
+                      final err = '${r['error'] ?? ''}';
+                      final attempts = r['attempts'] is List
+                          ? (r['attempts'] as List)
+                          : const [];
+                      final trail = attempts
+                          .whereType<Map>()
+                          .map(
+                            (a) =>
+                                '${a['n']}:${a['source'] ?? '?'} ${a['status_code'] ?? '—'}',
+                          )
+                          .join(' · ');
+                      return ExpansionTile(
+                        leading: Icon(
+                          ok ? Icons.check_circle : Icons.error_outline,
+                          color: ok ? const Color(0xFF22C55E) : Colors.redAccent,
+                          size: 20,
+                        ),
+                        title: Text(
+                          '$method $path',
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${ok ? 'pass' : 'fail'} · attempts $used/$maxAttempts'
+                          '${source.isNotEmpty ? ' · $source' : ''}'
+                          '${status != null ? ' · HTTP $status' : ''}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        children: [
+                          if (trail.isNotEmpty)
+                            ListTile(
+                              dense: true,
+                              title: Text(
+                                trail,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          _QaJsonBlock(
+                            label: 'Request (payload used)',
+                            value: r['request'],
+                          ),
+                          _QaJsonBlock(
+                            label: 'Response',
+                            value: r['response'] ??
+                                (err.isNotEmpty
+                                    ? {'error_snippet': err}
+                                    : null),
+                          ),
+                          if (attempts.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Attempts',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          color: AppColors.textSecondaryDark,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  ...attempts.whereType<Map>().map((a) {
+                                    final n = a['n'] ?? '?';
+                                    final aOk = a['ok'] == true;
+                                    return ExpansionTile(
+                                      tilePadding: EdgeInsets.zero,
+                                      childrenPadding:
+                                          const EdgeInsets.only(bottom: 8),
+                                      title: Text(
+                                        'Attempt $n · ${aOk ? 'pass' : 'fail'}'
+                                        ' · ${a['source'] ?? '?'}'
+                                        ' · HTTP ${a['status_code'] ?? '—'}',
+                                        style: const TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      children: [
+                                        _QaJsonBlock(
+                                          label: 'Request',
+                                          value: a['request'],
+                                        ),
+                                        _QaJsonBlock(
+                                          label: 'Response',
+                                          value: a['response'],
+                                        ),
+                                      ],
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: () async {
+                                final tool = {
+                                  'method': method,
+                                  'path': path,
+                                  'api_id': r['api_id'],
+                                };
+                                await cubit.pickTool(tool);
+                              },
+                              child: const Text('Open in Test'),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}

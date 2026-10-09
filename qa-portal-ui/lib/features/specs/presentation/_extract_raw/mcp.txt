@@ -1,0 +1,211 @@
+class _McpPane extends StatelessWidget {
+  const _McpPane({required this.state});
+
+  final SpecsState state;
+
+  Color _methodBg(String m) {
+    switch (m.toUpperCase()) {
+      case 'GET':
+        return const Color(0xFF22C55E).withValues(alpha: 0.2);
+      case 'POST':
+        return AppColors.primary.withValues(alpha: 0.2);
+      case 'DELETE':
+        return const Color(0xFFEF4444).withValues(alpha: 0.2);
+      default:
+        return AppColors.primary.withValues(alpha: 0.12);
+    }
+  }
+
+  Color _methodFg(String m) {
+    switch (m.toUpperCase()) {
+      case 'GET':
+        return const Color(0xFF22C55E);
+      case 'DELETE':
+        return const Color(0xFFEF4444);
+      default:
+        return AppColors.primary;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<SpecsCubit>();
+    final summary = state.mcpSummary;
+    final tools = state.mcpTools;
+    final mapped = summary == null
+        ? const <dynamic>[]
+        : (summary['mapped'] is List ? summary['mapped'] as List : const []);
+    final skipped = summary == null
+        ? const <dynamic>[]
+        : (summary['skipped'] is List ? summary['skipped'] as List : const []);
+
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'MCP tools (${tools.length})',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              TextButton(
+                onPressed: state.loading || state.selectedService == null
+                    ? null
+                    : cubit.refreshOpenapiTools,
+                child: const Text('Refresh tools'),
+              ),
+            ],
+          ),
+          Text(
+            'Same OpenAPI operations as APIs / Swagger. Tap to open in Test.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondaryDark,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            flex: 3,
+            child: tools.isEmpty
+                ? Center(
+                    child: Text(
+                      state.loading
+                          ? 'Loading tools…'
+                          : 'No tools yet — select a service or Refresh tools.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: tools.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final t = tools[i];
+                      final method = '${t['method'] ?? 'GET'}'.toUpperCase();
+                      final path = '${t['path'] ?? ''}';
+                      final name = '${t['name'] ?? t['op_id'] ?? ''}';
+                      final desc = '${t['description'] ?? ''}';
+                      return ListTile(
+                        dense: true,
+                        onTap: () => cubit.pickTool(t),
+                        leading: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _methodBg(method),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            method,
+                            style: TextStyle(
+                              color: _methodFg(method),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          path,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                        ),
+                        subtitle: Text(
+                          desc.isNotEmpty ? desc : name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          const Divider(height: 16),
+          Text(
+            'Portfolio assist',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton(
+                onPressed:
+                    state.loading || state.selectedService == null ? null : cubit.prepareMcp,
+                child: const Text('Prepare MCP'),
+              ),
+              FilledButton.tonal(
+                onPressed: state.loading ? null : () => cubit.ensureWorking(),
+                child: const Text('Ensure + apply'),
+              ),
+              OutlinedButton(
+                onPressed: state.loading ? null : cubit.aiMakeWork,
+                child: const Text('AI: make call work'),
+              ),
+            ],
+          ),
+          if (summary != null) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                Chip(label: Text('mapped: ${summary['mapped_count'] ?? 0}')),
+                Chip(label: Text('skipped: ${summary['skipped_count'] ?? skipped.length}')),
+                if (summary['portfolio_id'] != null)
+                  Chip(label: Text('portfolio: ${summary['portfolio_id']}')),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              flex: 2,
+              child: ListView(
+                children: [
+                  if (mapped.isNotEmpty)
+                    Text('Mapped', style: Theme.of(context).textTheme.labelMedium),
+                  for (final raw in mapped)
+                    if (raw is Map)
+                      ListTile(
+                        dense: true,
+                        title: Text(
+                          '${raw['method'] ?? ''} ${raw['path'] ?? ''}',
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                        ),
+                        subtitle: Text(
+                          'fields: ${(raw['mcp_fields'] as List?)?.join(', ') ?? '—'}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                  if (skipped.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text('Skipped', style: Theme.of(context).textTheme.labelMedium),
+                    for (final raw in skipped.take(40))
+                      if (raw is Map)
+                        ListTile(
+                          dense: true,
+                          title: Text(
+                            '${raw['method'] ?? ''} ${raw['path'] ?? ''}',
+                            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                          ),
+                          subtitle: Text(
+                            '${raw['reason'] ?? ''}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

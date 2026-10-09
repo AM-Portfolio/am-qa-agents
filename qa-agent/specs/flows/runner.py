@@ -16,6 +16,74 @@ from specs.security.credential_store import resolve_credential
 logger = logging.getLogger(__name__)
 
 
+def _merge_payload_set_into_args(
+    node: dict[str, Any],
+    args: dict[str, Any],
+    *,
+    doc: dict[str, Any] | None = None,
+    payload_set_version: int | None = None,
+) -> dict[str, Any]:
+    """Apply payload-set request body/query/path_params onto tool args when bound."""
+    api_id = str(node.get("payload_api_id") or "").strip()
+    if not api_id:
+        return args
+    svc = str(node.get("service") or "").strip()
+    if not svc:
+        return args
+    name = str(node.get("payload_name") or "must_work").strip() or "must_work"
+    ver = payload_set_version
+    if ver is None and isinstance(doc, dict) and doc.get("payload_set_version") is not None:
+        try:
+            ver = int(doc.get("payload_set_version"))
+        except (TypeError, ValueError):
+            ver = None
+    try:
+        from specs.payloads.payload_store import get_payload_set
+
+        ps = get_payload_set(svc, ver)
+    except Exception as exc:
+        logger.info("payload set load skipped for %s/%s: %s", svc, api_id, exc)
+        return args
+    if not ps or not isinstance(ps.get("apis"), dict):
+        return args
+    entry = ps["apis"].get(api_id)
+    if not isinstance(entry, dict):
+        # Try alternate names nested under api_id
+        for cand in (ps["apis"].get(api_id),):
+            if isinstance(cand, dict):
+                entry = cand
+                break
+        if not isinstance(entry, dict):
+            return args
+    # Prefer named variant if present (must_work / happy / …)
+    if isinstance(entry.get(name), dict):
+        entry = entry[name]
+    elif entry.get("name") and str(entry.get("name")) != name and "request" not in entry:
+        named = entry.get(name)
+        if isinstance(named, dict):
+            entry = named
+    req = entry.get("request") if isinstance(entry.get("request"), dict) else entry
+    if not isinstance(req, dict):
+        return args
+    out = dict(args)
+    body = req.get("body")
+    if isinstance(body, dict):
+        out = {**out, **body}
+    elif body is not None and "body" not in out:
+        out["body"] = body
+    query = req.get("query")
+    if isinstance(query, dict):
+        for qk, qv in query.items():
+            if qv is not None and str(qk) not in out:
+                out[str(qk)] = qv
+    path_params = req.get("path_params")
+    if isinstance(path_params, dict):
+        for pk, pv in path_params.items():
+            if pv is not None and str(pk) not in out:
+                out[str(pk)] = pv
+    return out
+
+
 def _redact_body(body: Any) -> Any:
     if isinstance(body, dict):
         out = {}
@@ -98,6 +166,39 @@ def _creds_for_run(
         or ""
     )
     return user, password, identity, gateway, eff
+
+
+def _service_base_url(
+    service: str,
+    *,
+    env: str,
+    identity_base: str,
+    gateway_host: str,
+    base_url_override: str | None = None,
+) -> str:
+    """Resolve HTTP base for a flow node.
+
+    Identity stays on the auth surface; subscription uses the public gateway;
+    every other service uses the catalog target for ``env`` (e.g. dig market →
+    ``https://am-dev.asrax.in/market``). Never default non-identity APIs to
+    ``identity_base`` — that yields 404s like ``/identity/v1/watchlists``.
+    """
+    if base_url_override:
+        return str(base_url_override).rstrip("/")
+    svc = (service or "").strip().lower()
+    if not svc or "identity" in svc:
+        return identity_base.rstrip("/")
+    if "subscription" in svc:
+        return gateway_host.rstrip("/")
+    try:
+        from specs.catalog.catalog_loader import default_target_for_service
+
+        target = default_target_for_service(svc, env)
+        if target and str(target).startswith("http"):
+            return str(target).rstrip("/")
+    except Exception:  # noqa: BLE001
+        logger.debug("catalog target resolve failed for %s/%s", svc, env, exc_info=True)
+    return gateway_host.rstrip("/")
 
 
 def _subscription_request(
@@ -398,6 +499,14 @@ def _run_sync(execution_id: str) -> None:
                         password = str(vv)
                 else:
                     args[str(vk)] = vv
+            pin_ver = row.get("payload_set_version")
+            try:
+                pin_ver_i = int(pin_ver) if pin_ver is not None else None
+            except (TypeError, ValueError):
+                pin_ver_i = None
+            args = _merge_payload_set_into_args(
+                node, args, doc=doc, payload_set_version=pin_ver_i
+            )
             body_override = node.get("body_override")
             if isinstance(body_override, dict):
                 args = {**args, **body_override}
@@ -414,13 +523,27 @@ def _run_sync(execution_id: str) -> None:
                     headers[sk.split(":", 1)[1].strip()] = str(vv)
                 elif sk.lower().startswith("headers."):
                     headers[sk.split(".", 1)[1].strip()] = str(vv)
+            node_headers = node.get("headers")
+            if isinstance(node_headers, dict):
+                for hk, hv in node_headers.items():
+                    if hv is None:
+                        continue
+                    headers[str(hk)] = str(hv)
 
             method = str(
                 (tool or {}).get("method") or node.get("method") or "get"
             ).lower()
-            base = str(node.get("base_url_override") or id_base).rstrip("/")
-            if svc and "subscription" in svc and not node.get("base_url_override"):
-                base = gateway_host
+            base = _service_base_url(
+                svc,
+                env=eff_env,
+                identity_base=id_base,
+                gateway_host=gateway_host,
+                base_url_override=(
+                    str(node["base_url_override"])
+                    if node.get("base_url_override")
+                    else None
+                ),
+            )
             meta = _tool_meta(tool, svc=svc, step=step, base=base)
 
             # Prefer raw HTTP when we have path hints (more reliable for login)
@@ -646,6 +769,9 @@ def _invoke_single_node(
     access_token: str | None,
     merged_vars: dict[str, Any],
     tools: list[dict[str, Any]],
+    env: str = "dev",
+    doc: dict[str, Any] | None = None,
+    payload_set_version: int | None = None,
 ) -> dict[str, Any]:
     """Execute one flow node; return ok/status/request/response (redacted)."""
     from specs.openapi_tools.generator import execute_openapi_tool_sync
@@ -677,6 +803,9 @@ def _invoke_single_node(
                 password = str(vv)
         else:
             args[str(vk)] = vv
+    args = _merge_payload_set_into_args(
+        node, args, doc=doc, payload_set_version=payload_set_version
+    )
     body_override = node.get("body_override")
     if isinstance(body_override, dict):
         args = {**args, **body_override}
@@ -692,12 +821,24 @@ def _invoke_single_node(
             headers[sk.split(":", 1)[1].strip()] = str(vv)
         elif sk.lower().startswith("headers."):
             headers[sk.split(".", 1)[1].strip()] = str(vv)
+    node_headers = node.get("headers")
+    if isinstance(node_headers, dict):
+        for hk, hv in node_headers.items():
+            if hv is None:
+                continue
+            headers[str(hk)] = str(hv)
 
     method = str((tool or {}).get("method") or node.get("method") or "get").lower()
     id_base = identity_base
-    base = str(node.get("base_url_override") or id_base).rstrip("/")
-    if svc and "subscription" in svc and not node.get("base_url_override"):
-        base = gateway_host
+    base = _service_base_url(
+        svc,
+        env=env,
+        identity_base=id_base,
+        gateway_host=gateway_host,
+        base_url_override=(
+            str(node["base_url_override"]) if node.get("base_url_override") else None
+        ),
+    )
     meta = _tool_meta(tool, svc=svc, step=step, base=base)
     path = (
         node.get("exact_path")
@@ -854,7 +995,7 @@ def quick_test_node(
 
     doc_vars = doc.get("variables") if isinstance(doc.get("variables"), dict) else {}
     merged_vars = {**doc_vars, **(variables or {})}
-    user, password, identity_base, gateway_host, _eff = _creds_for_run(
+    user, password, identity_base, gateway_host, eff_env = _creds_for_run(
         credential_id=credential_id or doc.get("credential_id"),
         env=env_n,
     )
@@ -884,6 +1025,13 @@ def quick_test_node(
                 access_token=None,
                 merged_vars=merged_vars,
                 tools=tools_l,
+                env=eff_env,
+                doc=doc,
+                payload_set_version=(
+                    int(doc["payload_set_version"])
+                    if doc.get("payload_set_version") is not None
+                    else None
+                ),
             )
             if login_out.get("access_token"):
                 access_token = str(login_out["access_token"])
@@ -903,6 +1051,12 @@ def quick_test_node(
 
     svc = str(node.get("service") or "")
     tools = list(list_tools(service=svc, limit=1000).get("tools") or []) if svc else []
+    pin_qt = None
+    if doc.get("payload_set_version") is not None:
+        try:
+            pin_qt = int(doc.get("payload_set_version"))
+        except (TypeError, ValueError):
+            pin_qt = None
     result = _invoke_single_node(
         node,
         user=user,
@@ -912,6 +1066,9 @@ def quick_test_node(
         access_token=access_token,
         merged_vars=merged_vars,
         tools=tools,
+        env=eff_env,
+        doc=doc,
+        payload_set_version=pin_qt,
     )
     result.pop("access_token", None)
     result["node_id"] = str(node.get("id") or node_id)
@@ -923,13 +1080,15 @@ def quick_test_node(
 def start_execution(
     flow_id: str,
     *,
-    env: str = "prod",
+    env: str | None = None,
     credential_id: str | None = None,
     variables: dict[str, Any] | None = None,
     payload_set_version: int | None = None,
     suite_run_id: str | None = None,
 ) -> dict[str, Any]:
-    env_n = (env or "prod").strip().lower()
+    from specs.config import settings as _settings
+
+    env_n = (env or _settings.default_environment or "dev").strip().lower()
     if env_n == "dig":
         env_n = "dev"
     doc = get_flow(flow_id)
@@ -953,10 +1112,14 @@ def start_execution(
         suite_run_id=suite_run_id,
     )
     threading.Thread(target=_run_sync, args=(eid,), daemon=True).start()
+    row = ex_store.get_execution(eid) or {}
     return {
         "execution_id": eid,
         "flow_id": flow_id,
         "env": env_n,
         "payload_set_version": pin,
         "suite_run_id": suite_run_id,
+        "trace_id": row.get("trace_id"),
+        "correlation_id": row.get("correlation_id"),
+        "observability_resources": row.get("observability_resources"),
     }

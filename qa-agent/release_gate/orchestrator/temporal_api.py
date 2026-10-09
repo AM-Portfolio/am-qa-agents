@@ -22,6 +22,16 @@ async def get_temporal_client():
     configure_tracing(service_name="am-qa-agents")
     host = os.getenv("TEMPORAL_HOST", "localhost:7233")
     namespace = resolve_namespace()
+    try:
+        from specs.security.credential_store import resolve_temporal_endpoint
+
+        ep = resolve_temporal_endpoint()
+        if ep.get("address"):
+            host = ep["address"]
+        if ep.get("namespace"):
+            namespace = ep["namespace"]
+    except Exception:  # noqa: BLE001
+        pass
     LOG.info(
         "temporal.connect host=%s namespace=%s",
         host,
@@ -858,6 +868,7 @@ async def run_service_onboard_prep_inline(args: dict[str, Any]) -> dict[str, Any
         activity_onboard_auth,
         activity_onboard_contract,
         activity_onboard_generate_payloads,
+        activity_onboard_import_data_gen,
         activity_onboard_llm_status,
         activity_onboard_openapi_sync,
         activity_onboard_overview,
@@ -938,6 +949,15 @@ async def run_service_onboard_prep_inline(args: dict[str, Any]) -> dict[str, Any
     steps.append(step)
     if not step.get("ok") or str(step.get("status") or "").startswith("warn"):
         warnings.append(f"prepare_mcp:{step.get('status')}")
+
+    emit_flow_phase(phase="import_data_gen", detail="inline")
+    step = await activity_onboard_import_data_gen(base)
+    steps.append(step)
+    if str(step.get("status") or "").startswith("warn"):
+        warnings.append(f"import_data_gen:{step.get('status')}")
+    ev_imp = step.get("evidence") or {}
+    if ev_imp.get("payload_set_version") is not None:
+        payload_set_version = int(ev_imp["payload_set_version"])
 
     emit_flow_phase(phase="generate_all_payloads", detail="inline")
     step = await activity_onboard_generate_payloads(base)

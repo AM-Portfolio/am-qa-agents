@@ -24,6 +24,12 @@ def create_execution(
     eid = uuid.uuid4().hex
     now = time.time()
     raw_vars = {str(k): v for k, v in (variables or {}).items() if str(k).strip()}
+    try:
+        from specs.observability.run_correlation import capture_run_correlation
+
+        corr = capture_run_correlation()
+    except Exception:  # noqa: BLE001
+        corr = {"trace_id": "", "span_id": "", "correlation_id": ""}
     with _LOCK:
         _EXEC[eid] = {
             "id": eid,
@@ -42,6 +48,9 @@ def create_execution(
             "stop_requested": False,
             "error": None,
             "summary": None,
+            "trace_id": corr.get("trace_id") or "",
+            "span_id": corr.get("span_id") or "",
+            "correlation_id": corr.get("correlation_id") or "",
         }
         _HISTORY.append(eid)
         while len(_HISTORY) > _HISTORY_MAX:
@@ -88,8 +97,15 @@ def get_execution(eid: str, *, include_raw: bool = False) -> dict[str, Any] | No
         if not row:
             return None
         if include_raw:
-            return dict(row)
-        return _public_row(row)
+            out = dict(row)
+        else:
+            out = _public_row(row)
+    try:
+        from specs.observability.run_correlation import attach_obs_to_row
+
+        return attach_obs_to_row(out)
+    except Exception:  # noqa: BLE001
+        return out
 
 
 def list_executions(

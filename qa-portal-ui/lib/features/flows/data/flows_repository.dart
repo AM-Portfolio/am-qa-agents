@@ -6,19 +6,98 @@ class FlowsRepository {
 
   final ApiClient _api;
 
-  Future<List<Map<String, dynamic>>> listFlows({
+  Future<Map<String, dynamic>> listFlowsPage({
     String? group,
     String? category,
+    String? q,
+    String? apiPack,
+    String? service,
+    int limit = 100,
+    int offset = 0,
+    bool facets = false,
   }) async {
     final res = await _api.get(
       '/api/flows',
       query: {
         if (group != null && group.isNotEmpty) 'group': group,
         if (category != null && category.isNotEmpty) 'category': category,
+        if (q != null && q.isNotEmpty) 'q': q,
+        if (apiPack != null && apiPack.isNotEmpty) 'api_pack': apiPack,
+        if (service != null && service.isNotEmpty) 'service': service,
+        'limit': '$limit',
+        'offset': '$offset',
+        if (facets) 'facets': 'true',
       },
     );
-    final data = asMap(res.data);
+    return asMap(res.data);
+  }
+
+  Future<List<Map<String, dynamic>>> listFlows({
+    String? group,
+    String? category,
+    String? q,
+    String? apiPack,
+    String? service,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    final data = await listFlowsPage(
+      group: group,
+      category: category,
+      q: q,
+      apiPack: apiPack,
+      service: service,
+      limit: limit,
+      offset: offset,
+    );
     return mapList(data, keys: const ['flows']);
+  }
+
+  Future<List<String>> listCatalogServices() async {
+    final res = await _api.get('/api/catalog');
+    final data = asMap(res.data);
+    final ids = <String>{};
+    final services = data['services'];
+    if (services is List) {
+      for (final raw in services) {
+        if (raw is String && raw.trim().isNotEmpty) {
+          ids.add(raw.trim());
+        } else if (raw is Map) {
+          final id =
+              '${raw['id'] ?? raw['service'] ?? raw['name'] ?? ''}'.trim();
+          if (id.isNotEmpty) ids.add(id);
+        }
+      }
+    }
+    final sorted = ids.toList()..sort();
+    return sorted;
+  }
+
+  Future<Map<String, dynamic>?> getPayloadSet(
+    String service, {
+    int? version,
+  }) async {
+    final path = version == null
+        ? '/api/payload-sets/${Uri.encodeComponent(service)}'
+        : '/api/payload-sets/${Uri.encodeComponent(service)}/$version';
+    final res = await _api.get(path);
+    final data = asMap(res.data);
+    if (data.isEmpty) return null;
+    // list endpoint returns {sets, active_version}; detail returns apis
+    if (data['apis'] is Map) return data;
+    final active = data['active_version'];
+    final ver = version ??
+        (active is int
+            ? active
+            : int.tryParse('$active') ??
+                ((data['sets'] is List && (data['sets'] as List).isNotEmpty)
+                    ? int.tryParse('${(data['sets'] as List).first['version']}')
+                    : null));
+    if (ver == null) return data;
+    final detail = await _api.get(
+      '/api/payload-sets/${Uri.encodeComponent(service)}/$ver',
+    );
+    return asMap(detail.data);
   }
 
   Future<Map<String, dynamic>> proposeScenarios({
@@ -270,6 +349,17 @@ class FlowsRepository {
     await _api.post('/api/flows/executions/$executionId/stop');
   }
 
+  Future<Map<String, dynamic>> executionObsLogs(
+    String executionId, {
+    int limit = 100,
+  }) async {
+    final res = await _api.get(
+      '/api/flows/executions/$executionId/obs-logs',
+      query: {'limit': limit},
+    );
+    return asMap(res.data);
+  }
+
   Future<List<Map<String, dynamic>>> listCredentials({String? env}) async {
     final res = await _api.get(
       '/api/credentials',
@@ -299,5 +389,18 @@ class FlowsRepository {
 
   Future<void> deleteCredential(String id) async {
     await _api.delete('/api/credentials/$id');
+  }
+
+  Future<Map<String, dynamic>> probeCredential(String id) async {
+    final res = await _api.post('/api/credentials/$id/probe');
+    return asMap(res.data);
+  }
+
+  Future<Map<String, dynamic>> probeAllCredentials({String? env}) async {
+    final res = await _api.post(
+      '/api/credentials/probe-all',
+      query: {if (env != null && env.isNotEmpty) 'env': env},
+    );
+    return asMap(res.data);
   }
 }
