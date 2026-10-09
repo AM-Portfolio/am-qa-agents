@@ -2,9 +2,25 @@ import 'package:equatable/equatable.dart';
 
 import '../../domain/try_draft.dart';
 
+enum SpecsNavMode { collections, datasets }
+
+enum SpecsWorkspaceTab { test, swagger, mcp, sdk, usecases }
+
 class SpecsState extends Equatable {
   const SpecsState({
     this.loading = false,
+    this.apisLoading = false,
+    this.openapiLoading = false,
+    this.mcpLoading = false,
+    this.payloadListLoading = false,
+    this.payloadRowsLoading = false,
+    this.navMode = SpecsNavMode.collections,
+    this.workspaceTab = SpecsWorkspaceTab.test,
+    this.collectionQuery = '',
+    this.collectionRuntimeFilter = '',
+    this.collectionFacet = '',
+    this.resourceQuery = '',
+    this.resourceTypeFilter = 'all',
     this.services = const [],
     this.serviceLabels = const {},
     this.configs = const [],
@@ -52,6 +68,20 @@ class SpecsState extends Equatable {
   });
 
   final bool loading;
+  final bool apisLoading;
+  final bool openapiLoading;
+  final bool mcpLoading;
+  final bool payloadListLoading;
+  final bool payloadRowsLoading;
+  final SpecsNavMode navMode;
+  final SpecsWorkspaceTab workspaceTab;
+  final String collectionQuery;
+  final String collectionRuntimeFilter;
+  final String collectionFacet;
+  /// Resource sidebar search (APIs + MCP).
+  final String resourceQuery;
+  /// `all` | `apis` | `mcp`
+  final String resourceTypeFilter;
   final List<String> services;
   final Map<String, String> serviceLabels;
   final List<Map<String, dynamic>> configs;
@@ -124,6 +154,18 @@ class SpecsState extends Equatable {
 
   SpecsState copyWith({
     bool? loading,
+    bool? apisLoading,
+    bool? openapiLoading,
+    bool? mcpLoading,
+    bool? payloadListLoading,
+    bool? payloadRowsLoading,
+    SpecsNavMode? navMode,
+    SpecsWorkspaceTab? workspaceTab,
+    String? collectionQuery,
+    String? collectionRuntimeFilter,
+    String? collectionFacet,
+    String? resourceQuery,
+    String? resourceTypeFilter,
     List<String>? services,
     Map<String, String>? serviceLabels,
     List<Map<String, dynamic>>? configs,
@@ -185,13 +227,29 @@ class SpecsState extends Equatable {
     bool clearPayloadDiff = false,
     bool clearParamEnums = false,
     bool clearTryToken = false,
+    bool clearSelectedService = false,
   }) {
     return SpecsState(
       loading: loading ?? this.loading,
+      apisLoading: apisLoading ?? this.apisLoading,
+      openapiLoading: openapiLoading ?? this.openapiLoading,
+      mcpLoading: mcpLoading ?? this.mcpLoading,
+      payloadListLoading: payloadListLoading ?? this.payloadListLoading,
+      payloadRowsLoading: payloadRowsLoading ?? this.payloadRowsLoading,
+      navMode: navMode ?? this.navMode,
+      workspaceTab: workspaceTab ?? this.workspaceTab,
+      collectionQuery: collectionQuery ?? this.collectionQuery,
+      collectionRuntimeFilter:
+          collectionRuntimeFilter ?? this.collectionRuntimeFilter,
+      collectionFacet: collectionFacet ?? this.collectionFacet,
+      resourceQuery: resourceQuery ?? this.resourceQuery,
+      resourceTypeFilter: resourceTypeFilter ?? this.resourceTypeFilter,
       services: services ?? this.services,
       serviceLabels: serviceLabels ?? this.serviceLabels,
       configs: configs ?? this.configs,
-      selectedService: selectedService ?? this.selectedService,
+      selectedService: clearSelectedService
+          ? null
+          : (selectedService ?? this.selectedService),
       environment: environment ?? this.environment,
       apis: apis ?? this.apis,
       openapi: clearOpenapi ? null : (openapi ?? this.openapi),
@@ -249,6 +307,18 @@ class SpecsState extends Equatable {
   @override
   List<Object?> get props => [
         loading,
+        apisLoading,
+        openapiLoading,
+        mcpLoading,
+        payloadListLoading,
+        payloadRowsLoading,
+        navMode,
+        workspaceTab,
+        collectionQuery,
+        collectionRuntimeFilter,
+        collectionFacet,
+        resourceQuery,
+        resourceTypeFilter,
         services,
         serviceLabels,
         configs,

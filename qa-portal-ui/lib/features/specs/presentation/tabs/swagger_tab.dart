@@ -24,7 +24,7 @@ class SpecsSwaggerTab extends StatelessWidget {
           p.specRevision != c.specRevision ||
           p.selectedPayloadVersion != c.selectedPayloadVersion ||
           p.generateResults != c.generateResults ||
-          p.loading != c.loading ||
+          p.openapiLoading != c.openapiLoading ||
           p.selectedService != c.selectedService ||
           p.environment != c.environment ||
           p.tryToken != c.tryToken,
@@ -36,12 +36,11 @@ class SpecsSwaggerTab extends StatelessWidget {
         final cubit = context.read<SpecsCubit>();
         final doc = cubit.swaggerSpecWithPayloadExamples() ?? state.openapiDoc;
         if (doc == null) {
+          if (state.openapiLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
           return Center(
-            child: Text(
-              state.loading
-                  ? 'Loading OpenAPI…'
-                  : 'No OpenAPI document for $svc.',
-            ),
+            child: Text('No OpenAPI document for $svc.'),
           );
         }
         return SwaggerEmbed(

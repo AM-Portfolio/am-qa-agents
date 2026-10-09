@@ -38,6 +38,10 @@ class SpecsCubit extends Cubit<SpecsState>
   final TryHistory history = TryHistory();
   /// Last picked Postman collection awaiting env merge / re-import.
   Map<String, dynamic>? pendingImportCollection;
+  /// Bumped on every [selectService] so stale ensure* responses are ignored.
+  int _loadGen = 0;
+  /// Service id for which /apis has completed (even if empty).
+  String? _apisFetchedFor;
 
   static String apiId(Map<String, dynamic> api, int index) =>
       '${api['id'] ?? api['operationId'] ?? index}';
@@ -248,7 +252,12 @@ class SpecsCubit extends Cubit<SpecsState>
     );
   }
 
-  Future<void> boot({String? initialService}) async {
+  Future<void> boot({
+    String? initialService,
+    SpecsNavMode? initialNavMode,
+    SpecsWorkspaceTab? initialTab,
+    String? initialPayloadVersion,
+  }) async {
     emit(state.copyWith(loading: true, error: null, message: null));
     try {
       Map<String, dynamic> health = const {};
@@ -279,6 +288,8 @@ class SpecsCubit extends Cubit<SpecsState>
           configs: configs,
           health: health,
           selectedService: prefer,
+          navMode: initialNavMode ?? SpecsNavMode.collections,
+          workspaceTab: initialTab ?? SpecsWorkspaceTab.test,
           message: ordered.isEmpty ? 'No workspace services registered.' : null,
           error: null,
         ),
@@ -286,8 +297,13 @@ class SpecsCubit extends Cubit<SpecsState>
       // ignore: unawaited_futures
       _ensureToken();
       if (prefer != null) {
-        // ignore: unawaited_futures
-        selectService(prefer);
+        await selectService(prefer);
+        // selectService already kicks tab/mode ensures; only hydrate deep-link version.
+        if (state.navMode == SpecsNavMode.datasets &&
+            initialPayloadVersion != null &&
+            initialPayloadVersion.isNotEmpty) {
+          await ensurePayloadVersion(initialPayloadVersion);
+        }
       }
       // ignore: unawaited_futures
       _pruneEmptyServicesInBackground(
@@ -306,21 +322,168 @@ class SpecsCubit extends Cubit<SpecsState>
     }
   }
 
-  Future<void> _loadPayloadSets(String service, {bool resetVersion = false}) async {
+  void setNavMode(SpecsNavMode mode) {
+    if (state.navMode == mode) return;
+    emit(state.copyWith(navMode: mode));
+    if (mode == SpecsNavMode.datasets) {
+      // ignore: unawaited_futures
+      ensurePayloadSetList();
+    } else {
+      // ignore: unawaited_futures
+      ensureForWorkspaceTab(state.workspaceTab);
+    }
+  }
+
+  void setWorkspaceTab(SpecsWorkspaceTab tab) {
+    if (state.workspaceTab == tab) return;
+    emit(state.copyWith(workspaceTab: tab));
+    // ignore: unawaited_futures
+    ensureForWorkspaceTab(tab);
+  }
+
+  void setCollectionQuery(String q) =>
+      emit(state.copyWith(collectionQuery: q));
+
+  void setCollectionRuntimeFilter(String v) =>
+      emit(state.copyWith(collectionRuntimeFilter: v));
+
+  void setCollectionFacet(String v) =>
+      emit(state.copyWith(collectionFacet: v));
+
+  void setResourceQuery(String q) => emit(state.copyWith(resourceQuery: q));
+
+  void setResourceTypeFilter(String v) =>
+      emit(state.copyWith(resourceTypeFilter: v));
+
+  /// Tab/mode-scoped loader — only hits endpoints the active pane needs.
+  Future<void> ensureForWorkspaceTab(SpecsWorkspaceTab tab) async {
+    switch (tab) {
+      case SpecsWorkspaceTab.test:
+        await ensureApis();
+        await ensureTestDraft();
+      case SpecsWorkspaceTab.swagger:
+        await ensureOpenapiDoc();
+      case SpecsWorkspaceTab.mcp:
+        await ensureMcpTools();
+      case SpecsWorkspaceTab.sdk:
+        await ensureApis();
+        if (state.mcpTools.isEmpty) await ensureMcpTools();
+        if (state.openapiUrl == null) await ensureOpenapiDoc();
+      case SpecsWorkspaceTab.usecases:
+        await ensureOverview();
+    }
+  }
+
+  Future<void> ensureApis({bool force = false}) async {
+    final svc = state.selectedService;
+    if (svc == null) return;
+    if (state.apisLoading) return;
+    if (!force && (_apisFetchedFor == svc || state.apis.isNotEmpty)) return;
+    await selectService(svc);
+  }
+
+  Future<void> ensureTestDraft() async {
+    final api = state.selectedApi;
+    if (api == null) return;
+    if (state.draft.path.isNotEmpty) return;
+    await applyApiToDraft(api, pushHistory: false);
+  }
+
+  Future<void> ensureOpenapiDoc({bool force = false}) async {
+    final svc = state.selectedService;
+    if (svc == null) return;
+    if (!force && state.openapiDoc != null) return;
+    if (state.openapiLoading) return;
+    final gen = _loadGen;
+    emit(state.copyWith(openapiLoading: true));
+    try {
+      await _loadOpenapiDoc(svc);
+    } finally {
+      if (_loadGen == gen && state.selectedService == svc) {
+        emit(state.copyWith(openapiLoading: false));
+      }
+    }
+  }
+
+  Future<void> ensureMcpTools({bool force = false}) async {
+    final svc = state.selectedService;
+    if (svc == null) return;
+    if (!force && state.mcpTools.isNotEmpty) return;
+    if (state.mcpLoading) return;
+    final gen = _loadGen;
+    emit(state.copyWith(mcpLoading: true));
+    try {
+      await refreshOpenapiTools();
+    } catch (e) {
+      if (_loadGen == gen && state.selectedService == svc) {
+        emit(state.copyWith(message: 'OpenAPI tools unavailable: $e'));
+      }
+    } finally {
+      if (_loadGen == gen && state.selectedService == svc) {
+        emit(state.copyWith(mcpLoading: false));
+      }
+    }
+  }
+
+  Future<void> ensureOverview({bool force = false}) async {
+    if (!force && state.overview != null) return;
+    await loadOverview();
+  }
+
+  /// Version list only — does not hydrate rows until [ensurePayloadVersion].
+  Future<void> ensurePayloadSetList({bool resetVersion = false}) async {
+    final svc = state.selectedService;
+    if (svc == null) return;
+    if (state.payloadListLoading) return;
+    if (!resetVersion && state.payloadSets.isNotEmpty) return;
+    final gen = _loadGen;
+    emit(state.copyWith(payloadListLoading: true));
+    try {
+      await _loadPayloadSets(svc, resetVersion: resetVersion, hydrate: false);
+    } finally {
+      if (_loadGen == gen && state.selectedService == svc) {
+        emit(state.copyWith(payloadListLoading: false));
+      }
+    }
+  }
+
+  Future<void> ensurePayloadVersion(String? version) async {
+    final svc = state.selectedService;
+    if (svc == null || version == null || version.isEmpty) return;
+    final gen = _loadGen;
+    emit(
+      state.copyWith(
+        selectedPayloadVersion: version,
+        payloadRowsLoading: true,
+        clearPayloadApiIds: true,
+      ),
+    );
+    await _hydrateDataFromSet(svc, version);
+    if (_loadGen == gen && state.selectedService == svc) {
+      emit(state.copyWith(payloadRowsLoading: false));
+    }
+  }
+
+  Future<void> _loadPayloadSets(
+    String service, {
+    bool resetVersion = false,
+    bool hydrate = true,
+  }) async {
     try {
       final sets = await repo.payloadSets(service);
+      if (state.selectedService != service) return;
       String? version;
       if (!resetVersion) {
         version = state.selectedPayloadVersion;
       }
-      // Reset or pick active set for this service
+      // Reset or pick active set for this service (only when hydrating rows).
       final versions = sets
           .map((s) => '${s['version'] ?? s['id'] ?? ''}')
           .where((v) => v.isNotEmpty)
           .toSet();
       if (version == null || !versions.contains(version) || resetVersion) {
         version = null;
-        if (sets.isNotEmpty) {
+        if (hydrate && sets.isNotEmpty) {
           final active = sets.firstWhere(
             (s) => s['active'] == true || s['is_active'] == true,
             orElse: () => sets.first,
@@ -335,13 +498,16 @@ class SpecsCubit extends Cubit<SpecsState>
           selectedPayloadVersion: version,
           clearPayloadVersion: version == null,
           clearPayloadApiIds: true,
+          clearGenerate: !hydrate,
         ),
       );
+      if (!hydrate) return;
       await _hydrateDataFromSet(service, version);
       if (version != null && state.selectedApiId != null) {
         await loadSetApiIntoTry(pushHistory: false);
       }
     } catch (_) {
+      if (state.selectedService != service) return;
       emit(state.copyWith(
         payloadSets: const [],
         clearPayloadVersion: true,
@@ -466,12 +632,15 @@ class SpecsCubit extends Cubit<SpecsState>
 
   Future<void> selectService(String service) async {
     history.clear();
+    final gen = ++_loadGen;
+    _apisFetchedFor = null;
     emit(
       state.copyWith(
-        loading: true,
+        apisLoading: true,
         selectedService: service,
         selectedApiIds: const {},
         apis: const [],
+        payloadSets: const [],
         error: null,
         message: null,
         clearActionResult: true,
@@ -488,18 +657,24 @@ class SpecsCubit extends Cubit<SpecsState>
         clearPayloadVersion: true,
         canRevert: false,
         fileBytes: const {},
+        openapiLoading: false,
+        mcpLoading: false,
+        payloadListLoading: false,
+        payloadRowsLoading: false,
+        resourceQuery: '',
       ),
     );
     List<Map<String, dynamic>> apis = const [];
     try {
-      // Emit APIs as soon as they arrive so Specs is usable immediately.
+      // First-ready: paint APIs as soon as they arrive — no eager OpenAPI/tools/overview.
       apis = await repo.apis(service, environment: state.environment);
-      if (state.selectedService != service) return;
+      if (_loadGen != gen || state.selectedService != service) return;
+      _apisFetchedFor = service;
       final first = apis.isEmpty ? null : apis.first;
       final firstId = first == null ? null : apiId(first, 0);
       emit(
         state.copyWith(
-          loading: false,
+          apisLoading: false,
           apis: apis,
           selectedApiId: firstId,
           draft: TryDraft(authBearer: state.tryToken),
@@ -512,30 +687,22 @@ class SpecsCubit extends Cubit<SpecsState>
         ),
       );
 
-      // Secondary loads in parallel — each paints when ready.
-      // ignore: unawaited_futures
-      Future.wait<void>([
-        _loadOpenapiDoc(service),
-        refreshOpenapiTools().catchError((Object e) {
-          if (state.selectedService == service) {
-            emit(state.copyWith(message: 'OpenAPI tools unavailable: $e'));
-          }
-        }),
-        loadOverview(),
-        _loadPayloadSets(service, resetVersion: true),
-        if (apis.isNotEmpty)
-          applyApiToDraft(apis.first, pushHistory: false).catchError((Object e) {
-            if (state.selectedService == service) {
-              emit(
-                state.copyWith(message: 'Could not load first API into Try: $e'),
-              );
-            }
-          }),
-      ]);
+      // Tab/mode-scoped body loads; MCP tools for secondary rail are first-ready (non-blocking).
+      if (state.navMode == SpecsNavMode.datasets) {
+        // ignore: unawaited_futures
+        ensurePayloadSetList(resetVersion: true);
+      } else {
+        // ignore: unawaited_futures
+        ensureMcpTools();
+        // ignore: unawaited_futures
+        ensureForWorkspaceTab(state.workspaceTab);
+      }
     } catch (e) {
+      if (_loadGen != gen || state.selectedService != service) return;
+      _apisFetchedFor = service;
       emit(
         state.copyWith(
-          loading: false,
+          apisLoading: false,
           apis: apis,
           error: e.toString(),
           message: 'Failed to load APIs for $service: $e',
@@ -1055,6 +1222,8 @@ class SpecsCubit extends Cubit<SpecsState>
       state.copyWith(
         selectedPayloadVersion: version,
         clearPayloadVersion: version == null,
+        payloadRowsLoading: version != null && version.isNotEmpty,
+        clearGenerate: version == null,
         specRevision: _specRevisionFor(
           service: svc ?? state.selectedService ?? 'none',
           docVersion: state.specRevision,
@@ -1063,9 +1232,13 @@ class SpecsCubit extends Cubit<SpecsState>
         ),
       ),
     );
-    if (svc != null) await _hydrateDataFromSet(svc, version);
+    if (svc != null && version != null && version.isNotEmpty) {
+      await ensurePayloadVersion(version);
+    } else if (svc != null) {
+      emit(state.copyWith(payloadRowsLoading: false));
+    }
     final api = state.selectedApi;
-    if (api != null) {
+    if (api != null && state.navMode == SpecsNavMode.collections) {
       await applyApiToDraft(api, pushHistory: false);
     }
     if (version != null) {

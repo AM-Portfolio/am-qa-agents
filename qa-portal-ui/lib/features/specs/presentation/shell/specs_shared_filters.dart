@@ -3,27 +3,24 @@ import 'package:flutter/material.dart';
 import '../cubit/specs_cubit.dart';
 import '../cubit/specs_state.dart';
 
-/// Env + payload-set version shared across Test / Swagger / MCP / Use cases / Data.
+/// Env + onboard controls for collection workspace (datasets managed under Datasets).
 class SpecsSharedFilters extends StatelessWidget {
   const SpecsSharedFilters({
     super.key,
     required this.state,
     required this.cubit,
+    this.onOpenDatasets,
   });
 
   final SpecsState state;
   final SpecsCubit cubit;
+  final VoidCallback? onOpenDatasets;
 
   @override
   Widget build(BuildContext context) {
-    final versions = <String>{
-      for (final s in state.payloadSets) '${s['version'] ?? s['id'] ?? ''}',
-    }..remove('');
-    final sorted = versions.toList()..sort();
     final selectedVer = state.selectedPayloadVersion;
-    final apiCount = state.generateResults.isNotEmpty
-        ? state.generateResults.length
-        : state.apis.length;
+    final apiCount = state.apis.length;
+    final busy = state.apisLoading;
 
     final denseBtn = TextButton.styleFrom(
       visualDensity: VisualDensity.compact,
@@ -53,6 +50,15 @@ class SpecsSharedFilters extends StatelessWidget {
               padding: EdgeInsets.zero,
               labelPadding: const EdgeInsets.symmetric(horizontal: 6),
             ),
+          ActionChip(
+            visualDensity: VisualDensity.compact,
+            avatar: const Icon(Icons.storage_outlined, size: 16),
+            label: Text(
+              selectedVer != null ? 'Datasets v$selectedVer' : 'Datasets',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+            onPressed: onOpenDatasets,
+          ),
           SizedBox(
             width: 88,
             child: DropdownButtonFormField<String>(
@@ -63,79 +69,25 @@ class SpecsSharedFilters extends StatelessWidget {
                 labelText: 'env',
                 isDense: true,
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               ),
               items: const [
                 DropdownMenuItem(value: 'dev', child: Text('dev')),
                 DropdownMenuItem(value: 'preprod', child: Text('preprod')),
                 DropdownMenuItem(value: 'prod', child: Text('prod')),
               ],
-              onChanged: state.loading
+              onChanged: busy
                   ? null
                   : (v) {
                       if (v != null) cubit.setEnvironment(v);
                     },
             ),
           ),
-          SizedBox(
-            width: 92,
-            child: DropdownButtonFormField<String?>(
-              key: ValueKey('shared-ver-$selectedVer'),
-              initialValue: selectedVer != null && versions.contains(selectedVer)
-                  ? selectedVer
-                  : null,
-              isDense: true,
-              decoration: const InputDecoration(
-                labelText: 'data v',
-                isDense: true,
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              ),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('(none)')),
-                for (final v in sorted)
-                  DropdownMenuItem(value: v, child: Text('v$v')),
-              ],
-              onChanged: state.loading || state.selectedService == null
-                  ? null
-                  : cubit.setPayloadVersion,
-            ),
-          ),
-          TextButton(
-            style: denseBtn,
-            onPressed: state.loading || state.selectedService == null
-                ? null
-                : cubit.ensurePayloadSet,
-            child: const Text('Ensure'),
-          ),
-          TextButton(
-            style: denseBtn,
-            onPressed: state.loading || selectedVer == null
-                ? null
-                : () {
-                    final v = selectedVer;
-                    if (v != null) cubit.activatePayloadVersion(v);
-                  },
-            child: const Text('Activate'),
-          ),
-          FilledButton.tonal(
-            style: FilledButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              minimumSize: const Size(0, 32),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            onPressed: state.generating || state.selectedService == null
-                ? null
-                : cubit.generateAllPayloads,
-            child: Text(
-              state.generating ? 'Working…' : 'Generate',
-            ),
-          ),
           TextButton(
             style: denseBtn,
             onPressed: state.onboarding ||
-                    state.loading ||
+                    busy ||
                     state.selectedService == null
                 ? null
                 : cubit.startOnboardPrep,
