@@ -98,11 +98,19 @@ def resolve_caller(request: Request) -> Caller:
     return Caller(role="developer", authenticated=False)
 
 
+# CI commit→SPT caps (main load). Developer role stays uncapped (runner max_vus applies).
+CI_MAX_VUS = 10
+CI_MAX_ITERATIONS = 100
+CI_ALLOWED_PRESETS = frozenset({"ci-smoke", "ci-load", "smoke", "load"})
+
+
 def allows_multi_load(role: str | None, audience: str | None = None) -> bool:
-    """Multi-VU only for developer role AND developer audience."""
+    """Multi-VU for developer, or CI role with developer audience (capped separately)."""
     r = (role or "developer").lower()
     a = (audience or "developer").lower()
-    return r == "developer" and a == "developer"
+    if a != "developer":
+        return False
+    return r in {"developer", "ci"}
 
 
 def enforce_execute_load(
@@ -114,7 +122,27 @@ def enforce_execute_load(
     duration: str | None,
     preset: str | None,
 ) -> None:
-    if allows_multi_load(role, audience):
+    r = (role or "developer").lower()
+    a = (audience or "developer").lower()
+    if r == "developer" and a == "developer":
+        return
+    if r == "ci" and a == "developer":
+        preset_n = (preset or "").strip().lower() or None
+        if preset_n and preset_n not in CI_ALLOWED_PRESETS:
+            raise HTTPException(
+                status_code=403,
+                detail=f"CI role cannot use preset={preset_n!r} (allowed: {sorted(CI_ALLOWED_PRESETS)})",
+            )
+        if vus is not None and int(vus) > CI_MAX_VUS:
+            raise HTTPException(
+                status_code=403,
+                detail=f"CI role max vus is {CI_MAX_VUS}",
+            )
+        if iterations is not None and int(iterations) > CI_MAX_ITERATIONS:
+            raise HTTPException(
+                status_code=403,
+                detail=f"CI role max iterations is {CI_MAX_ITERATIONS}",
+            )
         return
     multi = False
     if vus is not None and int(vus) > 1:
@@ -128,7 +156,7 @@ def enforce_execute_load(
     if multi:
         raise HTTPException(
             status_code=403,
-            detail="Multi-VU / duration / presets require developer role and developer audience",
+            detail="Multi-VU / duration / presets require developer or ci role and developer audience",
         )
 
 

@@ -107,15 +107,19 @@ class RunExecuteRequest(BaseModel):
     config: TestConfigIn | None = None
     save_config: bool = False
     triggered_by: str = "manual"
-    preset: str | None = None  # smoke | load | 20u-50 | stress
+    preset: str | None = None  # smoke | load | ci-smoke | ci-load | 20u-50 | stress
     profile: Literal["debug", "load"] | None = None
     vus: int | None = None
     iterations: int | None = None  # total shared calls across VUs
     duration: str | None = None
+    # Optional k6 ramping-vus stages: [{duration, target}, ...]
+    stages: list[dict[str, Any]] | None = None
     wait: bool = False  # True = block until finished (CLI); UI uses async (default)
     payload_refs: list[dict[str, Any]] = Field(default_factory=list)
     # each: {api_id, name?, version?} OR use payload_set_version for whole service set
     payload_set_version: int | None = None
+    # am-specs data-gen suite: working | full | premium (selects APIs + expect_status)
+    dataset_profile: Literal["working", "full", "premium", "default", "prod"] | None = None
     api_ids: list[str] | None = None  # subset of catalog APIs; None/empty = all
     environment: str | None = None  # override config env for this run (API version source)
     openapi_version: str | None = None  # record/pin OpenAPI info.version for this run
@@ -134,6 +138,11 @@ class RunExecuteRequest(BaseModel):
     # Separate from API target_url — Playwright hits the Flutter app root
     ui_target_url: str | None = None
     report_formats: list[Literal["html", "pdf", "json"]] | None = None
+    # Commit→SPT provenance (Overview + notifications)
+    git_sha: str | None = None
+    git_ref: str | None = None
+    committer_email: str | None = None
+    committer_name: str | None = None
 
 
 class SavePayloadRequest(BaseModel):

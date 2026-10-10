@@ -122,15 +122,20 @@ String _payloadSetVersionLabel(Map<String, dynamic> run) {
       }
     }
   }
-  if (ver == null) return '—';
+  if (ver == null) return '';
   final s = '$ver'.trim();
-  if (s.isEmpty || s == 'null') return '—';
+  if (s.isEmpty || s == 'null') return '';
   if (s == 'active') return 'active';
   if (s.startsWith('v')) return s;
   return 'v$s';
 }
 
 bool _apiRowFailed(Map<String, dynamic> a) {
+  final outcome = '${a['outcome'] ?? ''}'.toLowerCase();
+  if (outcome == 'fail') return true;
+  if (outcome == 'pass' || outcome == 'expected' || outcome == 'pending') {
+    return false;
+  }
   if (a['checks_passed'] == false || a['passed'] == false) return true;
   final fail = _intFrom(a['fail'] ?? a['fail_count'] ?? a['failed_count'] ?? a['ko'], 0);
   if (fail > 0) return true;
@@ -138,15 +143,29 @@ bool _apiRowFailed(Map<String, dynamic> a) {
   return status == 'FAIL' || status == 'FAILED' || status == 'ERROR';
 }
 
+bool _apiRowExpected(Map<String, dynamic> a) =>
+    '${a['outcome'] ?? ''}'.toLowerCase() == 'expected';
+
 String _apiRowLabel(Map<String, dynamic> a) =>
     '${a['api_id'] ?? a['id'] ?? a['name'] ?? a['path'] ?? ''}';
 
 String _apiRowResultLabel(Map<String, dynamic> a) {
+  final outcome = '${a['outcome'] ?? ''}'.toLowerCase();
+  if (outcome == 'pass') return 'PASS';
+  if (outcome == 'expected') return 'EXPECTED';
+  if (outcome == 'fail') return 'FAIL';
+  if (outcome == 'pending') return '…';
   if (a['checks_passed'] == true || a['passed'] == true) return 'PASS';
   if (a['checks_passed'] == false || a['passed'] == false) return 'FAIL';
-  final st = a['result'] ?? a['outcome'];
+  final st = a['result'];
   if (st != null && '$st'.isNotEmpty) return '$st';
-  // Prefer not to show numeric HTTP status as "result".
+  return '—';
+}
+
+String _expectStatusOf(Map<String, dynamic> a) {
+  final v = a['expect_status'] ?? a['expected_status'];
+  if (v is num) return '${v.toInt()}';
+  if (v is String && int.tryParse(v) != null) return v;
   return '—';
 }
 
@@ -155,4 +174,26 @@ String _httpStatusOf(Map<String, dynamic> a) {
   if (v is num) return '${v.toInt()}';
   if (v is String && int.tryParse(v) != null) return v;
   return '—';
+}
+
+String _datasetProfileLabel(Map<String, dynamic> run) {
+  final params = _runParams(run);
+  dynamic v = run['dataset_profile'] ?? params['dataset_profile'];
+  if (v == null && run['payloads_used'] is Map) {
+    final used = run['payloads_used'] as Map;
+    v = used['dataset_profile'];
+    final payloads = used['payloads'];
+    if (v == null && payloads is Map) {
+      v = payloads['dataset_profile'];
+    }
+  }
+  final s = '$v'.trim();
+  if (s.isEmpty || s == 'null') return '';
+  if (s == 'default' || s == 'prod') return 'working';
+  return s;
+}
+
+bool _chipValueMissing(String v) {
+  final s = v.trim();
+  return s.isEmpty || s == '—' || s == 'null' || s == '-';
 }

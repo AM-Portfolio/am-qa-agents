@@ -207,6 +207,25 @@ def _metrics_by_tag(summary: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return out
 
 
+def api_outcome(
+    *,
+    expect_status: Any,
+    checks_passed: bool | None,
+) -> str:
+    """Classify per-API result: pass (2xx expect matched), expected (non-2xx matched), fail."""
+    if checks_passed is None:
+        return "pending"
+    if checks_passed:
+        try:
+            exp = int(expect_status) if expect_status is not None else 200
+        except (TypeError, ValueError):
+            exp = 200
+        if not (200 <= exp < 300):
+            return "expected"
+        return "pass"
+    return "fail"
+
+
 def build_api_index(
     traces: list[dict[str, Any]],
     summary: dict[str, Any] | None,
@@ -229,12 +248,23 @@ def build_api_index(
     for api in apis:
         aid = str(api.get("id", ""))
         safe = _safe_metric_id(aid)
+        expect_status = api.get("expect_status")
+        if expect_status is not None:
+            try:
+                expect_status = int(expect_status)
+            except (TypeError, ValueError):
+                expect_status = 200
+        else:
+            expect_status = 200
         row: dict[str, Any] = {
             "api_id": aid,
             "name": api.get("name", aid),
             "method": api.get("method", "GET"),
             "path": api.get("path", ""),
             "trace_available": aid in trace_by_api,
+            "expect_status": expect_status,
+            "case_kind": api.get("case_kind") or "happy",
+            "checks": list(api.get("checks") or ["status_2xx"]),
         }
         if aid in group_stats:
             gs = group_stats[aid]
@@ -291,10 +321,15 @@ def build_api_index(
                 row["status"] = "err"
         if "checks_passed" not in row:
             row["checks_passed"] = int(row.get("fail_count") or 0) == 0 and int(row.get("request_count") or 0) > 0
+        row["outcome"] = api_outcome(
+            expect_status=row.get("expect_status"),
+            checks_passed=row.get("checks_passed"),
+        )
         by_id[aid] = row
 
     for aid, tr in trace_by_api.items():
         if aid not in by_id:
+            exp = 200
             by_id[aid] = {
                 "api_id": aid,
                 "name": tr.get("name", aid),
@@ -307,6 +342,12 @@ def build_api_index(
                 "request_count": 1,
                 "pass_count": 1 if tr.get("checks_passed") else 0,
                 "fail_count": 0 if tr.get("checks_passed") else 1,
+                "expect_status": exp,
+                "case_kind": "happy",
+                "outcome": api_outcome(
+                    expect_status=exp,
+                    checks_passed=tr.get("checks_passed"),
+                ),
             }
 
     order = [str(a.get("id")) for a in apis]
@@ -315,6 +356,32 @@ def build_api_index(
         if aid not in order:
             ordered.append(row)
     return ordered
+
+
+def summarize_api_outcomes(api_index: list[dict[str, Any]]) -> dict[str, int]:
+    """Roll up pass / expected / unexpected-fail counts for run records."""
+    n_pass = 0
+    n_expected = 0
+    n_fail = 0
+    for a in api_index:
+        outcome = a.get("outcome")
+        if outcome is None:
+            outcome = api_outcome(
+                expect_status=a.get("expect_status"),
+                checks_passed=a.get("checks_passed"),
+            )
+        if outcome == "pass":
+            n_pass += 1
+        elif outcome == "expected":
+            n_expected += 1
+        elif outcome == "fail":
+            n_fail += 1
+    return {
+        "api_pass_count": n_pass,
+        "api_expected_count": n_expected,
+        "api_fail_count": n_fail,
+        "api_unexpected_fail_count": n_fail,
+    }
 
 
 def load_traces_file(path: Path) -> list[dict[str, Any]]:

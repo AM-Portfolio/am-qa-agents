@@ -228,7 +228,12 @@ def save_from_trace(
 def payload_to_api_override(payload: dict[str, Any]) -> dict[str, Any]:
     """Convert a saved payload into an api_overrides row for catalog merge."""
     req = payload.get("request") or {}
-    return {
+    meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+    resp = payload.get("response") if isinstance(payload.get("response"), dict) else {}
+    expect = meta.get("expect_status")
+    if expect is None and resp.get("status") is not None:
+        expect = resp.get("status")
+    out: dict[str, Any] = {
         "id": payload.get("api_id"),
         "method": req.get("method"),
         "path": req.get("path"),
@@ -237,6 +242,15 @@ def payload_to_api_override(payload: dict[str, Any]) -> dict[str, Any]:
         "path_params": req.get("path_params") or {},
         "body": req.get("body"),
     }
+    if expect is not None:
+        try:
+            out["expect_status"] = int(expect)
+        except (TypeError, ValueError):
+            pass
+    ck = meta.get("case_kind") or payload.get("case_kind")
+    if ck:
+        out["case_kind"] = str(ck).strip().lower()
+    return out
 
 
 def delete_payload(service: str, api_id: str, name: str, version: int) -> bool:
@@ -568,7 +582,12 @@ def apply_payload_set(config: dict[str, Any], version: int | None = None) -> dic
         if not isinstance(entry, dict):
             continue
         by_id[str(api_id)] = payload_to_api_override(
-            {"api_id": api_id, "request": entry.get("request") or {}}
+            {
+                "api_id": api_id,
+                "request": entry.get("request") or {},
+                "response": entry.get("response") or {},
+                "meta": entry.get("meta") or {},
+            }
         )
     payloads["api_overrides"] = list(by_id.values())
     payloads["payload_set_version"] = int(payload_set.get("version") or 0)

@@ -1348,6 +1348,79 @@ def build_env_ctx(config: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def checks_for_expect_status(expect: Any) -> list[str]:
+    """Map expected HTTP status to k6 check rules (status_2xx or status_N)."""
+    if expect is None:
+        return ["status_2xx"]
+    try:
+        code = int(expect)
+    except (TypeError, ValueError):
+        return ["status_2xx"]
+    if 200 <= code < 300:
+        return ["status_2xx"]
+    return [f"status_{code}"]
+
+
+def _expect_map_from_config(config: dict[str, Any]) -> dict[str, int]:
+    payloads = config.get("payloads") or {}
+    raw = payloads.get("expect_status_by_api") or {}
+    out: dict[str, int] = {}
+    if isinstance(raw, dict):
+        for k, v in raw.items():
+            try:
+                out[str(k)] = int(v)
+            except (TypeError, ValueError):
+                continue
+    return out
+
+
+def _case_kind_map_from_config(config: dict[str, Any]) -> dict[str, str]:
+    payloads = config.get("payloads") or {}
+    raw = payloads.get("case_kind_by_api") or {}
+    out: dict[str, str] = {}
+    if isinstance(raw, dict):
+        for k, v in raw.items():
+            if v is not None and str(v).strip():
+                out[str(k)] = str(v).strip().lower()
+    return out
+
+
+def _payload_set_row(
+    *,
+    api_id: str,
+    override: dict[str, Any],
+    expect_map: dict[str, int],
+    case_kind_map: dict[str, str],
+) -> dict[str, Any]:
+    expect = expect_map.get(api_id)
+    if expect is None and override.get("expect_status") is not None:
+        try:
+            expect = int(override["expect_status"])
+        except (TypeError, ValueError):
+            expect = None
+    case_kind = case_kind_map.get(api_id) or override.get("case_kind") or "happy"
+    row: dict[str, Any] = {
+        "id": api_id,
+        "name": str(override.get("name") or api_id),
+        "method": str(override.get("method") or "GET").upper(),
+        "path": str(override.get("path") or "/"),
+        "headers": override.get("headers") if isinstance(override.get("headers"), dict) else {},
+        "query": override.get("query") if isinstance(override.get("query"), dict) else {},
+        "path_params": (
+            override.get("path_params") if isinstance(override.get("path_params"), dict) else {}
+        ),
+        "body": override.get("body"),
+        "checks": checks_for_expect_status(expect if expect is not None else 200),
+        "source": "payload-set",
+        "case_kind": str(case_kind).strip().lower(),
+    }
+    if expect is not None:
+        row["expect_status"] = int(expect)
+    else:
+        row["expect_status"] = 200
+    return row
+
+
 def resolve_api(api: dict[str, Any], ctx: dict[str, str], env_ctx: dict[str, str]) -> dict[str, Any]:
     resolved = dict(api)
     resolved["name"] = _substitute(str(api.get("name", api.get("id", ""))), ctx, env_ctx)
@@ -1388,7 +1461,19 @@ def resolve_api(api: dict[str, Any], ctx: dict[str, str], env_ctx: dict[str, str
             headers["Content-Type"] = "application/json"
     resolved["headers"] = headers
     resolved["method"] = str(api.get("method", "GET")).upper()
-    resolved["checks"] = list(api.get("checks") or ["status_2xx"])
+    expect = api.get("expect_status")
+    if expect is not None:
+        try:
+            resolved["expect_status"] = int(expect)
+        except (TypeError, ValueError):
+            resolved["expect_status"] = 200
+    if api.get("case_kind"):
+        resolved["case_kind"] = str(api.get("case_kind")).strip().lower()
+    # Prefer explicit checks; else derive from expect_status (data-gen technical/validation).
+    if api.get("checks"):
+        resolved["checks"] = list(api.get("checks") or ["status_2xx"])
+    else:
+        resolved["checks"] = checks_for_expect_status(resolved.get("expect_status"))
     return resolved
 
 
@@ -1501,6 +1586,8 @@ def apis_for_config(
     }
     base_url = resolve_base_url(config, catalog.get("base_url"), ctx)
     apis = merge_api_overrides(catalog.get("apis") or [], api_overrides)
+    expect_map = _expect_map_from_config(config)
+    case_kind_map = _case_kind_map_from_config(config)
     selected = api_ids if api_ids is not None else config.get("selected_api_ids")
     if selected:
         want = {str(x) for x in selected if x}
@@ -1517,25 +1604,28 @@ def apis_for_config(
                 aid_s = str(aid)
                 if aid_s not in want or aid_s not in by_id:
                     continue
-                o = by_id[aid_s]
                 apis.append(
-                    {
-                        "id": aid_s,
-                        "name": str(o.get("name") or aid_s),
-                        "method": str(o.get("method") or "GET").upper(),
-                        "path": str(o.get("path") or "/"),
-                        "headers": o.get("headers") if isinstance(o.get("headers"), dict) else {},
-                        "query": o.get("query") if isinstance(o.get("query"), dict) else {},
-                        "path_params": (
-                            o.get("path_params") if isinstance(o.get("path_params"), dict) else {}
-                        ),
-                        "body": o.get("body"),
-                        "checks": ["status_2xx"],
-                        "source": "payload-set",
-                    }
+                    _payload_set_row(
+                        api_id=aid_s,
+                        override=by_id[aid_s],
+                        expect_map=expect_map,
+                        case_kind_map=case_kind_map,
+                    )
                 )
         else:
             apis = [a for a in apis if str(a.get("id")) in want]
+            # Stamp expect/checks onto catalog rows when suite map has them.
+            stamped: list[dict[str, Any]] = []
+            for a in apis:
+                row = dict(a)
+                aid_s = str(row.get("id") or "")
+                if aid_s in expect_map:
+                    row["expect_status"] = expect_map[aid_s]
+                    row["checks"] = checks_for_expect_status(expect_map[aid_s])
+                if aid_s in case_kind_map:
+                    row["case_kind"] = case_kind_map[aid_s]
+                stamped.append(row)
+            apis = stamped
             found = {str(a.get("id")) for a in apis if a.get("id")}
             missing = sorted(want - found)
             if missing and override_rows:
@@ -1546,20 +1636,12 @@ def apis_for_config(
                     if not oid or oid in have:
                         continue
                     apis.append(
-                        {
-                            "id": oid,
-                            "name": str(o.get("name") or oid),
-                            "method": str(o.get("method") or "GET").upper(),
-                            "path": str(o.get("path") or "/"),
-                            "headers": o.get("headers") if isinstance(o.get("headers"), dict) else {},
-                            "query": o.get("query") if isinstance(o.get("query"), dict) else {},
-                            "path_params": (
-                                o.get("path_params") if isinstance(o.get("path_params"), dict) else {}
-                            ),
-                            "body": o.get("body"),
-                            "checks": ["status_2xx"],
-                            "source": "payload-set",
-                        }
+                        _payload_set_row(
+                            api_id=oid,
+                            override=o,
+                            expect_map=expect_map,
+                            case_kind_map=case_kind_map,
+                        )
                     )
                     have.add(oid)
                 missing = sorted(want - have)
@@ -1576,28 +1658,74 @@ def apis_for_config(
                     raise ValueError(
                         f"Unknown api_id(s) for service {service}: {', '.join(missing)}"
                     )
+    else:
+        # Full catalog/payload run: still honor expect_status_by_api when present.
+        stamped = []
+        for a in apis:
+            row = dict(a)
+            aid_s = str(row.get("id") or "")
+            if aid_s in expect_map:
+                row["expect_status"] = expect_map[aid_s]
+                row["checks"] = checks_for_expect_status(expect_map[aid_s])
+            if aid_s in case_kind_map:
+                row["case_kind"] = case_kind_map[aid_s]
+            stamped.append(row)
+        apis = stamped
     return base_url, [resolve_api(a, ctx, env_ctx) for a in apis if a.get("id")]
+
+
+# Built-in CI presets (commit→SPT). Not required in baked catalog YAML.
+_CI_PRESETS: dict[str, dict[str, Any]] = {
+    "ci-smoke": {
+        "vus": 1,
+        "iterations": 1,
+        "dataset_profile": "working",
+        "run_profile": "debug",
+    },
+    "ci-load": {
+        "vus": 10,
+        "iterations": 100,
+        "dataset_profile": "full",
+        "run_profile": "load",
+        "stages": [
+            {"duration": "30s", "target": 1},
+            {"duration": "45s", "target": 5},
+            {"duration": "45s", "target": 10},
+        ],
+    },
+}
 
 
 def apply_preset(config: dict[str, Any], preset: str | None) -> dict[str, Any]:
     if not preset:
         return config
+    key = str(preset).strip().lower()
     catalog = load_catalog()
-    presets = catalog.get("load_presets") or {}
-    p = presets.get(preset)
+    presets = dict(catalog.get("load_presets") or {})
+    presets.update(_CI_PRESETS)
+    p = presets.get(key) or presets.get(preset)
     if not p:
         return config
     cfg = dict(config)
     payloads = dict(cfg.get("payloads") or {})
     bench = dict(payloads.get("bench_run") or {})
-    bench.update(p)
-    if "iterations" in p:
+    # Copy load knobs only; dataset_profile / run_profile applied below.
+    for k, v in p.items():
+        if k in {"dataset_profile", "run_profile"}:
+            continue
+        bench[k] = v
+    if "iterations" in p and "stages" not in p:
         bench.pop("duration", None)
-    elif "duration" in p:
+    elif "duration" in p and "stages" not in p:
         bench.pop("iterations", None)
+    if p.get("stages"):
+        bench["stages"] = list(p["stages"])
     payloads["bench_run"] = bench
+    if p.get("dataset_profile"):
+        payloads["dataset_profile"] = p["dataset_profile"]
+        cfg["dataset_profile"] = p["dataset_profile"]
     cfg["payloads"] = payloads
-    cfg["run_profile"] = "load"
+    cfg["run_profile"] = str(p.get("run_profile") or "load")
     return cfg
 
 
@@ -1613,6 +1741,7 @@ def apply_run_profile(config: dict[str, Any], profile: str | None) -> dict[str, 
         bench["vus"] = 1
         bench["duration"] = "1s"
         bench["iterations"] = 1
+        bench.pop("stages", None)
     payloads["bench_run"] = bench
     cfg["payloads"] = payloads
     return cfg

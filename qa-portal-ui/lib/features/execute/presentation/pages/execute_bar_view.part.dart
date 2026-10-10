@@ -149,7 +149,7 @@ class _ExecuteBarView extends StatelessWidget {
                     children: [
                       _dd(
                         width: 220,
-                        label: 'Config',
+                        label: 'SPT config',
                         value: state.configId,
                         items: [
                           for (final c in state.configs)
@@ -166,6 +166,55 @@ class _ExecuteBarView extends StatelessWidget {
                             : (v) =>
                                 context.read<_ExecuteCubit>().selectConfig(v),
                       ),
+                      if (state.testType != 'playwright') ...[
+                        _dd(
+                          width: 148,
+                          label: 'Dataset profile',
+                          value: state.datasetProfile,
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'working',
+                              child: Text('working (happy)'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'full',
+                              child: Text('full (+tech)'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'premium',
+                              child: Text('premium (all)'),
+                            ),
+                          ],
+                          onChanged: state.busy
+                              ? null
+                              : (v) {
+                                  if (v != null) {
+                                    context
+                                        .read<_ExecuteCubit>()
+                                        .setDatasetProfile(v);
+                                  }
+                                },
+                        ),
+                        Chip(
+                          visualDensity: VisualDensity.compact,
+                          avatar: Icon(
+                            state.suitePreviewOk
+                                ? Icons.dataset_outlined
+                                : Icons.warning_amber_outlined,
+                            size: 14,
+                            color: state.suitePreviewOk
+                                ? AppColors.primary
+                                : Theme.of(context).colorScheme.error,
+                          ),
+                          label: Text(
+                            state.suitePreviewOk
+                                ? '${state.datasetProfile} · ${state.suiteApiCount ?? '…'} APIs'
+                                : (state.suitePreviewMessage ??
+                                    'Import dataset first'),
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      ],
                       if (state.configEnvironment != null)
                         Chip(
                           visualDensity: VisualDensity.compact,
@@ -226,6 +275,7 @@ class _ExecuteBarView extends StatelessWidget {
                             ? null
                             : (v) {
                                 if (v != null) {
+                                  // ignore: unawaited_futures
                                   context.read<_ExecuteCubit>().setTestType(v);
                                 }
                               },
@@ -290,9 +340,12 @@ class _ExecuteBarView extends StatelessWidget {
                         OutlinedButton(
                           onPressed: state.busy ? null : () => _pickApis(context),
                           child: Text(
-                            state.selectedApiIds.isEmpty
-                                ? 'APIs: all'
-                                : 'APIs: ${state.selectedApiIds.length}',
+                            state.apiSubsetOverride &&
+                                    state.selectedApiIds.isNotEmpty
+                                ? 'APIs: ${state.selectedApiIds.length}'
+                                : (state.suiteApiCount != null
+                                    ? 'APIs: suite (${state.suiteApiCount})'
+                                    : 'APIs: suite'),
                           ),
                         ),
                       if (needsUi) ...[
@@ -344,7 +397,9 @@ class _ExecuteBarView extends StatelessWidget {
                         ),
                       ],
                       FilledButton.icon(
-                        onPressed: state.busy
+                        onPressed: state.busy ||
+                                (state.testType != 'playwright' &&
+                                    !state.suitePreviewOk)
                             ? null
                             : () async {
                                 // Prefer service from /services/:id or /specs?spec=

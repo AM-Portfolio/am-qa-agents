@@ -25,6 +25,7 @@ from specs.load.runners import process_registry
 from specs.load.script_generator import generate_k6_script
 from specs.persistence.trace_store import (
     build_api_index,
+    summarize_api_outcomes,
     capture_traces_http,
     load_summary_file,
     load_traces_file,
@@ -83,21 +84,31 @@ _K6_PCT_RE = re.compile(
 
 
 def _planned_api_rows(apis: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [
-        {
-            "api_id": a.get("id"),
-            "name": a.get("name") or a.get("id"),
-            "method": a.get("method") or "GET",
-            "path": a.get("path") or "",
-            "trace_available": False,
-            "checks_passed": None,
-            "request_count": None,
-            "pass_count": None,
-            "fail_count": None,
-            "status": "running",
-        }
-        for a in apis
-    ]
+    rows: list[dict[str, Any]] = []
+    for a in apis:
+        expect = a.get("expect_status")
+        try:
+            expect_i = int(expect) if expect is not None else 200
+        except (TypeError, ValueError):
+            expect_i = 200
+        rows.append(
+            {
+                "api_id": a.get("id"),
+                "name": a.get("name") or a.get("id"),
+                "method": a.get("method") or "GET",
+                "path": a.get("path") or "",
+                "trace_available": False,
+                "checks_passed": None,
+                "request_count": None,
+                "pass_count": None,
+                "fail_count": None,
+                "status": "running",
+                "expect_status": expect_i,
+                "case_kind": a.get("case_kind") or "happy",
+                "outcome": "pending",
+            }
+        )
+    return rows
 
 
 def _parse_k6_progress_line(line: str) -> dict[str, Any] | None:
@@ -240,10 +251,15 @@ def _k6_script_from_config(
     duration = str(bench.get("duration") or settings.smoke_duration)
     raw_iters = bench.get("iterations")
     iterations = int(raw_iters) if raw_iters is not None else None
+    raw_stages = bench.get("stages")
+    stages: list[dict] | None = None
+    if isinstance(raw_stages, list) and raw_stages:
+        stages = [s for s in raw_stages if isinstance(s, dict)]
     if profile == "debug":
         vus = 1
         iterations = 1
         duration = "1s"
+        stages = None
     else:
         vus, duration, iterations = _cap_run_params(vus, duration, iterations)
 
@@ -260,6 +276,7 @@ def _k6_script_from_config(
         vus=vus,
         duration=duration,
         iterations=iterations,
+        stages=stages,
         capture_traces=True,
         capture_failures=True,
         capture_all_calls=True,
@@ -736,6 +753,9 @@ async def run_k6_local(
         "passed": False,
         "runner": "k6-local",
         "run_profile": profile,
+        "dataset_profile": (
+            config.get("dataset_profile") or payloads.get("dataset_profile")
+        ),
         "config_id": config.get("id"),
         "config_name": config.get("name", "unnamed"),
         "service": config.get("service") or settings.default_service or "",
@@ -755,6 +775,14 @@ async def run_k6_local(
             "auth_env": sanitize_auth_env(payloads.get("auth_env")),
             "run_params": {
                 "profile": profile,
+                "dataset_profile": (
+                    config.get("dataset_profile")
+                    or payloads.get("dataset_profile")
+                ),
+                "payload_set_version": (
+                    config.get("payload_set_version")
+                    or payloads.get("payload_set_version")
+                ),
                 "vus": bench.get("vus"),
                 "duration": bench.get("duration"),
                 "iterations": bench.get("iterations"),
@@ -1030,10 +1058,13 @@ async def run_k6_local(
                     # Still collect whatever summary we have for Grafana
                     metrics = merge_run_metrics(report)
                     result["metrics_summary"] = metrics
+                    counts = summarize_api_outcomes(api_index)
                     result["api_summary"] = api_index
                     result["api_count"] = len(api_index)
-                    result["api_pass_count"] = len([a for a in api_index if a.get("checks_passed")])
-                    result["api_fail_count"] = len([a for a in api_index if a.get("checks_passed") is False])
+                    result["api_pass_count"] = counts["api_pass_count"]
+                    result["api_expected_count"] = counts["api_expected_count"]
+                    result["api_fail_count"] = counts["api_fail_count"]
+                    result["api_unexpected_fail_count"] = counts["api_unexpected_fail_count"]
                     result["artifacts"] = artifacts
                 else:
                     steps[-1] = {
@@ -1042,20 +1073,25 @@ async def run_k6_local(
                         "detail": {"exit_code": 0, "apis_tested": len(api_index)},
                     }
                     metrics = merge_run_metrics(report)
-                    failed = [a for a in api_index if not a.get("checks_passed")]
-                    passed_apis = [a for a in api_index if a.get("checks_passed")]
+                    counts = summarize_api_outcomes(api_index)
+                    unexpected = counts["api_unexpected_fail_count"]
                     result["report"] = report
                     result["metrics_summary"] = metrics
                     result["api_summary"] = api_index
                     result["api_count"] = len(api_index)
-                    result["api_pass_count"] = len(passed_apis)
-                    result["api_fail_count"] = len(failed)
-                    result["passed"] = len(failed) == 0
+                    result["api_pass_count"] = counts["api_pass_count"]
+                    result["api_expected_count"] = counts["api_expected_count"]
+                    result["api_fail_count"] = counts["api_fail_count"]
+                    result["api_unexpected_fail_count"] = unexpected
+                    # Suite green when no unexpected fails (expected non-2xx still "pass" the suite).
+                    result["passed"] = unexpected == 0
                     result["status"] = "passed" if result["passed"] else "failed"
-                    if failed and passed_apis:
-                        result["error"] = f"{len(failed)} of {len(api_index)} API(s) failed ({len(passed_apis)} passed)"
-                    elif failed:
-                        result["error"] = f"{len(failed)} API(s) failed checks"
+                    if unexpected:
+                        ok_n = counts["api_pass_count"] + counts["api_expected_count"]
+                        result["error"] = (
+                            f"{unexpected} of {len(api_index)} API(s) unexpected fail "
+                            f"({ok_n} matched expect)"
+                        )
                     result["artifacts"] = artifacts
         except subprocess.TimeoutExpired:
             steps.append({"step": "k6_run", "status": "fail", "error": "timeout"})

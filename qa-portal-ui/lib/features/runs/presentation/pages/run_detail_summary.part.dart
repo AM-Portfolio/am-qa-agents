@@ -40,8 +40,22 @@ class _OverviewTab extends StatelessWidget {
     final isLive = status == 'running' || status == 'pending';
 
     var totalPass = 0;
+    var totalExpected = 0;
     var totalFail = 0;
     for (final a in rows) {
+      final outcome = '${a['outcome'] ?? ''}'.toLowerCase();
+      if (outcome == 'pass') {
+        totalPass += 1;
+        continue;
+      }
+      if (outcome == 'expected') {
+        totalExpected += 1;
+        continue;
+      }
+      if (outcome == 'fail') {
+        totalFail += 1;
+        continue;
+      }
       totalPass += _intFrom(
         a['pass'] ?? a['pass_count'] ?? a['passed_count'] ?? a['ok'],
         0,
@@ -65,10 +79,16 @@ class _OverviewTab extends StatelessWidget {
     }
     final apiCount = _intFrom(run['api_count'], rows.isNotEmpty ? rows.length : 0);
     final apiPass = _intFrom(run['api_pass_count'], totalPass);
-    final apiFail = _intFrom(run['api_fail_count'], totalFail);
+    final apiExpected = _intFrom(run['api_expected_count'], totalExpected);
+    final apiFail = _intFrom(
+      run['api_unexpected_fail_count'] ?? run['api_fail_count'],
+      totalFail,
+    );
     final failPct = apiCount == 0 ? 0 : ((100 * apiFail) / apiCount).round();
     final err = '${run['error'] ?? ''}'.trim();
     final target = '${run['target_url'] ?? run['base_url'] ?? ''}'.trim();
+    final sptConfig =
+        '${run['config_name'] ?? run['config_id'] ?? params['config_name'] ?? '—'}';
 
     return ListView(
       padding: const EdgeInsets.only(top: 4),
@@ -112,6 +132,12 @@ class _OverviewTab extends StatelessWidget {
                 children: [
                   _metricTile(context, _isPlaywrightRun(run) ? 'Steps' : 'APIs', '$apiCount'),
                   _metricTile(context, 'Pass', '$apiPass', ok: true),
+                  _metricTile(
+                    context,
+                    'Expected',
+                    '$apiExpected',
+                    ok: apiExpected > 0,
+                  ),
                   _metricTile(context, 'Fail', '$apiFail', bad: apiFail > 0),
                   _metricTile(context, 'Fail%', '$failPct%', bad: failPct > 0),
                   if (grafana.isNotEmpty)
@@ -128,24 +154,45 @@ class _OverviewTab extends StatelessWidget {
                     ),
                 ],
               ),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Fail = status did not match expect. '
+                  'To run working / full / premium: set Dataset profile on the Execute bar, then Run.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 6,
                 runSpacing: 4,
                 children: [
-                  _kvChip('profile', '${run['run_profile'] ?? params['profile'] ?? '—'}'),
-                  _kvChip('dataset', _payloadSetVersionLabel(run)),
-                  _kvChip('VUs', '${params['vus'] ?? run['vus'] ?? '—'}'),
-                  _kvChip(
-                    'calls',
-                    '${params['iterations'] ?? params['calls'] ?? run['iterations'] ?? '—'}',
-                  ),
-                  _kvChip('duration', '${params['duration'] ?? run['duration'] ?? '—'}'),
-                  _kvChip('service', '${run['service'] ?? '—'}'),
-                  _kvChip('env', '${run['environment'] ?? '—'}'),
-                  if (target.isNotEmpty) _kvChip('target', target),
-                  _kvChip('started', _shortTs(run['started_at'])),
-                  _kvChip('finished', _shortTs(run['finished_at'])),
+                  ..._kvChips(context, [
+                    ('Dataset profile', _datasetProfileLabel(run)),
+                    ('SPT config', sptConfig),
+                    ('Dataset', _payloadSetVersionLabel(run)),
+                    (
+                      'Intensity',
+                      '${run['run_profile'] ?? params['profile'] ?? ''}',
+                    ),
+                    ('APIs', apiCount > 0 ? '$apiCount' : ''),
+                    ('VUs', '${params['vus'] ?? run['vus'] ?? ''}'),
+                    (
+                      'calls',
+                      '${params['iterations'] ?? params['calls'] ?? run['iterations'] ?? ''}',
+                    ),
+                    (
+                      'duration',
+                      '${params['duration'] ?? run['duration'] ?? ''}',
+                    ),
+                    ('service', '${run['service'] ?? ''}'),
+                    ('env', '${run['environment'] ?? ''}'),
+                    ('target', target),
+                    ('started', _shortTs(run['started_at'])),
+                    ('finished', _shortTs(run['finished_at'])),
+                  ]),
                 ],
               ),
               if (metrics.isNotEmpty)
@@ -237,10 +284,37 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _kvChip(String k, String v) => Chip(
+  List<Widget> _kvChips(BuildContext context, List<(String, String)> rows) {
+    return [
+      for (final row in rows)
+        if (!_chipValueMissing(row.$2) && row.$2 != 'null')
+          _kvChip(context, row.$1, row.$2),
+    ];
+  }
+
+  Widget _kvChip(BuildContext context, String k, String v) => Chip(
         visualDensity: VisualDensity.compact,
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        label: Text('$k: $v', style: const TextStyle(fontSize: 12)),
+        label: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '$k ',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              TextSpan(
+                text: v,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
         padding: EdgeInsets.zero,
         labelPadding: const EdgeInsets.symmetric(horizontal: 8),
       );

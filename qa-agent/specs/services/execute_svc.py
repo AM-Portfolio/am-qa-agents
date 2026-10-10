@@ -153,6 +153,13 @@ async def execute_run(
     )
 
     cfg = apply_preset(cfg, body.preset)
+    # Preset may set dataset_profile / stages (ci-smoke / ci-load).
+    if body.stages:
+        payloads = dict(cfg.get("payloads") or {})
+        bench = dict(payloads.get("bench_run") or {})
+        bench["stages"] = list(body.stages)
+        payloads["bench_run"] = bench
+        cfg["payloads"] = payloads
     if body.environment:
         cfg["environment"] = body.environment
         cfg["target_url"] = default_target_for_service(
@@ -250,6 +257,29 @@ async def execute_run(
         set_ver = cfg.get("payload_set_version")
         if set_ver is None:
             set_ver = ((cfg.get("payloads") or {}).get("payload_set_version"))
+
+    # Dataset profile (am-specs suite): select APIs + expect_status unless caller
+    # passed an explicit api_ids subset. Prefer body, then preset/cfg.
+    dataset_profile = (
+        body.dataset_profile
+        or cfg.get("dataset_profile")
+        or ((cfg.get("payloads") or {}).get("dataset_profile"))
+    )
+    if dataset_profile and not (body.api_ids):
+        from specs.data_gen.suite import apply_dataset_profile_to_config
+
+        try:
+            cfg = apply_dataset_profile_to_config(
+                cfg,
+                dataset_profile,
+                payload_set_version=int(set_ver) if set_ver is not None else None,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        set_ver = cfg.get("payload_set_version") or (
+            (cfg.get("payloads") or {}).get("payload_set_version")
+        )
+
     if set_ver is not None:
         cfg = apply_payload_set(cfg, int(set_ver))
     if body.payload_refs:
@@ -286,18 +316,26 @@ async def execute_run(
         cfg.get("target_url"),
     )
 
-    if allows_multi and (body.vus is not None or body.iterations is not None or body.duration is not None):
+    if allows_multi and (
+        body.vus is not None
+        or body.iterations is not None
+        or body.duration is not None
+        or body.stages
+    ):
         payloads = dict(cfg.get("payloads") or {})
         bench = dict(payloads.get("bench_run") or {})
         if body.vus is not None:
             bench["vus"] = body.vus
         if body.iterations is not None:
             bench["iterations"] = body.iterations
-            bench.pop("duration", None)
-        elif body.duration is not None:
+            if not bench.get("stages"):
+                bench.pop("duration", None)
+        elif body.duration is not None and not bench.get("stages"):
             bench["duration"] = body.duration
             bench.pop("iterations", None)
-        if (body.vus and body.vus > 1) or (body.iterations and body.iterations > 1):
+        if body.stages:
+            bench["stages"] = list(body.stages)
+        if (body.vus and body.vus > 1) or (body.iterations and body.iterations > 1) or body.stages:
             profile = "load"
             cfg["run_profile"] = "load"
         payloads["bench_run"] = bench
@@ -407,6 +445,11 @@ async def execute_run(
         "target_url": cfg.get("target_url") or settings.poc_target_url,
         "api_count": len(planned_rows) or None,
         "api_ids": selected_api_ids or None,
+        "dataset_profile": (
+            cfg.get("dataset_profile")
+            or ((cfg.get("payloads") or {}).get("dataset_profile"))
+            or body.dataset_profile
+        ),
         "vus": bench.get("vus") if test_type != "playwright" else None,
         "iterations": bench.get("iterations") if test_type != "playwright" else None,
         "duration": bench.get("duration") if test_type != "playwright" else None,
@@ -416,10 +459,21 @@ async def execute_run(
             "auth_env": {k: auth[k] for k in ("username", "user_id", "identity_url") if auth.get(k)},
             "run_params": {
                 "profile": cfg.get("run_profile") or "load",
+                "dataset_profile": (
+                    cfg.get("dataset_profile")
+                    or ((cfg.get("payloads") or {}).get("dataset_profile"))
+                    or body.dataset_profile
+                ),
                 "vus": bench.get("vus"),
                 "duration": bench.get("duration"),
                 "iterations": bench.get("iterations"),
+                "stages": bench.get("stages"),
+                "preset": body.preset,
                 "triggered_by": body.triggered_by,
+                "git_sha": body.git_sha,
+                "git_ref": body.git_ref,
+                "committer_email": body.committer_email,
+                "committer_name": body.committer_name,
                 "api_ids": selected_api_ids or None,
                 "openapi_version": cfg.get("openapi_version"),
                 "payload_set_version": (

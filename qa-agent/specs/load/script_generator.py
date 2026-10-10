@@ -4,6 +4,47 @@ import json
 from typing import Any
 
 
+def _options_block(
+    *,
+    vus: int,
+    duration: str,
+    iterations: int | None,
+    stages: list[dict[str, Any]] | None,
+) -> str:
+    """Emit k6 options: flat vus+iters, or ramping-vus stages.
+
+    When stages are set, use ramping-vus (duration from stages). Shared
+    ``iterations`` is kept for progress/reporting (TOTAL_ITERS) but does not
+    create a second scenario — dual executors would double-run default().
+    """
+    if stages:
+        stages_js = json.dumps(
+            [
+                {
+                    "duration": str(s.get("duration") or "30s"),
+                    "target": int(s.get("target") or 1),
+                }
+                for s in stages
+                if isinstance(s, dict)
+            ]
+        )
+        return f"""  scenarios: {{
+    default: {{
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: {stages_js},
+      gracefulRampDown: '20s',
+    }},
+  }},"""
+
+    lines = [f"  vus: {vus},"]
+    if iterations is not None:
+        lines.append(f"  iterations: {iterations},")
+    else:
+        lines.append(f"  duration: '{duration}',")
+    return "\n".join(lines)
+
+
 def generate_k6_script(
     apis: list[dict[str, Any]],
     *,
@@ -11,6 +52,7 @@ def generate_k6_script(
     vus: int,
     duration: str,
     iterations: int | None = None,
+    stages: list[dict[str, Any]] | None = None,
     capture_traces: bool = False,
     capture_failures: bool = True,
     capture_all_calls: bool = False,
@@ -19,12 +61,9 @@ def generate_k6_script(
     progress_url: str | None = None,
 ) -> str:
     apis_literal = json.dumps(apis)
-    opts_lines = [f"  vus: {vus},"]
-    if iterations is not None:
-        opts_lines.append(f"  iterations: {iterations},")
-    else:
-        opts_lines.append(f"  duration: '{duration}',")
-    opts_block = "\n".join(opts_lines)
+    opts_block = _options_block(
+        vus=vus, duration=duration, iterations=iterations, stages=stages
+    )
 
     return f"""import http from 'k6/http';
 import {{ check, group }} from 'k6';

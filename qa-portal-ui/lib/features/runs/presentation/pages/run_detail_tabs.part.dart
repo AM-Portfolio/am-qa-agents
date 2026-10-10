@@ -284,10 +284,9 @@ class _ApisTabState extends State<_ApisTab> {
           showCheckboxColumn: false,
           columns: const [
             DataColumn(label: Text('Step/API')),
-            DataColumn(label: Text('HTTP'), numeric: true),
+            DataColumn(label: Text('Expected'), numeric: true),
+            DataColumn(label: Text('Actual'), numeric: true),
             DataColumn(label: Text('Calls'), numeric: true),
-            DataColumn(label: Text('Pass'), numeric: true),
-            DataColumn(label: Text('Fail'), numeric: true),
             DataColumn(label: Text('Avg ms'), numeric: true),
             DataColumn(label: Text('Result')),
           ],
@@ -298,22 +297,11 @@ class _ApisTabState extends State<_ApisTab> {
                 onSelectChanged: (_) => onSelect(a),
                 cells: [
                   DataCell(Text(_apiRowLabel(a))),
-                  DataCell(
-                    Text(_httpStatusOf(a)),
-                  ),
+                  DataCell(Text(_expectStatusOf(a))),
+                  DataCell(Text(_httpStatusOf(a))),
                   DataCell(
                     Text(
                       '${a['calls'] ?? a['count'] ?? a['request_count'] ?? a['iterations'] ?? '—'}',
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      '${a['pass'] ?? a['pass_count'] ?? a['passed_count'] ?? a['ok'] ?? '—'}',
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      '${a['fail'] ?? a['fail_count'] ?? a['failed_count'] ?? a['ko'] ?? '—'}',
                     ),
                   ),
                   DataCell(
@@ -330,9 +318,13 @@ class _ApisTabState extends State<_ApisTab> {
                         fontWeight: FontWeight.w700,
                         color: _apiRowFailed(a)
                             ? Theme.of(context).colorScheme.error
-                            : (a['checks_passed'] == true || a['passed'] == true
-                                ? Colors.green
-                                : null),
+                            : (_apiRowExpected(a)
+                                ? Colors.orange.shade800
+                                : (a['checks_passed'] == true ||
+                                        a['passed'] == true ||
+                                        '${a['outcome']}' == 'pass'
+                                    ? Colors.green
+                                    : null)),
                       ),
                     ),
                   ),
@@ -389,12 +381,21 @@ class _ApisTabState extends State<_ApisTab> {
           children: [
             Chip(
               visualDensity: VisualDensity.compact,
-              label: Text('HTTP ${_httpStatusOf(row)}'),
+              label: Text('Expected ${_expectStatusOf(row)}'),
+            ),
+            Chip(
+              visualDensity: VisualDensity.compact,
+              label: Text('Actual ${_httpStatusOf(row)}'),
             ),
             Chip(
               visualDensity: VisualDensity.compact,
               label: Text(_apiRowResultLabel(row)),
             ),
+            if ('${row['case_kind'] ?? ''}'.isNotEmpty)
+              Chip(
+                visualDensity: VisualDensity.compact,
+                label: Text('${row['case_kind']}'),
+              ),
             if ('${row['method'] ?? ''}'.isNotEmpty)
               Chip(
                 visualDensity: VisualDensity.compact,

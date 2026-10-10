@@ -125,6 +125,7 @@ def data_gen_run_suite(
         payload_set_version=int(payload_set_version),
         selected_api_ids=list(sel["selected_api_ids"]),
         expects=dict(sel.get("expects") or {}),
+        case_kinds=dict(sel.get("case_kinds") or {}),
     )
     from specs.security.acl import Caller
     from specs.services.execute_svc import execute_run_sync

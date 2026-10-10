@@ -81,6 +81,14 @@ int _intFrom(dynamic v, int fallback) {
 }
 
 Map<String, dynamic> _runParams(Map<String, dynamic> run) {
+  // Prefer payloads_used.run_params (execute path); fall back to top-level params.
+  final used = run['payloads_used'];
+  if (used is Map) {
+    final rp = used['run_params'];
+    if (rp is Map && rp.isNotEmpty) {
+      return Map<String, dynamic>.from(rp);
+    }
+  }
   final params = run['params'];
   return params is Map ? Map<String, dynamic>.from(params) : const {};
 }

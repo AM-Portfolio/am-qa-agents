@@ -1,0 +1,126 @@
+# Reusable Commit→SPT: POST /api/runs/execute → poll → email committer + Zoho Cliq.
+#
+# Branch matrix (am-market-data pilot):
+#   feature/**, fix/**, hotfix/**, test/**, develop, dev → working + debug 1×1
+#   main/master → full + ci-load (ramping VUs, iterations=100)
+#
+# Secrets (caller repo / org inherit):
+#   SPT_CI_API_KEY          — dig QA key with role=ci (preferred)
+#   QA_AGENT_GATEWAY_TOKEN  — fallback bearer
+#   ZOHO_CLIQ_SPT_WEBHOOK_URL (or QA_AGENT_CLIQ_WEBHOOK_URL / ZOHO_CLIQ_WEBHOOK_URL)
+#   SPT_SMTP_HOST, SPT_SMTP_PORT, SPT_SMTP_USER, SPT_SMTP_PASSWORD, SPT_SMTP_FROM
+
+name: SPT on commit
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: Service id (e.g. am-market-data)
+        required: true
+        type: string
+      git_ref:
+        description: Branch / ref name
+        required: true
+        type: string
+      git_sha:
+        description: Commit SHA
+        required: true
+        type: string
+      committer_email:
+        description: Author email for report
+        required: false
+        type: string
+        default: ""
+      committer_name:
+        description: Author name for report
+        required: false
+        type: string
+        default: ""
+      environment:
+        description: Target SPT environment
+        required: false
+        type: string
+        default: "dev"
+      qa_base_url:
+        description: Dig QA agent base URL
+        required: false
+        type: string
+        default: "https://am-dev.asrax.in/qa"
+      portal_base_url:
+        description: Portal base for run links
+        required: false
+        type: string
+        default: "https://ai-dev.asrax.in"
+  workflow_dispatch:
+    inputs:
+      service:
+        description: Service id
+        required: true
+        type: string
+        default: "am-market-data"
+      git_ref:
+        description: Branch to simulate (feature/x or main)
+        required: true
+        type: string
+        default: "feature/spt-smoke"
+      git_sha:
+        description: Optional SHA (defaults to GITHUB_SHA)
+        required: false
+        type: string
+        default: ""
+      committer_email:
+        description: Email override
+        required: false
+        type: string
+        default: ""
+      committer_name:
+        description: Name override
+        required: false
+        type: string
+        default: ""
+      environment:
+        required: false
+        type: string
+        default: "dev"
+      qa_base_url:
+        required: false
+        type: string
+        default: "https://am-dev.asrax.in/qa"
+
+concurrency:
+  group: spt-on-commit-${{ github.repository }}-${{ inputs.service }}-${{ inputs.git_ref }}
+  cancel-in-progress: false
+
+jobs:
+  spt:
+    name: Execute SPT (${{ inputs.service }} / ${{ inputs.git_ref }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run SPT matrix + notify
+        env:
+          SERVICE: ${{ inputs.service }}
+          GIT_REF: ${{ inputs.git_ref }}
+          GIT_SHA: ${{ inputs.git_sha || github.sha }}
+          COMMITTER_EMAIL: ${{ inputs.committer_email }}
+          COMMITTER_NAME: ${{ inputs.committer_name }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          QA_BASE_URL: ${{ inputs.qa_base_url }}
+          SPT_PORTAL_BASE_URL: ${{ inputs.portal_base_url || 'https://ai-dev.asrax.in' }}
+          SPT_CI_API_KEY: ${{ secrets.SPT_CI_API_KEY }}
+          QA_AGENT_GATEWAY_TOKEN: ${{ secrets.QA_AGENT_GATEWAY_TOKEN }}
+          ZOHO_CLIQ_SPT_WEBHOOK_URL: ${{ secrets.ZOHO_CLIQ_SPT_WEBHOOK_URL }}
+          QA_AGENT_CLIQ_WEBHOOK_URL: ${{ secrets.QA_AGENT_CLIQ_WEBHOOK_URL }}
+          ZOHO_CLIQ_WEBHOOK_URL: ${{ secrets.ZOHO_CLIQ_WEBHOOK_URL }}
+          SPT_SMTP_HOST: ${{ secrets.SPT_SMTP_HOST }}
+          SPT_SMTP_PORT: ${{ secrets.SPT_SMTP_PORT }}
+          SPT_SMTP_USER: ${{ secrets.SPT_SMTP_USER }}
+          SPT_SMTP_PASSWORD: ${{ secrets.SPT_SMTP_PASSWORD }}
+          SPT_SMTP_FROM: ${{ secrets.SPT_SMTP_FROM }}
+          SPT_POLL_TIMEOUT_SEC: "1200"
+          SPT_POLL_SEC: "10"
+        run: |
+          set -euo pipefail
+          python3 scripts/spt_on_commit_ci.py run

@@ -60,6 +60,22 @@ class ExecuteRepository {
     await _api.post('/api/runs/$id/stop');
   }
 
+  Future<Map<String, dynamic>> suitePreview({
+    required String service,
+    required String datasetProfile,
+    int? payloadSetVersion,
+  }) async {
+    final res = await _api.get(
+      '/api/data-gen/suite-preview',
+      query: {
+        'service': service,
+        'profile': datasetProfile,
+        if (payloadSetVersion != null) 'payload_set_version': '$payloadSetVersion',
+      },
+    );
+    return asMap(res.data);
+  }
+
   Future<Map<String, dynamic>> execute({
     String? configId,
     String? service,
@@ -69,6 +85,7 @@ class ExecuteRepository {
     int vus = 1,
     int calls = 1,
     String? profile,
+    String? datasetProfile,
     String? uiProfile,
     String? uiSuite,
     List<String>? reportFormats,
@@ -91,6 +108,8 @@ class ExecuteRepository {
         'vus': vus,
         'iterations': calls,
         if (profile != null) 'profile': profile,
+        if (datasetProfile != null && datasetProfile.isNotEmpty)
+          'dataset_profile': datasetProfile,
         if (uiProfile != null && uiProfile.isNotEmpty) 'ui_profile': uiProfile,
         if (uiSuite != null && uiSuite.isNotEmpty) 'ui_suite': uiSuite,
         if (reportFormats != null) 'report_formats': reportFormats,

@@ -7,12 +7,17 @@ class _ExecuteState {
     this.suiteIds = const [],
     this.catalogApis = const [],
     this.selectedApiIds = const {},
+    this.apiSubsetOverride = false,
     this.openapiVersions = const [],
     this.configId,
     this.testType = 'k6',
     this.vus = 1,
     this.calls = 1,
     this.runProfile = 'debug',
+    this.datasetProfile = 'working',
+    this.suiteApiCount,
+    this.suitePreviewOk = true,
+    this.suitePreviewMessage,
     this.reportFormats = const ['html', 'json'],
     this.openapiVersion,
     this.payloadSetVersion,
@@ -31,12 +36,19 @@ class _ExecuteState {
   final List<String> suiteIds;
   final List<Map<String, dynamic>> catalogApis;
   final Set<String> selectedApiIds;
+  /// True when the user opened APIs picker for an explicit subset.
+  final bool apiSubsetOverride;
   final List<String> openapiVersions;
   final String? configId;
   final String testType;
   final int vus;
   final int calls;
   final String runProfile;
+  /// am-specs suite: working | full | premium
+  final String datasetProfile;
+  final int? suiteApiCount;
+  final bool suitePreviewOk;
+  final String? suitePreviewMessage;
   final List<String> reportFormats;
   final String? openapiVersion;
   /// Dataset / payload-set version from the selected profile (for Execute + Specs).
@@ -67,12 +79,17 @@ class _ExecuteState {
     List<String>? suiteIds,
     List<Map<String, dynamic>>? catalogApis,
     Set<String>? selectedApiIds,
+    bool? apiSubsetOverride,
     List<String>? openapiVersions,
     String? configId,
     String? testType,
     int? vus,
     int? calls,
     String? runProfile,
+    String? datasetProfile,
+    int? suiteApiCount,
+    bool? suitePreviewOk,
+    String? suitePreviewMessage,
     List<String>? reportFormats,
     String? openapiVersion,
     String? payloadSetVersion,
@@ -91,6 +108,7 @@ class _ExecuteState {
     bool clearPayloadSetVersion = false,
     bool clearConfigEnvironment = false,
     bool clearConfigService = false,
+    bool clearSuitePreview = false,
   }) {
     return _ExecuteState(
       configs: configs ?? this.configs,
@@ -98,12 +116,20 @@ class _ExecuteState {
       suiteIds: suiteIds ?? this.suiteIds,
       catalogApis: catalogApis ?? this.catalogApis,
       selectedApiIds: selectedApiIds ?? this.selectedApiIds,
+      apiSubsetOverride: apiSubsetOverride ?? this.apiSubsetOverride,
       openapiVersions: openapiVersions ?? this.openapiVersions,
       configId: configId ?? this.configId,
       testType: testType ?? this.testType,
       vus: vus ?? this.vus,
       calls: calls ?? this.calls,
       runProfile: runProfile ?? this.runProfile,
+      datasetProfile: datasetProfile ?? this.datasetProfile,
+      suiteApiCount:
+          clearSuitePreview ? null : (suiteApiCount ?? this.suiteApiCount),
+      suitePreviewOk: suitePreviewOk ?? this.suitePreviewOk,
+      suitePreviewMessage: clearSuitePreview
+          ? null
+          : (suitePreviewMessage ?? this.suitePreviewMessage),
       reportFormats: reportFormats ?? this.reportFormats,
       openapiVersion:
           clearOpenapiVersion ? null : (openapiVersion ?? this.openapiVersion),
@@ -181,13 +207,8 @@ class _ExecuteCubit extends Cubit<_ExecuteState> {
     final iters = cfg['iterations'] ?? cfg['calls'];
     final audience = '${cfg['audience'] ?? 'developer'}';
     final locked = audience != 'developer' && audience.isNotEmpty;
+    // Dataset profile owns API selection unless the user picked a subset.
     final selected = <String>{};
-    final ids = cfg['selected_api_ids'] ?? cfg['api_ids'];
-    if (ids is List) {
-      for (final x in ids) {
-        selected.add('$x');
-      }
-    }
     final service = '${cfg['service'] ?? ''}'.trim();
     final env = '${cfg['environment'] ?? 'dev'}'.trim();
     final payloadVer = _payloadVersionFromConfig(cfg);
@@ -205,6 +226,7 @@ class _ExecuteCubit extends Cubit<_ExecuteState> {
         configEnvironment: env.isEmpty ? null : env,
         configService: service.isEmpty ? null : service,
         selectedApiIds: selected,
+        apiSubsetOverride: false,
         clearUiProfile: cfg['ui_profile'] == null,
         clearUiSuite: cfg['ui_suite'] == null,
         clearPayloadSetVersion: payloadVer == null,
@@ -222,6 +244,45 @@ class _ExecuteCubit extends Cubit<_ExecuteState> {
         final versions = await _repo.openapiVersions(service);
         emit(state.copyWith(catalogApis: apis, openapiVersions: versions));
       } catch (_) {}
+      await refreshSuitePreview(service: service);
+    }
+  }
+
+  Future<void> refreshSuitePreview({String? service}) async {
+    final svc = (service ?? state.configService ?? '').trim();
+    if (svc.isEmpty || state.testType == 'playwright') {
+      emit(state.copyWith(clearSuitePreview: true, suitePreviewOk: true));
+      return;
+    }
+    try {
+      final ver = int.tryParse(state.payloadSetVersion ?? '');
+      final out = await _repo.suitePreview(
+        service: svc,
+        datasetProfile: state.datasetProfile,
+        payloadSetVersion: ver,
+      );
+      final ok = out['ok'] == true;
+      final count = out['count'];
+      emit(
+        state.copyWith(
+          suitePreviewOk: ok,
+          suiteApiCount: count is int ? count : int.tryParse('$count'),
+          suitePreviewMessage: ok
+              ? null
+              : '${out['message'] ?? out['error'] ?? 'Import dataset first'}',
+          payloadSetVersion: out['payload_set_version'] != null
+              ? '${out['payload_set_version']}'
+              : state.payloadSetVersion,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          suitePreviewOk: false,
+          suiteApiCount: 0,
+          suitePreviewMessage: e.toString(),
+        ),
+      );
     }
   }
 
@@ -252,7 +313,10 @@ class _ExecuteCubit extends Cubit<_ExecuteState> {
     }
   }
 
-  void setTestType(String t) => emit(state.copyWith(testType: t));
+  Future<void> setTestType(String t) async {
+    emit(state.copyWith(testType: t));
+    await refreshSuitePreview();
+  }
   void setVus(int v) {
     if (state.audienceLocked) return;
     emit(state.copyWith(vus: v, preset: 'custom'));
@@ -271,6 +335,17 @@ class _ExecuteCubit extends Cubit<_ExecuteState> {
     }
   }
 
+  Future<void> setDatasetProfile(String p) async {
+    emit(
+      state.copyWith(
+        datasetProfile: p,
+        selectedApiIds: {},
+        apiSubsetOverride: false,
+      ),
+    );
+    await refreshSuitePreview();
+  }
+
   void setReportFormats(List<String> f) => emit(state.copyWith(reportFormats: f));
   void setOpenapiVersion(String? v) =>
       emit(state.copyWith(openapiVersion: v, clearOpenapiVersion: v == null));
@@ -278,12 +353,21 @@ class _ExecuteCubit extends Cubit<_ExecuteState> {
       emit(state.copyWith(uiProfile: v, clearUiProfile: v == null));
   void setUiSuite(String? v) =>
       emit(state.copyWith(uiSuite: v, clearUiSuite: v == null));
-  void setSelectedApis(Set<String> ids) => emit(state.copyWith(selectedApiIds: ids));
+  void setSelectedApis(Set<String> ids) =>
+      emit(state.copyWith(selectedApiIds: ids, apiSubsetOverride: true));
 
   Future<String?> run({String? service, String? environment}) async {
     final id = state.configId;
     if (id == null || id.isEmpty) {
       emit(state.copyWith(message: 'Select a profile'));
+      return null;
+    }
+    if (state.testType != 'playwright' && !state.suitePreviewOk) {
+      emit(
+        state.copyWith(
+          message: state.suitePreviewMessage ?? 'Import dataset first',
+        ),
+      );
       return null;
     }
     final cfg = state.selectedConfig;
@@ -300,11 +384,14 @@ class _ExecuteCubit extends Cubit<_ExecuteState> {
         vus: state.vus,
         calls: state.calls,
         profile: state.runProfile,
+        datasetProfile: state.testType == 'playwright' ? null : state.datasetProfile,
         uiProfile: state.uiProfile,
         uiSuite: state.uiSuite,
         reportFormats: state.reportFormats,
-        // Empty selection = all OpenAPI APIs for the bound service.
-        apiIds: state.selectedApiIds.isEmpty ? null : state.selectedApiIds.toList(),
+        // Dataset profile selects APIs unless user picked an explicit subset.
+        apiIds: state.apiSubsetOverride && state.selectedApiIds.isNotEmpty
+            ? state.selectedApiIds.toList()
+            : null,
         openapiVersion: state.openapiVersion,
         payloadSet: state.payloadSetVersion,
       );

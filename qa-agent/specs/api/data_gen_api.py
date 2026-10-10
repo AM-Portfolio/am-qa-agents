@@ -194,6 +194,58 @@ async def api_data_gen_gapfill(
     )
 
 
+@router.get("/api/data-gen/suite-preview")
+async def api_data_gen_suite_preview(
+    service: str,
+    profile: str = "working",
+    payload_set_version: int | None = None,
+) -> dict:
+    """Preview API count for a dataset profile (working/full/premium) without running."""
+    from specs.data_gen.suite import api_ids_for_suite, find_data_gen_payload_set, normalize_suite
+
+    suite = normalize_suite(profile)
+    set_row = find_data_gen_payload_set(service, profile)
+    if set_row is None and payload_set_version is None:
+        return {
+            "ok": False,
+            "service": service,
+            "dataset_profile": suite if suite != "default" else "working",
+            "error": "no_payload_set",
+            "message": "Import the dataset profile first",
+            "count": 0,
+        }
+    ver = payload_set_version
+    if ver is None and set_row:
+        ver = int(set_row.get("version") or 0)
+    sel = api_ids_for_suite(
+        service,
+        suite,
+        version=int(ver) if ver is not None else None,
+        materialize_variants=False,
+    )
+    label = suite if suite != "default" else "working"
+    if not sel.get("ok"):
+        return {
+            "ok": False,
+            "service": service,
+            "dataset_profile": label,
+            "payload_set_version": ver,
+            "error": sel.get("error") or "suite_failed",
+            "count": 0,
+            "warnings": sel.get("warnings") or [],
+        }
+    return {
+        "ok": True,
+        "service": service,
+        "dataset_profile": label,
+        "payload_set_version": ver,
+        "payload_set_label": (set_row or {}).get("label"),
+        "selected_api_ids": sel.get("selected_api_ids") or [],
+        "count": int(sel.get("count") or len(sel.get("selected_api_ids") or [])),
+        "warnings": sel.get("warnings") or [],
+    }
+
+
 @router.post("/api/data-gen/run-suite")
 async def api_data_gen_run_suite(body: DataGenSuiteBody) -> dict:
     from specs.data_gen.pipeline import data_gen_run_suite

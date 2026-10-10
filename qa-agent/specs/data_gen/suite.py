@@ -25,25 +25,49 @@ def case_kinds_for_suite(suite: str, override: list[str] | None = None) -> froze
 
 
 def find_data_gen_payload_set(service: str, profile: str) -> dict[str, Any] | None:
-    """Return set summary matching label data-gen-{profile} (active preferred)."""
+    """Return set summary matching label data-gen-{profile} (active preferred).
+
+    Also accepts dig/smoke labels like prod-working-v1 for working/default suites,
+    and falls back to the active payload set when the suite is working/default.
+    """
     disk = disk_profile_for_suite(profile)
+    suite = normalize_suite(profile)
     want_labels = {
         f"{PAYLOAD_SET_LABEL_PREFIX}{disk}",
         f"{PAYLOAD_SET_LABEL_PREFIX}{profile}",
         f"{PAYLOAD_SET_LABEL_PREFIX}prod" if disk == "prod" else "",
+        "prod-working-v1" if suite in {"default", "working"} else "",
     }
     want_labels.discard("")
     meta = list_payload_sets(service)
     sets = list(meta.get("sets") or []) if isinstance(meta, dict) else []
     active = meta.get("active_version") if isinstance(meta, dict) else None
+
+    def _label_matches(label: str) -> bool:
+        if label in want_labels:
+            return True
+        low = label.lower()
+        if suite in {"default", "working"} and "working" in low:
+            return True
+        if suite == "full" and "full" in low:
+            return True
+        if suite == "premium" and "premium" in low:
+            return True
+        return False
+
     # Prefer active if label matches
     for row in sets:
         if int(row.get("version") or 0) == int(active or -1):
-            if str(row.get("label") or "") in want_labels:
+            if _label_matches(str(row.get("label") or "")):
                 return row
     for row in sorted(sets, key=lambda r: int(r.get("version") or 0), reverse=True):
-        if str(row.get("label") or "") in want_labels:
+        if _label_matches(str(row.get("label") or "")):
             return row
+    # Dig smoke: only one active set — use it for working/default
+    if suite in {"default", "working"} and active is not None:
+        for row in sets:
+            if int(row.get("version") or 0) == int(active):
+                return row
     return None
 
 
@@ -67,6 +91,14 @@ def _expect_of(entry: dict[str, Any], meta: dict[str, Any]) -> Any:
     return exp
 
 
+def _normalize_case_kind(raw: str) -> str:
+    ck = (raw or "happy").strip().lower()
+    # Dig/smoke rows often use name "nifty50-working" without meta.case_kind.
+    if ck in {"working", "nifty50-working", "default", "smoke"}:
+        return "happy"
+    return ck
+
+
 def _consider_row(
     *,
     api_id: str,
@@ -74,12 +106,13 @@ def _consider_row(
     kinds: frozenset[str],
     selected: list[str],
     expects: dict[str, int],
+    case_kinds: dict[str, str],
     warnings: list[str],
 ) -> None:
     meta = entry.get("meta") if isinstance(entry.get("meta"), dict) else {}
-    ck = str(
-        meta.get("case_kind") or entry.get("case_kind") or entry.get("name") or "happy"
-    ).strip().lower()
+    ck = _normalize_case_kind(
+        str(meta.get("case_kind") or entry.get("case_kind") or entry.get("name") or "happy")
+    )
     if ck == "cross_flow":
         return
     if ck not in kinds:
@@ -89,6 +122,7 @@ def _consider_row(
         warnings.append(f"{api_id}: technical missing expect_status — excluded from k6")
         return
     selected.append(str(api_id))
+    case_kinds[str(api_id)] = ck
     if exp is not None:
         try:
             expects[str(api_id)] = int(exp)
@@ -127,6 +161,7 @@ def api_ids_for_suite(
     ver = int(payload_set.get("version") or 0)
     selected: list[str] = []
     expects: dict[str, int] = {}
+    case_kinds_out: dict[str, str] = {}
     warnings: list[str] = []
     materialized: list[str] = []
 
@@ -142,6 +177,7 @@ def api_ids_for_suite(
                 kinds=kinds,
                 selected=selected,
                 expects=expects,
+                case_kinds=case_kinds_out,
                 warnings=warnings,
             )
             continue
@@ -152,6 +188,7 @@ def api_ids_for_suite(
             kinds=kinds,
             selected=selected,
             expects=expects,
+            case_kinds=case_kinds_out,
             warnings=warnings,
         )
 
@@ -205,6 +242,7 @@ def api_ids_for_suite(
                 kinds=kinds,
                 selected=selected,
                 expects=expects,
+                case_kinds=case_kinds_out,
                 warnings=warnings,
             )
 
@@ -223,6 +261,7 @@ def api_ids_for_suite(
         "payload_set_version": ver,
         "selected_api_ids": unique,
         "expects": expects,
+        "case_kinds": case_kinds_out,
         "warnings": warnings,
         "count": len(unique),
         "materialized_api_ids": materialized,
@@ -252,6 +291,7 @@ def ensure_suite_config(
     target_url: str | None = None,
     auth_env: dict[str, Any] | None = None,
     expects: dict[str, int] | None = None,
+    case_kinds: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Upsert an SPT config for this suite run."""
     from specs.load.config_builder import default_config_dict, ensure_default_config
@@ -289,6 +329,51 @@ def ensure_suite_config(
         payloads["auth_env"] = {**(payloads.get("auth_env") or {}), **auth_env}
     if expects:
         payloads["expect_status_by_api"] = dict(expects)
+    if case_kinds:
+        payloads["case_kind_by_api"] = dict(case_kinds)
+    suite_norm = normalize_suite(suite)
+    payloads["dataset_profile"] = suite_norm if suite_norm != "default" else "working"
+    cfg["dataset_profile"] = payloads["dataset_profile"]
     cfg["payloads"] = payloads
     saved = save_config(cfg)
     return saved if isinstance(saved, dict) else cfg
+
+
+def apply_dataset_profile_to_config(
+    cfg: dict[str, Any],
+    dataset_profile: str,
+    *,
+    payload_set_version: int | None = None,
+) -> dict[str, Any]:
+    """Select APIs + expect_status for a data-gen suite onto the run config."""
+    service = str(cfg.get("service") or "")
+    if not service:
+        raise ValueError("service required for dataset_profile")
+    suite = normalize_suite(dataset_profile)
+    set_row = find_data_gen_payload_set(service, dataset_profile)
+    ver = payload_set_version
+    if ver is None and set_row:
+        ver = int(set_row.get("version") or 0)
+    if ver is None:
+        raise ValueError(
+            f"No payload set for dataset_profile={dataset_profile!r} on {service}. "
+            "Import the dataset profile first."
+        )
+    sel = api_ids_for_suite(service, suite, version=int(ver), materialize_variants=False)
+    if not sel.get("ok"):
+        raise ValueError(sel.get("error") or "suite selection failed")
+    if not sel.get("selected_api_ids"):
+        raise ValueError(
+            f"Dataset profile {dataset_profile!r} selected 0 APIs from payload set v{ver}"
+        )
+    out = dict(cfg)
+    out["selected_api_ids"] = list(sel["selected_api_ids"])
+    out["payload_set_version"] = int(ver)
+    payloads = dict(out.get("payloads") or {})
+    payloads["payload_set_version"] = int(ver)
+    payloads["expect_status_by_api"] = dict(sel.get("expects") or {})
+    payloads["case_kind_by_api"] = dict(sel.get("case_kinds") or {})
+    payloads["dataset_profile"] = suite if suite != "default" else "working"
+    out["payloads"] = payloads
+    out["dataset_profile"] = payloads["dataset_profile"]
+    return out
