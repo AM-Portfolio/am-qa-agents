@@ -265,6 +265,19 @@ function showRunDetail(r, opts){
         card("Identity", auth.identity_url||"—")+
         card("Auth", auth.authenticated===true?"JWT OK":(auth.authenticated===false?"missing":(auth.username?"configured":"—")))+
         card("Triggered by", r.triggered_by||params.triggered_by||"—")+
+        card("Branch", r.git_ref||params.git_ref||"—")+
+        card("Commit", (function(){ var s=r.git_sha||params.git_sha||""; return s?s.slice(0,12):"—"; })())+
+        card("Committer", (function(){
+          var n=r.committer_name||params.committer_name||"";
+          var e=r.committer_email||params.committer_email||"";
+          if(!n&&!e) return "—";
+          return e? (n?n+" <"+e+">":e) : n;
+        })())+
+        card("Trigger source", r.trigger_source||params.trigger_source||"—")+
+        card("GitHub workflow", r.github_workflow||params.github_workflow||"—")+
+        cardHtml("GitHub run", (r.github_run_url||params.github_run_url)
+          ? '<a href="'+esc(r.github_run_url||params.github_run_url)+'" target="_blank" rel="noopener">Open ↗</a>'
+          : "—")+
         card("Runner", r.runner||"k6")+
         cardHtml("Run ID", gurl
           ? '<a href="'+esc(gurl)+'" target="_blank" rel="noopener" title="Open this run in Grafana">'+esc(r.id)+' ↗</a>'

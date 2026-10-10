@@ -38,6 +38,7 @@ from specs.persistence.run_store import (
     save_run,
     update_run,
 )
+from specs.ci_provenance import extract_ci_provenance, merge_ci_provenance
 from specs.schemas import RunExecuteRequest
 
 
@@ -358,6 +359,10 @@ async def execute_run(
                 "kind": "ui_step",
             }
         ]
+    ci_prov = extract_ci_provenance(body)
+    # So load_runner can re-attach after it rebuilds payloads_used.
+    if ci_prov:
+        cfg.update(ci_prov)
     placeholder = {
         "id": run_id,
         "started_at": started_at,
@@ -374,20 +379,7 @@ async def execute_run(
         "ui_profile": cfg.get("ui_profile"),
         "ui_suite": cfg.get("ui_suite"),
         "triggered_by": body.triggered_by,
-                "git_sha": getattr(body, "git_sha", None),
-                "git_ref": getattr(body, "git_ref", None),
-                "committer_email": getattr(body, "committer_email", None),
-                "committer_name": getattr(body, "committer_name", None),
-                "trigger_source": getattr(body, "trigger_source", None),
-                "github_repository": getattr(body, "github_repository", None),
-                "github_run_id": getattr(body, "github_run_id", None),
-                "github_run_url": getattr(body, "github_run_url", None),
-                "github_workflow": getattr(body, "github_workflow", None),
-                "github_event_name": getattr(body, "github_event_name", None),
-                "commit_message": getattr(body, "commit_message", None),
-                "temporal_workflow_id": getattr(body, "temporal_workflow_id", None),
-                "tracking_id": getattr(body, "tracking_id", None),
-                "dataset_profile": getattr(body, "dataset_profile", None),
+        **ci_prov,
         "target_url": cfg.get("target_url") or settings.poc_target_url,
         "api_count": len(planned_rows) or None,
         "api_ids": selected_api_ids or None,
@@ -404,20 +396,7 @@ async def execute_run(
                 "duration": bench.get("duration"),
                 "iterations": bench.get("iterations"),
                 "triggered_by": body.triggered_by,
-                "git_sha": getattr(body, "git_sha", None),
-                "git_ref": getattr(body, "git_ref", None),
-                "committer_email": getattr(body, "committer_email", None),
-                "committer_name": getattr(body, "committer_name", None),
-                "trigger_source": getattr(body, "trigger_source", None),
-                "github_repository": getattr(body, "github_repository", None),
-                "github_run_id": getattr(body, "github_run_id", None),
-                "github_run_url": getattr(body, "github_run_url", None),
-                "github_workflow": getattr(body, "github_workflow", None),
-                "github_event_name": getattr(body, "github_event_name", None),
-                "commit_message": getattr(body, "commit_message", None),
-                "temporal_workflow_id": getattr(body, "temporal_workflow_id", None),
-                "tracking_id": getattr(body, "tracking_id", None),
-                "dataset_profile": getattr(body, "dataset_profile", None),
+                **ci_prov,
                 "api_ids": selected_api_ids or None,
                 "openapi_version": cfg.get("openapi_version"),
                 "ui_profile": cfg.get("ui_profile"),
@@ -490,6 +469,8 @@ async def execute_run(
                 )
                 record["started_at"] = started_at
                 record.update(audit)
+                # k6 finalize rebuilds payloads_used without CI fields — restore them.
+                merge_ci_provenance(record, ci_prov)
                 current = get_run(run_id) or {}
                 if current.get("status") == "cancelled" and record.get("status") != "cancelled":
                     record["status"] = "cancelled"

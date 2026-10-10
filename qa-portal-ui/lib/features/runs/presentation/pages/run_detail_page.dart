@@ -94,7 +94,19 @@ int _intFrom(dynamic v, int fallback) {
 
 Map<String, dynamic> _runParams(Map<String, dynamic> run) {
   final params = run['params'];
-  return params is Map ? Map<String, dynamic>.from(params) : const {};
+  if (params is Map) return Map<String, dynamic>.from(params);
+  final payloads = run['payloads_used'];
+  if (payloads is Map) {
+    final rp = payloads['run_params'];
+    if (rp is Map) return Map<String, dynamic>.from(rp);
+  }
+  return const {};
+}
+
+String _prov(Map<String, dynamic> run, Map<String, dynamic> params, String key) {
+  final top = '${run[key] ?? ''}'.trim();
+  if (top.isNotEmpty) return top;
+  return '${params[key] ?? ''}'.trim();
 }
 
 String? _runIdFrom(Map<String, dynamic> out) {
@@ -428,6 +440,14 @@ class _RunDetailView extends StatelessWidget {
           final results = run['results'];
           final isLive = status == 'running' || status == 'pending';
           final cubit = context.read<_RunDetailCubit>();
+          final provParams = _runParams(run);
+          final provBranch = _prov(run, provParams, 'git_ref');
+          final provWho = _prov(run, provParams, 'committer_name');
+          final provTrig =
+              '${run['triggered_by'] ?? provParams['triggered_by'] ?? ''}'.trim();
+          final provSrc = _prov(run, provParams, 'trigger_source');
+          final provGhUrl = _prov(run, provParams, 'github_run_url');
+          final provWf = _prov(run, provParams, 'github_workflow');
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -581,6 +601,17 @@ class _RunDetailView extends StatelessWidget {
                         'APIs ${run['api_count'] ?? '—'} · '
                         '${run['api_pass_count'] ?? '—'}✓ / ${run['api_fail_count'] ?? '—'}✗',
                       ),
+                    ),
+                  if (provBranch.isNotEmpty) Chip(label: Text('branch $provBranch')),
+                  if (provWho.isNotEmpty) Chip(label: Text('by $provWho')),
+                  if (provTrig.isNotEmpty) Chip(label: Text(provTrig)),
+                  if (provSrc.isNotEmpty) Chip(label: Text(provSrc)),
+                  if (provWf.isNotEmpty) Chip(label: Text(provWf)),
+                  if (provGhUrl.isNotEmpty)
+                    ActionChip(
+                      avatar: const Icon(Icons.open_in_new, size: 16),
+                      label: const Text('GitHub run'),
+                      onPressed: () => launchUrl(Uri.parse(provGhUrl)),
                     ),
                 ],
               ),
@@ -861,6 +892,35 @@ class _OverviewTab extends StatelessWidget {
                   _kvChip('duration', '${params['duration'] ?? run['duration'] ?? '—'}'),
                   _kvChip('service', '${run['service'] ?? '—'}'),
                   _kvChip('env', '${run['environment'] ?? '—'}'),
+                  _kvChip('branch', () {
+                    final v = _prov(run, params, 'git_ref');
+                    return v.isEmpty ? '—' : v;
+                  }()),
+                  _kvChip('commit', () {
+                    final sha = _prov(run, params, 'git_sha');
+                    if (sha.isEmpty) return '—';
+                    return sha.length > 12 ? sha.substring(0, 12) : sha;
+                  }()),
+                  _kvChip('committer', () {
+                    final n = _prov(run, params, 'committer_name');
+                    final e = _prov(run, params, 'committer_email');
+                    if (n.isEmpty && e.isEmpty) return '—';
+                    if (n.isEmpty) return e;
+                    if (e.isEmpty) return n;
+                    return '$n <$e>';
+                  }()),
+                  _kvChip(
+                    'triggered by',
+                    '${run['triggered_by'] ?? params['triggered_by'] ?? '—'}',
+                  ),
+                  _kvChip('trigger', () {
+                    final v = _prov(run, params, 'trigger_source');
+                    return v.isEmpty ? '—' : v;
+                  }()),
+                  _kvChip('workflow', () {
+                    final v = _prov(run, params, 'github_workflow');
+                    return v.isEmpty ? '—' : v;
+                  }()),
                   _kvChip('started', '${run['started_at'] ?? '—'}'),
                   _kvChip('finished', '${run['finished_at'] ?? '—'}'),
                 ],

@@ -18,6 +18,7 @@ import httpx
 from specs.persistence.artifact_store import persist_run_artifacts
 from specs.security.auth_resolver import ensure_auth_env, sanitize_auth_env
 from specs.catalog.catalog_loader import apis_for_config
+from specs.ci_provenance import extract_ci_provenance
 from specs.config import settings
 from specs.observability.influx_metrics import build_spt_influx_lines
 from specs.observability.metrics import extract_metrics_summary
@@ -718,6 +719,7 @@ async def run_k6_local(
 
     script = _k6_script_from_config(config, apis, profile, run_id=run_id)
     steps: list[dict[str, Any]] = []
+    ci_prov = extract_ci_provenance(config)
     result: dict[str, Any] = {
         "id": run_id,
         "started_at": started,
@@ -731,6 +733,7 @@ async def run_k6_local(
         "environment": config.get("environment", settings.default_environment),
         "test_type": config.get("test_type", "k6"),
         "triggered_by": triggered_by,
+        **ci_prov,
         "target_url": target,
         "api_count": len(apis),
         "payloads_used": {
@@ -748,6 +751,7 @@ async def run_k6_local(
                 "max_vus_cap": settings.max_vus,
                 "max_duration_cap_s": settings.max_duration_seconds,
                 "triggered_by": triggered_by,
+                **ci_prov,
             },
             "har_stub": payloads.get("har_stub"),
             "api_overrides": payloads.get("api_overrides") or [],
