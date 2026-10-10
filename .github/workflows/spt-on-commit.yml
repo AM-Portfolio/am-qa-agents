@@ -97,7 +97,13 @@ jobs:
     name: Execute SPT (${{ inputs.service }} / ${{ inputs.git_ref }})
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Caller may be am-market; script lives in this (am-qa-agents) repo.
+      - name: Checkout am-qa-agents (spt_on_commit_ci.py)
+        uses: actions/checkout@v4
+        with:
+          repository: AM-Portfolio/am-qa-agents
+          # Keep in sync with the @ref used by callers until this lands on main.
+          ref: feature/design-with-skills
 
       - name: Run SPT matrix + notify
         env:
