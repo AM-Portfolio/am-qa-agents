@@ -15,6 +15,7 @@ class TestRequestPanel extends StatefulWidget {
     required this.onDraftChanged,
     required this.onPickFile,
     required this.onRemoveFile,
+    this.onFormat,
   });
 
   final TryDraft draft;
@@ -23,13 +24,14 @@ class TestRequestPanel extends StatefulWidget {
   final ValueChanged<TryDraft> onDraftChanged;
   final Future<void> Function(String field) onPickFile;
   final void Function(String field) onRemoveFile;
+  final VoidCallback? onFormat;
 
   @override
   State<TestRequestPanel> createState() => _TestRequestPanelState();
 }
 
 class _TestRequestPanelState extends State<TestRequestPanel> {
-  static const _bodyModes = ['json', 'raw', 'none', 'multipart'];
+  static const _bodyModes = ['none', 'json', 'raw', 'multipart'];
 
   int _queryAddCounter = 0;
   late final TextEditingController _newFileFieldCtrl;
@@ -114,34 +116,115 @@ class _TestRequestPanelState extends State<TestRequestPanel> {
     _emit(draft.copyWith(fileFields: next, bodyMode: 'multipart'));
   }
 
+  void _formatBodyLocal() {
+    if (widget.onFormat != null) {
+      widget.onFormat!();
+      return;
+    }
+    try {
+      final formatted = formatJsonBody(draft.body);
+      if (formatted != null) {
+        _emit(draft.copyWith(body: formatted, bodyMode: 'json'));
+      }
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 5,
+    final method = draft.method.toUpperCase();
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.45),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TabBar(
-            isScrollable: true,
-            labelColor: AppColors.primary,
-            tabs: const [
-              Tab(text: 'Params'),
-              Tab(text: 'Headers'),
-              Tab(text: 'Body'),
-              Tab(text: 'Auth'),
-              Tab(text: 'Files'),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: TabBarView(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withValues(alpha: 0.55),
+            child: Row(
               children: [
-                _buildParamsTab(context),
-                _buildHeadersTab(context),
-                _buildBodyTab(context),
-                TestAuthPanel(authBearer: draft.authBearer),
-                _buildFilesTab(context),
+                Text(
+                  'Request',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Text(
+                    method,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
               ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 2, 6, 6),
+              child: Builder(
+                builder: (context) {
+                  final preferParams = draft.pathParams.isNotEmpty ||
+                      draft.queryParams.isNotEmpty;
+                  return DefaultTabController(
+                    key: ValueKey('req-tabs-$preferParams'),
+                    length: 5,
+                    initialIndex: preferParams ? 0 : 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TabBar(
+                          isScrollable: true,
+                          labelColor: AppColors.primary,
+                          tabs: const [
+                            Tab(text: 'Params'),
+                            Tab(text: 'Headers'),
+                            Tab(text: 'Body'),
+                            Tab(text: 'Auth'),
+                            Tab(text: 'Files'),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              _buildParamsTab(context),
+                              _buildHeadersTab(context),
+                              _buildBodyTab(context),
+                              TestAuthPanel(authBearer: draft.authBearer),
+                              _buildFilesTab(context),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -340,31 +423,45 @@ class _TestRequestPanelState extends State<TestRequestPanel> {
   }
 
   Widget _buildBodyTab(BuildContext context) {
-    final mode = draft.bodyMode;
-    final showEditor = mode != 'none' && mode != 'multipart';
+    final mode = _bodyModes.contains(draft.bodyMode) ? draft.bodyMode : 'none';
+    final showEditor = mode == 'json' || mode == 'raw';
+    final canFormat = showEditor;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          width: 160,
-          child: DropdownButtonFormField<String>(
-            key: ValueKey('bodyMode-$mode'),
-            initialValue: _bodyModes.contains(mode) ? mode : 'json',
-            decoration: const InputDecoration(
-              labelText: 'Body mode',
-              isDense: true,
-              border: OutlineInputBorder(),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            SegmentedButton<String>(
+              style: ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: WidgetStatePropertyAll(
+                  Theme.of(context).textTheme.labelSmall,
+                ),
+              ),
+              segments: [
+                for (final m in _bodyModes)
+                  ButtonSegment(value: m, label: Text(m)),
+              ],
+              selected: {mode},
+              onSelectionChanged: widget.loading
+                  ? null
+                  : (s) {
+                      if (s.isEmpty) return;
+                      _emit(draft.copyWith(bodyMode: s.first));
+                    },
             ),
-            items: [
-              for (final m in _bodyModes)
-                DropdownMenuItem(value: m, child: Text(m)),
-            ],
-            onChanged: (v) {
-              if (v != null) _emit(draft.copyWith(bodyMode: v));
-            },
-          ),
+            if (canFormat)
+              TextButton(
+                onPressed: widget.loading ? null : _formatBodyLocal,
+                child: const Text('Format'),
+              ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         if (showEditor)
           Expanded(
             child: TextFormField(
@@ -378,17 +475,25 @@ class _TestRequestPanelState extends State<TestRequestPanel> {
                 hintText: 'Request body',
                 border: OutlineInputBorder(),
                 alignLabelWithHint: true,
-                contentPadding: EdgeInsets.all(10),
+                contentPadding: EdgeInsets.all(8),
               ),
               onChanged: (v) => _emit(draft.copyWith(body: v)),
             ),
           )
+        else if (mode == 'multipart')
+          Expanded(child: _buildFilesTab(context))
         else
-          Text(
-            mode == 'multipart'
-                ? 'Multipart body — attach files in the Files tab.'
-                : 'No body will be sent.',
-            style: Theme.of(context).textTheme.bodySmall,
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'This request does not have a body',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.55),
+                  ),
+            ),
           ),
       ],
     );

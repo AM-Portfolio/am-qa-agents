@@ -14,9 +14,11 @@ import '../../../flow_graph/ui_step_flow_canvas.dart';
 import '../../../observability/presentation/widgets/observability_attach.dart';
 import '../../data/runs_repository.dart';
 import '../utils/ui_run_graph.dart';
+import '../widgets/run_api_try_panel.dart';
 
 part 'run_detail_cubit.part.dart';
 part 'run_detail_view.part.dart';
+part 'run_detail_header.part.dart';
 part 'run_detail_helpers.part.dart';
 part 'run_detail_summary.part.dart';
 part 'run_detail_baseline.part.dart';

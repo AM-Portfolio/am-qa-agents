@@ -407,6 +407,14 @@ async def execute_run(
                 "triggered_by": body.triggered_by,
                 "api_ids": selected_api_ids or None,
                 "openapi_version": cfg.get("openapi_version"),
+                "payload_set_version": (
+                    int(set_ver)
+                    if set_ver is not None
+                    else (
+                        cfg.get("payload_set_version")
+                        or ((cfg.get("payloads") or {}).get("payload_set_version"))
+                    )
+                ),
                 "ui_profile": cfg.get("ui_profile"),
                 "ui_suite": cfg.get("ui_suite"),
                 "suite": cfg.get("suite") or cfg.get("ui_suite"),

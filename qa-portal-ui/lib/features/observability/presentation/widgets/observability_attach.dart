@@ -51,7 +51,7 @@ class _ObservabilityAttachState extends State<ObservabilityAttach> {
     setState(() {
       _loadingLogs = true;
       _logsError = null;
-      _expanded = true;
+      if (!widget.compact) _expanded = true;
     });
     try {
       final out = await widget.loadLogs!();
@@ -60,12 +60,36 @@ class _ObservabilityAttachState extends State<ObservabilityAttach> {
         _logs = out;
         _loadingLogs = false;
       });
+      if (widget.compact && mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Platform logs'),
+            content: SizedBox(
+              width: 560,
+              height: 320,
+              child: _LogsPane(logs: out, error: null),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _logsError = e.toString();
         _loadingLogs = false;
       });
+      if (widget.compact && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$e')),
+        );
+      }
     }
   }
 
@@ -93,6 +117,18 @@ class _ObservabilityAttachState extends State<ObservabilityAttach> {
         loki.isEmpty &&
         tempo.isEmpty) {
       return const SizedBox.shrink();
+    }
+
+    if (widget.compact) {
+      return _compactMenu(
+        context,
+        dash: dash,
+        loki: loki,
+        tempo: tempo,
+        prom: prom,
+        grafanaConnected: grafanaConnected,
+        scheme: scheme,
+      );
     }
 
     final lines = <Widget>[
@@ -147,7 +183,7 @@ class _ObservabilityAttachState extends State<ObservabilityAttach> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.terminal, size: 16),
-              label: Text(widget.compact ? 'Logs' : 'Platform logs'),
+              label: const Text('Platform logs'),
             ),
           if (!grafanaConnected)
             Text(
@@ -168,7 +204,7 @@ class _ObservabilityAttachState extends State<ObservabilityAttach> {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: EdgeInsets.all(widget.compact ? 8 : 12),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -181,6 +217,91 @@ class _ObservabilityAttachState extends State<ObservabilityAttach> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _compactMenu(
+    BuildContext context, {
+    required String dash,
+    required String loki,
+    required String tempo,
+    required String prom,
+    required bool grafanaConnected,
+    required ColorScheme scheme,
+  }) {
+    return MenuAnchor(
+      builder: (context, controller, child) {
+        return IconButton(
+          tooltip: 'Observability',
+          visualDensity: VisualDensity.compact,
+          icon: _loadingLogs
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.monitor_heart_outlined, size: 20),
+          onPressed: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+        );
+      },
+      menuChildren: [
+        if (_trace.isNotEmpty)
+          MenuItemButton(
+            leadingIcon: const Icon(Icons.hub_outlined, size: 18),
+            onPressed: () => _copy(context, _trace, 'Trace id copied'),
+            child: Text('Copy trace ${_short(_trace)}'),
+          ),
+        if (_corr.isNotEmpty && _corr != _trace)
+          MenuItemButton(
+            leadingIcon: const Icon(Icons.link, size: 18),
+            onPressed: () => _copy(context, _corr, 'Correlation id copied'),
+            child: Text('Copy corr ${_short(_corr)}'),
+          ),
+        if (dash.isNotEmpty)
+          MenuItemButton(
+            leadingIcon: const Icon(Icons.insights, size: 18),
+            onPressed: () => _open(dash),
+            child: const Text('Dashboard'),
+          ),
+        if (loki.isNotEmpty)
+          MenuItemButton(
+            leadingIcon: const Icon(Icons.receipt_long, size: 18),
+            onPressed: () => _open(loki),
+            child: const Text('Loki'),
+          ),
+        if (tempo.isNotEmpty)
+          MenuItemButton(
+            leadingIcon: const Icon(Icons.timeline, size: 18),
+            onPressed: () => _open(tempo),
+            child: const Text('Tempo'),
+          ),
+        if (prom.isNotEmpty)
+          MenuItemButton(
+            leadingIcon: const Icon(Icons.speed, size: 18),
+            onPressed: () => _open(prom),
+            child: const Text('Prom'),
+          ),
+        if (widget.loadLogs != null)
+          MenuItemButton(
+            leadingIcon: const Icon(Icons.terminal, size: 18),
+            onPressed: _loadingLogs ? null : _fetchLogs,
+            child: const Text('Platform logs'),
+          ),
+        if (!grafanaConnected)
+          MenuItemButton(
+            onPressed: null,
+            child: Text(
+              'Connect Grafana for Explore',
+              style: TextStyle(color: scheme.outline),
+            ),
+          ),
+      ],
     );
   }
 

@@ -28,7 +28,6 @@ class SpecsTestTab extends StatelessWidget {
           paramEnums: state.paramEnums,
           onDraftChanged: cubit.updateDraft,
           onSend: () => cubit.testApiOneClick(),
-          onMock: cubit.runTry,
           onFormat: cubit.formatBody,
           onBuild: () => cubit.buildPayload(),
           onEnsure: () => cubit.ensureWorking(),

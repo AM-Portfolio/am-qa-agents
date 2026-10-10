@@ -1,10 +1,11 @@
 import 'package:am_design_system/am_design_system.dart';
 import 'package:flutter/material.dart';
 
+import '../../domain/try_draft.dart';
 import 'kv_editor.dart';
 
 /// Response pane for [TestWorkspace].
-class TestResponsePanel extends StatelessWidget {
+class TestResponsePanel extends StatefulWidget {
   const TestResponsePanel({
     super.key,
     required this.tryResult,
@@ -17,15 +18,48 @@ class TestResponsePanel extends StatelessWidget {
   final int? tryDurationMs;
 
   @override
+  State<TestResponsePanel> createState() => _TestResponsePanelState();
+}
+
+class _TestResponsePanelState extends State<TestResponsePanel> {
+  String? _display;
+
+  @override
+  void initState() {
+    super.initState();
+    _display = widget.tryResult;
+  }
+
+  @override
+  void didUpdateWidget(covariant TestResponsePanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tryResult != widget.tryResult) {
+      _display = widget.tryResult;
+    }
+  }
+
+  void _formatInPlace() {
+    final raw = _display ?? widget.tryResult;
+    if (raw == null || raw.trim().isEmpty) return;
+    try {
+      final pretty = formatJsonBody(raw);
+      if (pretty != null) setState(() => _display = pretty);
+    } catch (_) {
+      // leave as-is when not JSON
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final code = tryStatusCode;
+    final code = widget.tryStatusCode;
     final sc = statusColor(code, context);
-    final duration = tryDurationMs;
-    final text = tryResult ?? 'Send or Mock 1× to see result.';
+    final duration = widget.tryDurationMs;
+    final text = _display ?? widget.tryResult ?? 'Send to see result.';
     final mono = Theme.of(context).textTheme.bodySmall?.copyWith(
           fontFamily: 'monospace',
           fontFamilyFallback: const ['Courier New', 'monospace'],
         );
+    final canFormat = (widget.tryResult != null && widget.tryResult!.trim().isNotEmpty);
 
     return Container(
       decoration: BoxDecoration(
@@ -54,12 +88,21 @@ class TestResponsePanel extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  code == null ? 'Response' : 'HTTP $code',
+                  'Response',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: sc,
                         fontWeight: FontWeight.w700,
                       ),
                 ),
+                if (code != null) ...[
+                  const SizedBox(width: 10),
+                  Text(
+                    'HTTP $code',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: sc,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ],
                 if (duration != null) ...[
                   const SizedBox(width: 10),
                   Text(
@@ -70,9 +113,9 @@ class TestResponsePanel extends StatelessWidget {
                   ),
                 ],
                 const Spacer(),
-                Text(
-                  'Response',
-                  style: Theme.of(context).textTheme.labelSmall,
+                TextButton(
+                  onPressed: canFormat ? _formatInPlace : null,
+                  child: const Text('Format'),
                 ),
               ],
             ),

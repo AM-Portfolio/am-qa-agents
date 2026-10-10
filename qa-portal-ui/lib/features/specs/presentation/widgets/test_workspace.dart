@@ -21,7 +21,6 @@ class TestWorkspace extends StatefulWidget {
     this.paramEnums = const {},
     required this.onDraftChanged,
     required this.onSend,
-    required this.onMock,
     required this.onFormat,
     required this.onBuild,
     required this.onEnsure,
@@ -45,7 +44,6 @@ class TestWorkspace extends StatefulWidget {
   final Map<String, List<String>> paramEnums;
   final ValueChanged<TryDraft> onDraftChanged;
   final VoidCallback onSend;
-  final VoidCallback onMock;
   final VoidCallback onFormat;
   final VoidCallback onBuild;
   final VoidCallback onEnsure;
@@ -63,6 +61,13 @@ class TestWorkspace extends StatefulWidget {
 
 class _TestWorkspaceState extends State<TestWorkspace> {
   static const _methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+  static const _responseDefaultFraction = 0.4;
+  static const _responseMin = 160.0;
+  /// Inspector detail panes are often ~500–700px; keep side-by-side + drag usable.
+  static const _sideBySideMin = 420.0;
+
+  /// Absolute response pane width; null until first side-by-side layout.
+  double? _responseWidth;
 
   TryDraft get draft => widget.draft;
 
@@ -97,24 +102,26 @@ class _TestWorkspaceState extends State<TestWorkspace> {
     final requestUrl = _requestUrl();
 
     return Padding(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildTopBar(context),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           SelectableText(
             requestUrl,
+            maxLines: 1,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   fontFamily: 'monospace',
                   color: AppColors.textSecondaryDark,
+                  fontSize: 11,
                 ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final sideBySide = constraints.maxWidth >= 720;
+                final sideBySide = constraints.maxWidth >= _sideBySideMin;
                 final editor = TestRequestPanel(
                   draft: draft,
                   loading: widget.loading,
@@ -122,6 +129,7 @@ class _TestWorkspaceState extends State<TestWorkspace> {
                   onDraftChanged: widget.onDraftChanged,
                   onPickFile: widget.onPickFile,
                   onRemoveFile: widget.onRemoveFile,
+                  onFormat: widget.onFormat,
                 );
                 final response = TestResponsePanel(
                   tryResult: widget.tryResult,
@@ -129,12 +137,48 @@ class _TestWorkspaceState extends State<TestWorkspace> {
                   tryDurationMs: widget.tryDurationMs,
                 );
                 if (sideBySide) {
+                  final reqMin = 200.0;
+                  final maxResp = (constraints.maxWidth - reqMin - 10)
+                      .clamp(_responseMin, constraints.maxWidth * 0.7);
+                  final defaultW =
+                      (constraints.maxWidth * _responseDefaultFraction)
+                          .clamp(_responseMin, maxResp);
+                  final respW =
+                      (_responseWidth ?? defaultW).clamp(_responseMin, maxResp);
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(flex: 3, child: editor),
-                      const SizedBox(width: 8),
-                      Expanded(flex: 2, child: response),
+                      Expanded(child: editor),
+                      MouseRegion(
+                        cursor: SystemMouseCursors.resizeColumn,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onHorizontalDragUpdate: (d) {
+                            setState(() {
+                              _responseWidth = (respW - d.delta.dx)
+                                  .clamp(_responseMin, maxResp);
+                            });
+                          },
+                          onDoubleTap: () =>
+                              setState(() => _responseWidth = defaultW),
+                          child: SizedBox(
+                            width: 10,
+                            child: Center(
+                              child: Container(
+                                width: 3,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .dividerColor
+                                      .withValues(alpha: 0.9),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: respW, child: response),
                     ],
                   );
                 }
@@ -154,10 +198,6 @@ class _TestWorkspaceState extends State<TestWorkspace> {
             spacing: 6,
             runSpacing: 6,
             children: [
-              OutlinedButton(
-                onPressed: widget.loading ? null : widget.onFormat,
-                child: const Text('Format'),
-              ),
               OutlinedButton(
                 onPressed: widget.loading ? null : widget.onBuild,
                 child: const Text('Build'),
@@ -209,9 +249,11 @@ class _TestWorkspaceState extends State<TestWorkspace> {
               child: Row(
                 children: [
                   SizedBox(
-                    width: 100,
+                    width: 96,
                     child: DropdownButtonFormField<String>(
                       key: ValueKey('method-$method'),
+                      isDense: true,
+                      isExpanded: true,
                       initialValue: _methods.contains(method) ? method : 'GET',
                       decoration: InputDecoration(
                         isDense: true,
@@ -222,7 +264,7 @@ class _TestWorkspaceState extends State<TestWorkspace> {
                           borderSide: BorderSide(color: color, width: 1.5),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 8,
+                          horizontal: 6,
                           vertical: 8,
                         ),
                       ),
@@ -258,7 +300,7 @@ class _TestWorkspaceState extends State<TestWorkspace> {
                   ),
                   const SizedBox(width: 8),
                   SizedBox(
-                    width: (constraints.maxWidth - 280).clamp(160.0, 900.0),
+                    width: (constraints.maxWidth - 200).clamp(160.0, 900.0),
                     child: TextFormField(
                       key: ValueKey('path-${draft.path}'),
                       initialValue: draft.path,
@@ -316,15 +358,6 @@ class _TestWorkspaceState extends State<TestWorkspace> {
                                 ? 'Send'
                                 : 'Test v${widget.selectedPayloadVersion}',
                           ),
-                  ),
-                  const SizedBox(width: 6),
-                  FilledButton.tonal(
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                    ),
-                    onPressed: widget.loading ? null : widget.onMock,
-                    child: const Text('Mock 1×'),
                   ),
                 ],
               ),

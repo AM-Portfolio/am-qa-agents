@@ -15,6 +15,16 @@ class _OverviewTab extends StatelessWidget {
   final List<Map<String, dynamic>> apis;
   final String Function(String) absUrl;
 
+  String _shortTs(dynamic v) {
+    final s = '$v'.trim();
+    if (s.isEmpty || s == 'null') return '—';
+    // 2026-10-09T23:45:09.647024+00:00 → 2026-10-09 23:45
+    if (s.length >= 16 && s.contains('T')) {
+      return '${s.substring(0, 10)} ${s.substring(11, 16)}';
+    }
+    return s;
+  }
+
   @override
   Widget build(BuildContext context) {
     final params = _runParams(run);
@@ -29,11 +39,9 @@ class _OverviewTab extends StatelessWidget {
     final embed = '${run['grafana_embed_url'] ?? ''}';
     final isLive = status == 'running' || status == 'pending';
 
-    var totalCalls = 0;
     var totalPass = 0;
     var totalFail = 0;
     for (final a in rows) {
-      totalCalls += _intFrom(a['calls'] ?? a['count'] ?? a['iterations'], 0);
       totalPass += _intFrom(
         a['pass'] ?? a['pass_count'] ?? a['passed_count'] ?? a['ok'],
         0,
@@ -55,59 +63,78 @@ class _OverviewTab extends StatelessWidget {
         }
       }
     }
-    // Prefer run-level aggregates when present (list/detail API).
-    final apiCount = _intFrom(run['api_count'], rows.isNotEmpty ? rows.length : totalCalls);
+    final apiCount = _intFrom(run['api_count'], rows.isNotEmpty ? rows.length : 0);
     final apiPass = _intFrom(run['api_pass_count'], totalPass);
     final apiFail = _intFrom(run['api_fail_count'], totalFail);
     final failPct = apiCount == 0 ? 0 : ((100 * apiFail) / apiCount).round();
     final err = '${run['error'] ?? ''}'.trim();
+    final target = '${run['target_url'] ?? run['base_url'] ?? ''}'.trim();
 
     return ListView(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: 4),
       children: [
         if (err.isNotEmpty) ...[
-          GlassCard(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Error',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          Material(
+            color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.error_outline, size: 18, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SelectableText(
+                      _prettyError(err),
+                      maxLines: 3,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.error,
+                            height: 1.3,
                           ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SelectableText(
-                  _prettyError(err),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontFamily: 'Consolas',
-                        height: 1.35,
-                      ),
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
         ],
         GlassCard(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Parameters', style: Theme.of(context).textTheme.titleSmall),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  _metricTile(context, _isPlaywrightRun(run) ? 'Steps' : 'APIs', '$apiCount'),
+                  _metricTile(context, 'Pass', '$apiPass', ok: true),
+                  _metricTile(context, 'Fail', '$apiFail', bad: apiFail > 0),
+                  _metricTile(context, 'Fail%', '$failPct%', bad: failPct > 0),
+                  if (grafana.isNotEmpty)
+                    OutlinedButton.icon(
+                      onPressed: () => launchUrl(Uri.parse(grafana)),
+                      icon: const Icon(Icons.open_in_new, size: 14),
+                      label: const Text('Grafana'),
+                    ),
+                  if (embed.isNotEmpty)
+                    OutlinedButton.icon(
+                      onPressed: () => launchUrl(Uri.parse(embed)),
+                      icon: const Icon(Icons.fullscreen, size: 14),
+                      label: const Text('Embed'),
+                    ),
+                ],
+              ),
               const SizedBox(height: 8),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 6,
+                runSpacing: 4,
                 children: [
                   _kvChip('profile', '${run['run_profile'] ?? params['profile'] ?? '—'}'),
+                  _kvChip('dataset', _payloadSetVersionLabel(run)),
                   _kvChip('VUs', '${params['vus'] ?? run['vus'] ?? '—'}'),
                   _kvChip(
                     'calls',
@@ -116,113 +143,36 @@ class _OverviewTab extends StatelessWidget {
                   _kvChip('duration', '${params['duration'] ?? run['duration'] ?? '—'}'),
                   _kvChip('service', '${run['service'] ?? '—'}'),
                   _kvChip('env', '${run['environment'] ?? '—'}'),
-                  _kvChip('started', '${run['started_at'] ?? '—'}'),
-                  _kvChip('finished', '${run['finished_at'] ?? '—'}'),
+                  if (target.isNotEmpty) _kvChip('target', target),
+                  _kvChip('started', _shortTs(run['started_at'])),
+                  _kvChip('finished', _shortTs(run['finished_at'])),
                 ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        GlassCard(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Outcome',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  _metricTile(
-                    context,
-                    _isPlaywrightRun(run) ? 'Steps' : 'APIs',
-                    '$apiCount',
+              if (metrics.isNotEmpty)
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text(
+                    'Raw metrics (${metrics.length})',
+                    style: Theme.of(context).textTheme.labelMedium,
                   ),
-                  _metricTile(context, 'Pass', '$apiPass', ok: true),
-                  _metricTile(
-                    context,
-                    'Fail',
-                    '$apiFail',
-                    bad: apiFail > 0,
-                  ),
-                  _metricTile(
-                    context,
-                    'Fail%',
-                    '$failPct%',
-                    bad: failPct > 0,
-                  ),
-                ],
-              ),
-              if (metrics.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Metrics (RPS · latency · data)',
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
                   children: [
-                    for (final e in metrics.entries.take(12))
-                      Chip(
-                        visualDensity: VisualDensity.compact,
-                        label: Text('${e.key}: ${e.value}'),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          for (final e in metrics.entries)
+                            Chip(
+                              visualDensity: VisualDensity.compact,
+                              label: Text('${e.key}: ${e.value}'),
+                            ),
+                        ],
                       ),
+                    ),
                   ],
                 ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        GlassCard(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Grafana', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: 6),
-              if (isLive)
-                Text(
-                  'Grafana unlocks when the run finishes.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                )
-              else if (grafana.isEmpty && embed.isEmpty)
-                Text(
-                  'Grafana URL unavailable.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                )
-              else ...[
-                if (metrics.isEmpty)
-                  Text(
-                    'No chart data for this run.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    if (grafana.isNotEmpty)
-                      OutlinedButton.icon(
-                        onPressed: () => launchUrl(Uri.parse(grafana)),
-                        icon: const Icon(Icons.open_in_new, size: 16),
-                        label: const Text('Open Grafana'),
-                      ),
-                    if (embed.isNotEmpty)
-                      OutlinedButton.icon(
-                        onPressed: () => launchUrl(Uri.parse(embed)),
-                        icon: const Icon(Icons.fullscreen, size: 16),
-                        label: const Text('Open embed / kiosk'),
-                      ),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
@@ -237,22 +187,12 @@ class _OverviewTab extends StatelessWidget {
                 : absUrl('/api/runs/$runId/artifacts/ui-report.html');
             return Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: GlassCard(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text('Playwright report', style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: FilledButton.tonalIcon(
-                        onPressed: () => launchUrl(Uri.parse(href)),
-                        icon: const Icon(Icons.language, size: 18),
-                        label: const Text('Open UI report'),
-                      ),
-                    ),
-                  ],
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonalIcon(
+                  onPressed: () => launchUrl(Uri.parse(href)),
+                  icon: const Icon(Icons.language, size: 18),
+                  label: const Text('Open UI report'),
                 ),
               ),
             );
@@ -262,132 +202,18 @@ class _OverviewTab extends StatelessWidget {
           const SizedBox(height: 8),
           _BaselineCard(baseline: baseline!),
         ],
-        const SizedBox(height: 8),
-        GlassCard(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Results table',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              if (rows.isEmpty)
-                Text(
-                  isLive
-                      ? (_isPlaywrightRun(run)
-                          ? 'Results stream when UI steps finish…'
-                          : 'Results stream when APIs finish…')
-                      : (_isPlaywrightRun(run)
-                          ? 'No UI steps for this run.'
-                          : 'No API result rows for this run.'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                )
-              else
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    headingRowHeight: 36,
-                    dataRowMinHeight: 36,
-                    dataRowMaxHeight: 48,
-                    columns: [
-                      DataColumn(
-                        label: Text(_isPlaywrightRun(run) ? 'Step' : 'API'),
-                      ),
-                      const DataColumn(label: Text('HTTP'), numeric: true),
-                      const DataColumn(label: Text('Calls'), numeric: true),
-                      const DataColumn(label: Text('Pass'), numeric: true),
-                      const DataColumn(label: Text('Fail'), numeric: true),
-                      const DataColumn(label: Text('Fail%'), numeric: true),
-                      const DataColumn(label: Text('Avg ms'), numeric: true),
-                      const DataColumn(label: Text('p90 ms'), numeric: true),
-                      DataColumn(label: Text('Result')),
-                    ],
-                    rows: [
-                      for (final a in rows)
-                        DataRow(
-                          cells: [
-                            DataCell(
-                              Text(
-                                '${a['api_id'] ?? a['id'] ?? a['name'] ?? a['path'] ?? ''}',
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                '${a['http_status'] ?? a['status_code'] ?? a['status'] ?? '—'}',
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                '${a['calls'] ?? a['count'] ?? a['request_count'] ?? a['iterations'] ?? '—'}',
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                '${a['pass'] ?? a['pass_count'] ?? a['passed_count'] ?? a['ok'] ?? '—'}',
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                '${a['fail'] ?? a['fail_count'] ?? a['failed_count'] ?? a['ko'] ?? '—'}',
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                '${a['fail_pct'] ?? a['fail_rate'] ?? '—'}',
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                _fmtMs(
-                                  a['avg_ms'] ?? a['avg'] ?? a['latency_avg'] ?? a['duration_ms'],
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                _fmtMs(
-                                  a['p90_ms'] ?? a['p90'] ?? a['latency_p90'],
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                a['checks_passed'] == true || a['passed'] == true
-                                    ? 'PASS'
-                                    : (a['checks_passed'] == false || a['passed'] == false
-                                        ? 'FAIL'
-                                        : '${a['result'] ?? a['status'] ?? '—'}'),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: a['checks_passed'] == true || a['passed'] == true
-                                      ? Colors.green
-                                      : (a['checks_passed'] == false || a['passed'] == false
-                                          ? Theme.of(context).colorScheme.error
-                                          : null),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 8),
-              Text(
-                'Tip: use Inspector tab for request/response of each call.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
+        const SizedBox(height: 4),
+        Text(
+          'Tip: Inspector → Test APIs · Artifacts → screenshots / PDF / HTML reports for UI runs.',
+          style: Theme.of(context).textTheme.bodySmall,
         ),
-        const SizedBox(height: 8),
         ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          dense: true,
           title: const Text('Raw JSON'),
           children: [
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.only(bottom: 8),
               child: SelectableText(
                 const JsonEncoder.withIndent('  ').convert({
                   'id': run['id'],
@@ -400,6 +226,7 @@ class _OverviewTab extends StatelessWidget {
                   'summary': run['summary'],
                   'results': results,
                   'error': run['error'],
+                  'target_url': run['target_url'],
                 }),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
@@ -412,7 +239,10 @@ class _OverviewTab extends StatelessWidget {
 
   Widget _kvChip(String k, String v) => Chip(
         visualDensity: VisualDensity.compact,
-        label: Text('$k: $v'),
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        label: Text('$k: $v', style: const TextStyle(fontSize: 12)),
+        padding: EdgeInsets.zero,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
       );
 
   Widget _metricTile(
@@ -426,7 +256,7 @@ class _OverviewTab extends StatelessWidget {
         ? Colors.green
         : (bad ? Theme.of(context).colorScheme.error : AppColors.primary);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
@@ -436,7 +266,7 @@ class _OverviewTab extends StatelessWidget {
           Text(label, style: Theme.of(context).textTheme.labelSmall),
           Text(
             value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: color,
                   fontWeight: FontWeight.w700,
                 ),
@@ -446,4 +276,3 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 }
-

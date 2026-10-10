@@ -142,252 +142,123 @@ class _RunDetailView extends StatelessWidget {
           final live = run['live'];
           final liveMap = live is Map ? Map<String, dynamic>.from(live) : null;
           final grafana = '${run['grafana_url'] ?? ''}';
-          final metrics = run['metrics'] is Map
-              ? Map<String, dynamic>.from(run['metrics'] as Map)
-              : null;
           final results = run['results'];
           final isLive = status == 'running' || status == 'pending';
           final cubit = context.read<_RunDetailCubit>();
+          final apiRows = state.apis.isNotEmpty
+              ? state.apis
+              : _resultRows(run: run, results: results);
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => context.go(AppRoutes.runs),
-                        icon: const Icon(Icons.arrow_back),
-                      ),
-                      Expanded(
-                        child: Text(
-                          'Run ${runId.length > 8 ? runId.substring(0, 8) : runId}',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Copy run id',
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.copy, size: 18),
-                        onPressed: () async {
-                          await Clipboard.setData(ClipboardData(text: runId));
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Run id copied'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                      ),
-                      if (state.actionBusy)
-                        const Padding(
-                          padding: EdgeInsets.only(left: 4, right: 8),
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 48),
-                    child: SelectableText(
-                      runId,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontFamily: 'monospace',
-                          ),
-                      maxLines: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (grafana.isNotEmpty)
-                        OutlinedButton.icon(
-                          onPressed: state.actionBusy
-                              ? null
-                              : () => launchUrl(Uri.parse(grafana)),
-                          icon: const Icon(Icons.insights, size: 18),
-                          label: const Text('Grafana'),
-                        ),
-                      if (isLive)
-                        FilledButton.tonalIcon(
-                          onPressed: state.actionBusy ? null : () => cubit.stop(),
-                          icon: const Icon(Icons.stop),
-                          label: const Text('Stop'),
-                        )
-                      else ...[
-                        OutlinedButton.icon(
-                          onPressed: state.actionBusy
-                              ? null
-                              : () => _startRunAndGo(context, cubit.rerun),
-                          icon: const Icon(Icons.replay, size: 18),
-                          label: const Text('Re-run'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: state.actionBusy
-                              ? null
-                              : () => _startRunAndGo(context, cubit.debugRun),
-                          icon: const Icon(Icons.bug_report, size: 18),
-                          label: const Text('Debug 1-call'),
-                        ),
-                      ],
-                      OutlinedButton.icon(
-                        onPressed:
-                            state.actionBusy ? null : () => _saveAsConfigDialog(context),
-                        icon: const Icon(Icons.save_as, size: 18),
-                        label: const Text('Save as config'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed:
-                            state.actionBusy ? null : () => _exportJsonDialog(context),
-                        icon: const Icon(Icons.code, size: 18),
-                        label: const Text('Export JSON'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: state.actionBusy ? null : () => cubit.load(),
-                        icon: const Icon(Icons.refresh, size: 18),
-                        label: const Text('Refresh'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ObservabilityAttach(
-                    traceId: run['trace_id']?.toString(),
-                    correlationId: run['correlation_id']?.toString(),
-                    observabilityResources: run['observability_resources'] is Map
-                        ? Map<String, dynamic>.from(
-                            run['observability_resources'] as Map,
-                          )
-                        : null,
-                    loadLogs: () =>
-                        context.read<_RunDetailCubit>().loadObsLogs(),
-                  ),
-                ],
+              _RunDetailHeader(
+                runId: runId,
+                run: run,
+                status: status,
+                isLive: isLive,
+                actionBusy: state.actionBusy,
+                grafana: grafana,
+                error: state.run.isNotEmpty ? state.error : null,
+                onRerun: () => _startRunAndGo(context, cubit.rerun),
+                onDebug: () => _startRunAndGo(context, cubit.debugRun),
+                onStop: cubit.stop,
+                onSaveConfig: () => _saveAsConfigDialog(context),
+                onExport: () => _exportJsonDialog(context),
+                onRefresh: cubit.load,
+                onLoadLogs: cubit.loadObsLogs,
               ),
-              if (state.error != null && state.run.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  state.error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Chip(
-                    label: Text(status.isEmpty ? 'unknown' : status),
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                  ),
-                  Text(
-                    '${run['test_type'] ?? ''} · '
-                    '${run['config_name'] ?? run['config_id'] ?? ''} · '
-                    '${run['service'] ?? ''}/${run['environment'] ?? ''}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (run['passed'] == true)
-                    const Chip(label: Text('passed'), avatar: Icon(Icons.check, size: 16)),
-                  if (run['passed'] == false && status != 'running')
-                    Chip(
-                      label: const Text('failed'),
-                      avatar: Icon(Icons.close, size: 16, color: Theme.of(context).colorScheme.error),
-                    ),
-                  if (run['api_count'] != null ||
-                      run['api_pass_count'] != null ||
-                      run['api_fail_count'] != null)
-                    Chip(
-                      label: Text(
-                        '${_isPlaywrightRun(run) ? 'Steps' : 'APIs'} ${run['api_count'] ?? '—'} · '
-                        '${run['api_pass_count'] ?? '—'}✓ / ${run['api_fail_count'] ?? '—'}✗',
-                      ),
-                    ),
-                ],
-              ),
-              if (liveMap != null) ...[
-                const SizedBox(height: 8),
+              if (isLive && liveMap != null) ...[
+                const SizedBox(height: 4),
                 LinearProgressIndicator(
                   value: liveMap['pct'] is num
                       ? (liveMap['pct'] as num).toDouble().clamp(0, 100) / 100
                       : null,
                 ),
-                const SizedBox(height: 4),
                 Text(
                   '${liveMap['phase'] ?? ''} — ${liveMap['message'] ?? ''}',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall,
                 ),
               ],
-              if (metrics != null && metrics.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 12,
-                  children: [
-                    for (final e in metrics.entries.take(8))
-                      Chip(
-                        label: Text('${e.key}: ${e.value}'),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 12),
+              const SizedBox(height: 4),
               Expanded(
                 child: DefaultTabController(
-                  length: 4,
-                  child: Column(
-                    children: [
-                      TabBar(
-                        isScrollable: true,
-                        tabs: [
-                          const Tab(text: 'Overview'),
-                          const Tab(text: 'Inspector'),
-                          const Tab(text: 'Artifacts'),
-                          Tab(text: _isPlaywrightRun(run) ? 'Steps' : 'APIs'),
-                        ],
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          children: [
-                            _OverviewTab(
-                              run: run,
-                              results: results,
-                              baseline: state.baseline,
-                              apis: state.apis,
-                              absUrl: (u) => _absUrl(cfg, u),
-                            ),
-                            _InspectorTab(
-                              traces: state.traces.isEmpty ? state.apis : state.traces,
-                              selected: state.selectedTrace,
-                              selectedApiId: state.selectedTraceApiId,
-                              failedOnly: state.failedOnly,
-                              onFailedOnly: cubit.setFailedOnly,
-                              onOpen: cubit.openTrace,
-                              onSavePayload: (apiId) => _savePayloadDialog(context, apiId),
-                              absUrl: (u) => _absUrl(cfg, u),
-                            ),
-                            _ArtifactsTab(
-                              artifacts: state.artifacts,
-                              absUrl: (u) => _absUrl(cfg, u),
-                            ),
-                            _ApisTab(apis: state.apis.isNotEmpty
-                                ? state.apis
-                                : _resultRows(run: run, results: results)),
-                          ],
-                        ),
-                      ),
-                    ],
+                  length: 3,
+                  child: Builder(
+                    builder: (context) {
+                      final tabCtrl = DefaultTabController.of(context);
+                      return AnimatedBuilder(
+                        animation: tabCtrl,
+                        builder: (context, _) {
+                          final onInspector = tabCtrl.index == 1;
+                          return Column(
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Flexible(
+                                    child: TabBar(
+                                      isScrollable: true,
+                                      tabs: [
+                                        const Tab(text: 'Overview'),
+                                        const Tab(text: 'Inspector'),
+                                        Tab(
+                                          text: state.artifacts.isEmpty
+                                              ? 'Artifacts'
+                                              : 'Artifacts (${state.artifacts.length})',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (onInspector)
+                                    Flexible(
+                                      child: SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        reverse: true,
+                                        padding: const EdgeInsets.only(left: 8),
+                                        child: _ApisTabFilters(
+                                          failedOnly: state.failedOnly,
+                                          apiQuery: state.apiQuery,
+                                          rowCount: apiRows.length,
+                                          onFailedOnly: cubit.setFailedOnly,
+                                          onQuery: cubit.setApiQuery,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              Expanded(
+                                child: TabBarView(
+                                  children: [
+                                    _OverviewTab(
+                                      run: run,
+                                      results: results,
+                                      baseline: state.baseline,
+                                      apis: state.apis,
+                                      absUrl: (u) => _absUrl(cfg, u),
+                                    ),
+                                    _ApisTab(
+                                      run: run,
+                                      apis: apiRows,
+                                      selected: state.selectedApi,
+                                      showTry: state.showApiTry,
+                                      onSelect: cubit.selectApi,
+                                      onShowTry: cubit.setShowApiTry,
+                                    ),
+                                    _ArtifactsTab(
+                                      artifacts: state.artifacts,
+                                      absUrl: (u) => _absUrl(cfg, u),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
               ),

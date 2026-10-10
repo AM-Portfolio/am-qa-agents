@@ -10,7 +10,10 @@ class _RunDetailState {
     this.traces = const [],
     this.selectedTrace,
     this.selectedTraceApiId,
+    this.selectedApi,
     this.failedOnly = false,
+    this.apiQuery = '',
+    this.showApiTry = false,
     this.baseline,
     this.error,
   });
@@ -23,7 +26,10 @@ class _RunDetailState {
   final List<Map<String, dynamic>> traces;
   final Map<String, dynamic>? selectedTrace;
   final String? selectedTraceApiId;
+  final Map<String, dynamic>? selectedApi;
   final bool failedOnly;
+  final String apiQuery;
+  final bool showApiTry;
   final Map<String, dynamic>? baseline;
   final String? error;
 
@@ -36,11 +42,15 @@ class _RunDetailState {
     List<Map<String, dynamic>>? traces,
     Map<String, dynamic>? selectedTrace,
     String? selectedTraceApiId,
+    Map<String, dynamic>? selectedApi,
     bool? failedOnly,
+    String? apiQuery,
+    bool? showApiTry,
     Map<String, dynamic>? baseline,
     String? error,
     bool clearTrace = false,
     bool clearTraceApiId = false,
+    bool clearSelectedApi = false,
   }) {
     return _RunDetailState(
       loading: loading ?? this.loading,
@@ -52,7 +62,11 @@ class _RunDetailState {
       selectedTrace: clearTrace ? null : (selectedTrace ?? this.selectedTrace),
       selectedTraceApiId:
           clearTraceApiId ? null : (selectedTraceApiId ?? this.selectedTraceApiId),
+      selectedApi:
+          clearSelectedApi ? null : (selectedApi ?? this.selectedApi),
       failedOnly: failedOnly ?? this.failedOnly,
+      apiQuery: apiQuery ?? this.apiQuery,
+      showApiTry: showApiTry ?? this.showApiTry,
       baseline: baseline ?? this.baseline,
       error: error,
     );
@@ -96,7 +110,11 @@ class _RunDetailCubit extends Cubit<_RunDetailState> {
         arts = await _repo.artifacts(runId);
       } catch (_) {}
       try {
-        apis = await _repo.runApis(runId, failedOnly: state.failedOnly);
+        apis = await _repo.runApis(
+          runId,
+          failedOnly: state.failedOnly,
+          q: state.apiQuery.isEmpty ? null : state.apiQuery,
+        );
       } catch (_) {}
       try {
         traces = await _repo.traces(runId, failedOnly: state.failedOnly);
@@ -104,6 +122,18 @@ class _RunDetailCubit extends Cubit<_RunDetailState> {
       try {
         baseline = await _repo.baseline(runId);
       } catch (_) {}
+      Map<String, dynamic>? selected = state.selectedApi;
+      if (selected != null) {
+        final selId = _apiRowLabel(selected);
+        Map<String, dynamic>? match;
+        for (final a in apis) {
+          if (_apiRowLabel(a) == selId) {
+            match = a;
+            break;
+          }
+        }
+        selected = match;
+      }
       emit(
         state.copyWith(
           loading: false,
@@ -112,6 +142,8 @@ class _RunDetailCubit extends Cubit<_RunDetailState> {
           apis: apis,
           traces: traces,
           baseline: baseline,
+          selectedApi: selected,
+          clearSelectedApi: selected == null && state.selectedApi != null,
         ),
       );
       final status = '${run['status'] ?? ''}';
@@ -128,6 +160,26 @@ class _RunDetailCubit extends Cubit<_RunDetailState> {
   Future<void> setFailedOnly(bool v) async {
     emit(state.copyWith(failedOnly: v));
     await load();
+  }
+
+  Future<void> setApiQuery(String q) async {
+    emit(state.copyWith(apiQuery: q.trim()));
+    await load();
+  }
+
+  void selectApi(Map<String, dynamic>? row) {
+    emit(
+      state.copyWith(
+        selectedApi: row,
+        clearSelectedApi: row == null,
+        // Open Specs Try immediately with prefilled request.
+        showApiTry: row != null,
+      ),
+    );
+  }
+
+  void setShowApiTry(bool v) {
+    emit(state.copyWith(showApiTry: v));
   }
 
   Future<void> openTrace(Map<String, dynamic> row) async {

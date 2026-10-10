@@ -77,3 +77,60 @@ String _prettyError(String raw) {
   }
   return out.join('\n');
 }
+
+/// Dataset version from run params / payloads_used (chip label: `vN`, `active`, or `—`).
+String _payloadSetVersionLabel(Map<String, dynamic> run) {
+  final params = _runParams(run);
+  dynamic ver = params['payload_set_version'];
+  if (ver == null) {
+    final used = run['payloads_used'];
+    if (used is Map) {
+      final rp = used['run_params'];
+      if (rp is Map) ver = rp['payload_set_version'];
+      ver ??= used['payload_set_version'];
+    }
+  }
+  if (ver == null) {
+    final cfg = run['config'];
+    if (cfg is Map) {
+      ver = cfg['payload_set_version'];
+      final payloads = cfg['payloads'];
+      if (ver == null && payloads is Map) {
+        ver = payloads['payload_set_version'];
+      }
+    }
+  }
+  if (ver == null) return '—';
+  final s = '$ver'.trim();
+  if (s.isEmpty || s == 'null') return '—';
+  if (s == 'active') return 'active';
+  if (s.startsWith('v')) return s;
+  return 'v$s';
+}
+
+bool _apiRowFailed(Map<String, dynamic> a) {
+  if (a['checks_passed'] == false || a['passed'] == false) return true;
+  final fail = _intFrom(a['fail'] ?? a['fail_count'] ?? a['failed_count'] ?? a['ko'], 0);
+  if (fail > 0) return true;
+  final status = '${a['result'] ?? a['status'] ?? ''}'.toUpperCase();
+  return status == 'FAIL' || status == 'FAILED' || status == 'ERROR';
+}
+
+String _apiRowLabel(Map<String, dynamic> a) =>
+    '${a['api_id'] ?? a['id'] ?? a['name'] ?? a['path'] ?? ''}';
+
+String _apiRowResultLabel(Map<String, dynamic> a) {
+  if (a['checks_passed'] == true || a['passed'] == true) return 'PASS';
+  if (a['checks_passed'] == false || a['passed'] == false) return 'FAIL';
+  final st = a['result'] ?? a['outcome'];
+  if (st != null && '$st'.isNotEmpty) return '$st';
+  // Prefer not to show numeric HTTP status as "result".
+  return '—';
+}
+
+String _httpStatusOf(Map<String, dynamic> a) {
+  final v = a['http_status'] ?? a['status_code'] ?? a['status'];
+  if (v is num) return '${v.toInt()}';
+  if (v is String && int.tryParse(v) != null) return v;
+  return '—';
+}
