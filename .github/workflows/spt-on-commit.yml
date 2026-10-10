@@ -1,81 +1,64 @@
-# Reusable Commit→SPT: POST /api/runs/execute → poll → email committer + Zoho Cliq.
+# Optional manual fire-and-forget: POST /v2/workflows/commit-spt
+# Execution runs on the qa-agent Temporal worker pod — NOT on this runner.
 #
-# Branch matrix (am-market-data pilot):
-#   feature/**, fix/**, hotfix/**, test/**, develop, dev → working + debug 1×1
-#   main/master → full + ci-load (ramping VUs, iterations=100)
+# Preferred trigger (no GitHub Actions): GitHub repo webhook →
+#   POST https://am-dev.asrax.in/qa/webhooks/github  (push + am-market-data/**)
 #
-# Secrets (caller repo / org inherit):
-#   SPT_CI_API_KEY          — dig QA key with role=ci (preferred)
-#   QA_AGENT_GATEWAY_TOKEN  — fallback bearer
-#   ZOHO_CLIQ_SPT_WEBHOOK_URL (or QA_AGENT_CLIQ_WEBHOOK_URL / ZOHO_CLIQ_WEBHOOK_URL)
-#   SPT_SMTP_HOST, SPT_SMTP_PORT, SPT_SMTP_USER, SPT_SMTP_PASSWORD, SPT_SMTP_FROM
+# This workflow only starts Temporal; it does not poll or run k6.
 
-name: SPT on commit
+name: SPT on commit (Temporal start)
 
 on:
   workflow_call:
     inputs:
       service:
-        description: Service id (e.g. am-market-data)
         required: true
         type: string
       git_ref:
-        description: Branch / ref name
         required: true
         type: string
       git_sha:
-        description: Commit SHA
         required: true
         type: string
       committer_email:
-        description: Author email for report
         required: false
         type: string
         default: ""
       committer_name:
-        description: Author name for report
         required: false
         type: string
         default: ""
       environment:
-        description: Target SPT environment
         required: false
         type: string
         default: "dev"
       qa_base_url:
-        description: Dig QA agent base URL
         required: false
         type: string
         default: "https://am-dev.asrax.in/qa"
-      portal_base_url:
-        description: Portal base for run links
+      repo:
         required: false
         type: string
-        default: "https://ai-dev.asrax.in"
+        default: "AM-Portfolio/am-market"
   workflow_dispatch:
     inputs:
       service:
-        description: Service id
         required: true
         type: string
         default: "am-market-data"
       git_ref:
-        description: Branch to simulate (feature/x or main)
         required: true
         type: string
         default: "feature/spt-smoke"
       git_sha:
-        description: Optional SHA (defaults to GITHUB_SHA)
         required: false
         type: string
         default: ""
       committer_email:
-        description: Email override
         required: false
         type: string
         default: ""
       committer_name:
-        description: Name override
         required: false
         type: string
         default: ""
@@ -88,46 +71,55 @@ on:
         type: string
         default: "https://am-dev.asrax.in/qa"
 
-concurrency:
-  group: spt-on-commit-${{ github.repository }}-${{ inputs.service }}-${{ inputs.git_ref }}
-  cancel-in-progress: false
-
 jobs:
-  spt:
-    name: Execute SPT (${{ inputs.service }} / ${{ inputs.git_ref }})
-    # Self-hosted: GitHub-hosted UAs hit Cloudflare Error 1010 on am-dev.asrax.in.
+  start-temporal:
+    name: Start CommitSptWorkflow (${{ inputs.service }} / ${{ inputs.git_ref }})
+    # Prefer self-hosted so the start POST reaches dig without CF 1010.
+    # Job exits after Temporal accept — SPT runs in the qa-agent worker pod.
     runs-on: [self-hosted, linux, x64, docker]
     steps:
-      # Caller may be am-market; script lives in this (am-qa-agents) repo.
-      - name: Checkout am-qa-agents (spt_on_commit_ci.py)
-        uses: actions/checkout@v4
-        with:
-          repository: AM-Portfolio/am-qa-agents
-          # Keep in sync with the @ref used by callers until this lands on main.
-          ref: feature/design-with-skills
-
-      - name: Run SPT matrix + notify
+      - name: POST /v2/workflows/commit-spt
         env:
+          QA_BASE_URL: ${{ inputs.qa_base_url }}
+          QA_AGENT_GATEWAY_TOKEN: ${{ secrets.QA_AGENT_GATEWAY_TOKEN }}
           SERVICE: ${{ inputs.service }}
           GIT_REF: ${{ inputs.git_ref }}
           GIT_SHA: ${{ inputs.git_sha || github.sha }}
           COMMITTER_EMAIL: ${{ inputs.committer_email }}
           COMMITTER_NAME: ${{ inputs.committer_name }}
           ENVIRONMENT: ${{ inputs.environment }}
-          QA_BASE_URL: ${{ inputs.qa_base_url }}
-          SPT_PORTAL_BASE_URL: ${{ inputs.portal_base_url || 'https://ai-dev.asrax.in' }}
-          SPT_CI_API_KEY: ${{ secrets.SPT_CI_API_KEY }}
-          QA_AGENT_GATEWAY_TOKEN: ${{ secrets.QA_AGENT_GATEWAY_TOKEN }}
-          ZOHO_CLIQ_SPT_WEBHOOK_URL: ${{ secrets.ZOHO_CLIQ_SPT_WEBHOOK_URL }}
-          QA_AGENT_CLIQ_WEBHOOK_URL: ${{ secrets.QA_AGENT_CLIQ_WEBHOOK_URL }}
-          ZOHO_CLIQ_WEBHOOK_URL: ${{ secrets.ZOHO_CLIQ_WEBHOOK_URL }}
-          SPT_SMTP_HOST: ${{ secrets.SPT_SMTP_HOST }}
-          SPT_SMTP_PORT: ${{ secrets.SPT_SMTP_PORT }}
-          SPT_SMTP_USER: ${{ secrets.SPT_SMTP_USER }}
-          SPT_SMTP_PASSWORD: ${{ secrets.SPT_SMTP_PASSWORD }}
-          SPT_SMTP_FROM: ${{ secrets.SPT_SMTP_FROM }}
-          SPT_POLL_TIMEOUT_SEC: "1200"
-          SPT_POLL_SEC: "10"
+          REPO: ${{ inputs.repo || github.repository }}
         run: |
           set -euo pipefail
-          python3 scripts/spt_on_commit_ci.py run
+          # Prefer in-cluster URL on self-hosted runners (no Cloudflare).
+          BASE="${QA_BASE_URL:-http://am-qa-agents.am-agents-dev.svc.cluster.local:8150}"
+          if [[ "$BASE" == https://am-dev.asrax.in/* ]] && [[ -n "${KUBERNETES_SERVICE_HOST:-}" || -d /var/run/secrets/kubernetes.io ]]; then
+            BASE="http://am-qa-agents-dev.am-agents-dev.svc.cluster.local:8150"
+          fi
+          # Dig Kind service name may be am-qa-agents-dev
+          if curl -sf -m 2 "http://am-qa-agents-dev.am-agents-dev.svc.cluster.local:8150/health" >/dev/null 2>&1; then
+            BASE="http://am-qa-agents-dev.am-agents-dev.svc.cluster.local:8150"
+          fi
+          test -n "${QA_AGENT_GATEWAY_TOKEN:-}" || { echo "::error::QA_AGENT_GATEWAY_TOKEN required"; exit 1; }
+          BODY=$(python3 - <<'PY'
+          import json, os
+          print(json.dumps({
+            "service": os.environ["SERVICE"],
+            "repo": os.environ.get("REPO") or "AM-Portfolio/am-market",
+            "branch": os.environ["GIT_REF"],
+            "head_sha": os.environ["GIT_SHA"],
+            "environment": os.environ.get("ENVIRONMENT") or "dev",
+            "committer_email": os.environ.get("COMMITTER_EMAIL") or None,
+            "committer_name": os.environ.get("COMMITTER_NAME") or None,
+            "use_temporal": True,
+          }))
+          PY
+          )
+          echo "POST $BASE/v2/workflows/commit-spt"
+          echo "$BODY"
+          curl -sS -f -X POST "$BASE/v2/workflows/commit-spt" \
+            -H "Authorization: Bearer ${QA_AGENT_GATEWAY_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$BODY"
+          echo
+          echo "Started Temporal CommitSptWorkflow — SPT executes on qa-agent worker (not this runner)."

@@ -76,9 +76,11 @@ async def run_worker() -> None:
         activity_security_scan,
         activity_smoke_ui_test,
     )
+    from orchestrator.activities.commit_spt import activity_commit_spt
     from orchestrator.activities.flow_execute import activity_flow_execute
     from orchestrator.workflows import (
         AsraxReleaseOpsWorkflow,
+        CommitSptWorkflow,
         FlowExecuteWorkflow,
         ReleaseReadinessWorkflow,
         ServiceOnboardPrepWorkflow,
@@ -111,9 +113,11 @@ async def run_worker() -> None:
             AsraxReleaseOpsWorkflow,
             ServiceOnboardPrepWorkflow,
             FlowExecuteWorkflow,
+            CommitSptWorkflow,
         ],
         activities=[
             activity_flow_execute,
+            activity_commit_spt,
             activity_classify,
             activity_resolve_load_profile,
             activity_await_index,

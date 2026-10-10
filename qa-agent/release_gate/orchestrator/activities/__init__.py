@@ -50,6 +50,7 @@ from orchestrator.activities.release_ops import (
     activity_release_ops_ui_suite,
     activity_release_ops_wait_deploy_healthy,
 )
+from orchestrator.activities.commit_spt import activity_commit_spt
 from orchestrator.activities.onboard_prep import (
     activity_onboard_analyze,
     activity_onboard_apis,
@@ -112,5 +113,6 @@ __all__ = [
     "activity_onboard_tools_smoke",
     "activity_onboard_overview",
     "activity_onboard_persist_report",
+    "activity_commit_spt",
     "build_evidence_bundle",
 ]

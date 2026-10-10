@@ -1,40 +1,59 @@
-# Commit → SPT (am-market-data pilot)
+# Commit → SPT (Temporal / qa-agent worker)
 
-Push to `am-market` under `am-market-data/**` triggers [qa-agent-spt-notify.yml](../../../../am-market/.github/workflows/qa-agent-spt-notify.yml), which calls the reusable workflow [spt-on-commit.yml](../../.github/workflows/spt-on-commit.yml).
+**SPT does not run on a GitHub Actions runner.** GitHub (or a webhook) only
+**starts** `CommitSptWorkflow`. The **qa-agent Temporal worker pod** executes
+k6, then emails the committer and posts Zoho Cliq.
+
+## Triggers
+
+| Trigger | Path |
+|---------|------|
+| **Preferred** | GitHub webhook → `POST /qa/webhooks/github` (push to `am-market` touching `am-market-data/**`) |
+| Manual / API | `POST /qa/v2/workflows/commit-spt` with gateway bearer |
+| Optional GHA | `qa-agent-spt-notify.yml` fire-and-forget POST only (set `SPT_USE_GHA_START=false` when webhook is live) |
 
 ## Branch matrix
 
-| Git ref | Dataset | Intensity | Shape | Job fail on unexpected? |
-|---------|---------|-----------|-------|-------------------------|
-| `feature/**`, `fix/**`, `hotfix/**`, `test/**` | `working` | `debug` | 1 VU × 1 iter (`ci-smoke`) | No (report-only) |
-| `develop`, `dev` | `working` | `debug` | 1×1 | Yes |
-| `main` / `master` | `full` | `load` | ramping VUs + 100 iters (`ci-load`) | Yes |
+| Git ref | Dataset | Intensity | Fail job semantics |
+|---------|---------|-----------|--------------------|
+| `feature/**`, `fix/**`, … | `working` | `debug` 1×1 (`ci-smoke`) | Report-only |
+| `develop`, `dev` | `working` | `debug` 1×1 | Fail workflow if unexpected > 0 |
+| `main` | `full` | `ci-load` ramp + 100 iters | Fail if unexpected > 0 |
 
-Execute goes to dig: `POST https://am-dev.asrax.in/qa/api/runs/execute` with explicit `dataset_profile` (do not rely on `branch.py` alone).
+## API body
 
-## Secrets
-
-| Secret | Purpose |
-|--------|---------|
-| `SPT_CI_API_KEY` | Dig QA API key with **role=ci** (preferred) |
-| `QA_AGENT_GATEWAY_TOKEN` | Fallback bearer if CI key unset |
-| `ZOHO_CLIQ_SPT_WEBHOOK_URL` | Team Cliq channel (falls back to `QA_AGENT_CLIQ_WEBHOOK_URL` / `ZOHO_CLIQ_WEBHOOK_URL`) |
-| `SPT_SMTP_HOST` / `PORT` / `USER` / `PASSWORD` / `FROM` | Email committer only |
-
-Bootstrap dig key (example): set `SPT_BOOTSTRAP_KEYS` to include `ci:spt-ci:<secret>` or create via admin API keys UI with role `ci`.
-
-## Notifications
-
-Same report card → email (committer) + Cliq (channel). Notify is best-effort; SPT pass/fail still recorded if mail/Cliq fail.
-
-## Manual test
-
-```bash
-# In am-qa-agents — simulate feature smoke
-gh workflow run spt-on-commit.yml -f service=am-market-data -f git_ref=feature/spt-smoke
-
-# Simulate main load (no merge required)
-gh workflow run spt-on-commit.yml -f service=am-market-data -f git_ref=main
+```json
+{
+  "service": "am-market-data",
+  "repo": "AM-Portfolio/am-market",
+  "branch": "feature/spt-smoke",
+  "head_sha": "abc123…",
+  "environment": "dev",
+  "committer_email": "you@example.com",
+  "committer_name": "You",
+  "use_temporal": true
+}
 ```
 
-Or push a no-op under `am-market-data/` on a feature branch.
+Response includes `tracking_id` + `workflow_id`. Poll ledger `GET /v2/runs/{tracking_id}` or Temporal UI.
+
+## Secrets / env (qa-agent dig)
+
+| Name | Purpose |
+|------|---------|
+| `QA_AGENT_GATEWAY_TOKEN` | Auth for `/v2/workflows/commit-spt` |
+| `GITHUB_WEBHOOK_SECRET` | HMAC for `/webhooks/github` |
+| `ZOHO_CLIQ_SPT_WEBHOOK_URL` (or `QA_AGENT_CLIQ_WEBHOOK_URL`) | Team Cliq |
+| `SPT_SMTP_*` | Email committer (optional) |
+| `SPT_BOOTSTRAP_KEYS` | Include `ci:…` if ACL required |
+
+## Webhook setup (once)
+
+On `AM-Portfolio/am-market` → Settings → Webhooks:
+
+- Payload URL: `https://am-dev.asrax.in/qa/webhooks/github`
+- Content type: `application/json`
+- Secret: same as dig `GITHUB_WEBHOOK_SECRET`
+- Events: **Just the push event**
+
+Then set repo variable `SPT_USE_GHA_START=false` so the optional GHA starter stays off.
