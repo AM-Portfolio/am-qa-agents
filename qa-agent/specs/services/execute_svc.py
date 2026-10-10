@@ -258,6 +258,21 @@ async def execute_run(
     selected_api_ids = [str(x) for x in (body.api_ids or []) if x]
     if not selected_api_ids and cfg.get("selected_api_ids"):
         selected_api_ids = [str(x) for x in (cfg.get("selected_api_ids") or []) if x]
+    # When a payload set is applied, keep only ids present in that set (or catalog).
+    # Prevents 400 on rerun after OpenAPI/slug drift left stale selected_api_ids.
+    if selected_api_ids and set_ver is not None:
+        override_ids = {
+            str(o.get("id"))
+            for o in ((cfg.get("payloads") or {}).get("api_overrides") or [])
+            if isinstance(o, dict) and o.get("id")
+        }
+        if override_ids:
+            kept = [a for a in selected_api_ids if a in override_ids]
+            if kept:
+                selected_api_ids = kept
+            else:
+                # Suite listed only stale ids — run everything in the payload set.
+                selected_api_ids = sorted(override_ids)
     if selected_api_ids and test_type != "playwright":
         cfg["selected_api_ids"] = selected_api_ids
         try:

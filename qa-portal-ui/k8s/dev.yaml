@@ -1,6 +1,6 @@
-# Dig Kind (kubeconfig.dev / dig-apps) — portal separate from am-qa-agents.
-# Apply: kubectl --kubeconfig ~/.asrax/kubeconfig.dev -n am-agents-dig apply -f qa-portal-ui/k8s/dig.yaml
-# (namespace on dig is am-agents-dev)
+# Dev Kind (am-dev-apps) — QA portal on https://ai-dev.asrax.in
+# API stays same-origin via /qa → am-qa-agents-dev
+# Apply: kubectl --kubeconfig ~/.asrax/kubeconfig.dev.local -n am-agents-dev apply -f qa-portal-ui/k8s/dev.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -66,16 +66,52 @@ spec:
               cpu: 200m
               memory: 128Mi
 ---
+# Portal UI at https://ai-dev.asrax.in/
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: am-qa-portal-ui-dev
   namespace: am-agents-dev
   annotations:
-    # Higher than am-qa-agents-dev (/qa priority 100) so /qa/ui hits nginx, not Python.
-    traefik.ingress.kubernetes.io/router.priority: "200"
+    traefik.ingress.kubernetes.io/router.priority: "50"
     traefik.ingress.kubernetes.io/router.middlewares: >-
-      am-apps-dev-dev-global-cors@kubernetescrd
+      am-agents-dev-dev-global-cors@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: ai-dev.asrax.in
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: am-qa-portal-ui-dev
+                port:
+                  number: 80
+---
+# Legacy am-dev.asrax.in/qa/ui → https://ai-dev.asrax.in/
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-qa-ui-to-ai-dev
+  namespace: am-agents-dev
+spec:
+  redirectRegex:
+    regex: ^https?://[^/]+/qa/ui/?.*
+    replacement: https://ai-dev.asrax.in/
+    permanent: false
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: am-qa-portal-ui-legacy-redirect
+  
+  namespace: am-agents-dev
+  annotations:
+    traefik.ingress.kubernetes.io/router.priority: "210"
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-agents-dev-redirect-qa-ui-to-ai-dev@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
@@ -89,3 +125,34 @@ spec:
                 name: am-qa-portal-ui-dev
                 port:
                   number: 80
+---
+# QA API on ai-dev host (same-origin /qa for the portal)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: am-qa-agents-ai-dev
+  namespace: am-agents-dev
+  annotations:
+    traefik.ingress.kubernetes.io/router.priority: "100"
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-agents-dev-dev-global-cors@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: ai-dev.asrax.in
+      http:
+        paths:
+          - path: /qa
+            pathType: Prefix
+            backend:
+              service:
+                name: am-qa-agents-dev
+                port:
+                  number: 8150
+          - path: /ui-test
+            pathType: Prefix
+            backend:
+              service:
+                name: am-qa-agents-dev
+                port:
+                  number: 8150

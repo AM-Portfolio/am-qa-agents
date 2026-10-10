@@ -1,0 +1,108 @@
+# Prod — QA portal on https://ai.asrax.in
+# API same-origin via /qa → am-qa-agents-prod
+apiVersion: v1
+kind: Service
+metadata:
+  name: am-qa-portal-ui-prod
+  namespace: am-agents-prod
+  labels:
+    app.kubernetes.io/name: am-qa-portal-ui
+    app.kubernetes.io/instance: am-qa-portal-ui-prod
+spec:
+  selector:
+    app.kubernetes.io/instance: am-qa-portal-ui-prod
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: am-qa-portal-ui-prod
+  namespace: am-agents-prod
+  labels:
+    app.kubernetes.io/name: am-qa-portal-ui
+    app.kubernetes.io/instance: am-qa-portal-ui-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: am-qa-portal-ui-prod
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: am-qa-portal-ui
+        app.kubernetes.io/instance: am-qa-portal-ui-prod
+    spec:
+      imagePullSecrets:
+        - name: ghcr-creds
+        - name: github-registry-secret
+        - name: regcred
+      containers:
+        - name: portal
+          image: ghcr.io/am-portfolio/am-qa-agents/am-qa-portal-ui:aihost-190409
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: am-qa-portal-ui-prod
+  namespace: am-agents-prod
+  annotations:
+    traefik.ingress.kubernetes.io/router.priority: "50"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: ai.asrax.in
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: am-qa-portal-ui-prod
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: am-qa-agents-ai-prod
+  namespace: am-agents-prod
+  annotations:
+    traefik.ingress.kubernetes.io/router.priority: "100"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: ai.asrax.in
+      http:
+        paths:
+          - path: /qa
+            pathType: Prefix
+            backend:
+              service:
+                name: am-qa-agents-prod
+                port:
+                  number: 8150

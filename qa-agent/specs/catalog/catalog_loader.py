@@ -1325,6 +1325,17 @@ def _substitute(value: str, ctx: dict[str, str], env_ctx: dict[str, str] | None 
     return out
 
 
+def _substitute_any(value: Any, ctx: dict[str, str], env_ctx: dict[str, str] | None = None) -> Any:
+    """Deep-substitute {{vars}} in strings; preserve dict/list/number/bool structure."""
+    if isinstance(value, dict):
+        return {k: _substitute_any(v, ctx, env_ctx) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_substitute_any(v, ctx, env_ctx) for v in value]
+    if isinstance(value, str):
+        return _substitute(value, ctx, env_ctx)
+    return value
+
+
 def build_env_ctx(config: dict[str, Any]) -> dict[str, str]:
     payloads = config.get("payloads") or {}
     auth = payloads.get("auth_env") or {}
@@ -1340,7 +1351,17 @@ def build_env_ctx(config: dict[str, Any]) -> dict[str, str]:
 def resolve_api(api: dict[str, Any], ctx: dict[str, str], env_ctx: dict[str, str]) -> dict[str, Any]:
     resolved = dict(api)
     resolved["name"] = _substitute(str(api.get("name", api.get("id", ""))), ctx, env_ctx)
-    resolved["path"] = _substitute(str(api.get("path", "/")), ctx, env_ctx)
+    path = _substitute(str(api.get("path", "/")), ctx, env_ctx)
+    path_params: dict[str, str] = {}
+    for k, v in (api.get("path_params") or {}).items():
+        if v is None:
+            continue
+        val = _substitute(str(v), ctx, env_ctx)
+        if val:
+            path_params[str(k)] = val
+            path = path.replace("{" + str(k) + "}", val)
+    resolved["path"] = path
+    resolved["path_params"] = path_params
     headers = {}
     for k, v in (api.get("headers") or {}).items():
         val = _substitute(str(v), ctx, env_ctx)
@@ -1350,17 +1371,22 @@ def resolve_api(api: dict[str, Any], ctx: dict[str, str], env_ctx: dict[str, str
     token = str(env_ctx.get("SPT_AUTH_TOKEN") or "").strip()
     if token and not any(str(k).lower() == "authorization" for k in headers):
         headers["Authorization"] = token
-    resolved["headers"] = headers
     query: dict[str, str] = {}
     for k, v in (api.get("query") or {}).items():
         val = _substitute(str(v), ctx, env_ctx)
         if val:
             query[str(k)] = val
     resolved["query"] = query
+    # Keep JSON body as object/list (not Python str(dict)) so k6 can JSON.stringify
+    # and Spring accepts application/json instead of application/octet-stream.
     if api.get("body") is not None:
-        resolved["body"] = _substitute(str(api["body"]), ctx, env_ctx)
+        resolved["body"] = _substitute_any(api["body"], ctx, env_ctx)
     else:
         resolved["body"] = None
+    if resolved["body"] is not None and isinstance(resolved["body"], (dict, list)):
+        if not any(str(k).lower() == "content-type" for k in headers):
+            headers["Content-Type"] = "application/json"
+    resolved["headers"] = headers
     resolved["method"] = str(api.get("method", "GET")).upper()
     resolved["checks"] = list(api.get("checks") or ["status_2xx"])
     return resolved
@@ -1538,9 +1564,18 @@ def apis_for_config(
                     have.add(oid)
                 missing = sorted(want - have)
             if missing:
-                raise ValueError(
-                    f"Unknown api_id(s) for service {service}: {', '.join(missing)}"
+                # Stale suite ids (old OpenAPI / __v__ variants / removed ops) must not
+                # block rerun of the APIs that still resolve from catalog or payload set.
+                logger.warning(
+                    "Dropping %s unknown api_id(s) for %s: %s",
+                    len(missing),
+                    service,
+                    ", ".join(missing[:24]) + ("…" if len(missing) > 24 else ""),
                 )
+                if not apis:
+                    raise ValueError(
+                        f"Unknown api_id(s) for service {service}: {', '.join(missing)}"
+                    )
     return base_url, [resolve_api(a, ctx, env_ctx) for a in apis if a.get("id")]
 
 

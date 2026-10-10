@@ -78,6 +78,28 @@ String _prettyError(String raw) {
   return out.join('\n');
 }
 
+int? _payloadSetVersionInt(Map<String, dynamic> run) {
+  final label = _payloadSetVersionLabel(run);
+  if (label == '—' || label == 'active') return null;
+  final raw = label.startsWith('v') ? label.substring(1) : label;
+  return int.tryParse(raw);
+}
+
+String _executeError(Object e) {
+  if (e is DioException) {
+    final data = e.response?.data;
+    if (data is Map && data['detail'] != null) {
+      final d = data['detail'];
+      if (d is String && d.trim().isNotEmpty) return d;
+      return d.toString();
+    }
+    if (data is String && data.trim().isNotEmpty) return data;
+    final code = e.response?.statusCode;
+    if (code != null) return 'HTTP $code: ${e.message ?? e}';
+  }
+  return e.toString();
+}
+
 /// Dataset version from run params / payloads_used (chip label: `vN`, `active`, or `—`).
 String _payloadSetVersionLabel(Map<String, dynamic> run) {
   final params = _runParams(run);

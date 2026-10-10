@@ -158,7 +158,15 @@ function reportProgress(payload) {{
 }}
 
 function buildUrl(api) {{
-  let url = BASE_URL + api.path;
+  // Substitute OpenAPI path templates using api.path_params (e.g. /ipo/{{id}}).
+  let path = String(api.path || '/');
+  const pp = api.path_params || {{}};
+  for (const k of Object.keys(pp)) {{
+    const val = pp[k];
+    if (val == null || val === '') continue;
+    path = path.split('{{' + k + '}}').join(String(val));
+  }}
+  let url = BASE_URL + path;
   const q = api.query || {{}};
   const keys = Object.keys(q);
   if (keys.length) {{
@@ -170,15 +178,23 @@ function buildUrl(api) {{
 function doRequest(api) {{
   const url = buildUrl(api);
   const tags = {{ api_id: api.id, name: api.name }};
+  const headers = Object.assign({{}}, api.headers || {{}});
+  let body = api.body != null ? api.body : undefined;
+  // Spring rejects application/octet-stream; JSON bodies must be strings + Content-Type.
+  if (body != null && typeof body === 'object') {{
+    body = JSON.stringify(body);
+    if (!headers['Content-Type'] && !headers['content-type']) {{
+      headers['Content-Type'] = 'application/json';
+    }}
+  }}
   const params = {{
-    headers: api.headers || {{}},
+    headers,
     tags,
     // Fail hung backends before k6's 60s default so release smoke finishes faster.
     timeout: '30s',
   }};
   const start = Date.now();
   let res;
-  const body = api.body != null ? api.body : undefined;
   switch (api.method) {{
     case 'POST':
       res = http.post(url, body, params);

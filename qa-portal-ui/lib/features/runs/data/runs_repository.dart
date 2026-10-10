@@ -81,6 +81,10 @@ class RunsRepository {
     List<String>? reportFormats,
     List<String>? apiIds,
     String? openapiVersion,
+    int? payloadSetVersion,
+    String? targetUrl,
+    String? service,
+    String? environment,
   }) async {
     final res = await _api.post(
       '/api/runs/execute',
@@ -96,6 +100,11 @@ class RunsRepository {
         if (apiIds != null && apiIds.isNotEmpty) 'api_ids': apiIds,
         if (openapiVersion != null && openapiVersion.isNotEmpty)
           'openapi_version': openapiVersion,
+        if (payloadSetVersion != null) 'payload_set_version': payloadSetVersion,
+        if (targetUrl != null && targetUrl.isNotEmpty) 'target_url': targetUrl,
+        if (service != null && service.isNotEmpty) 'service': service,
+        if (environment != null && environment.isNotEmpty)
+          'environment': environment,
       },
     );
     return asMap(res.data);

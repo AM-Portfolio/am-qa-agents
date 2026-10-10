@@ -229,6 +229,7 @@ class _RunDetailCubit extends Cubit<_RunDetailState> {
     final testType = '${run['test_type'] ?? 'k6'}';
     final vus = _intFrom(params['vus'] ?? run['vus'], 1);
     final calls = _intFrom(params['iterations'] ?? params['calls'] ?? run['iterations'], 1);
+    final psv = _payloadSetVersionInt(run);
     emit(state.copyWith(actionBusy: true, error: null));
     try {
       final out = await _repo.execute(
@@ -236,12 +237,22 @@ class _RunDetailCubit extends Cubit<_RunDetailState> {
         testType: testType,
         vus: vus,
         calls: calls,
-        profile: 'load',
+        profile: 'debug',
+        payloadSetVersion: psv,
+        service: '${run['service'] ?? ''}'.trim().isEmpty
+            ? null
+            : '${run['service']}',
+        environment: '${run['environment'] ?? ''}'.trim().isEmpty
+            ? null
+            : '${run['environment']}',
+        targetUrl: '${run['target_url'] ?? ''}'.trim().isEmpty
+            ? null
+            : '${run['target_url']}',
       );
       emit(state.copyWith(actionBusy: false));
       return _runIdFrom(out);
     } catch (e) {
-      emit(state.copyWith(actionBusy: false, error: e.toString()));
+      emit(state.copyWith(actionBusy: false, error: _executeError(e)));
       return null;
     }
   }
@@ -254,6 +265,7 @@ class _RunDetailCubit extends Cubit<_RunDetailState> {
       return null;
     }
     final testType = '${run['test_type'] ?? 'k6'}';
+    final psv = _payloadSetVersionInt(run);
     emit(state.copyWith(actionBusy: true, error: null));
     try {
       final out = await _repo.execute(
@@ -262,11 +274,21 @@ class _RunDetailCubit extends Cubit<_RunDetailState> {
         vus: 1,
         calls: 1,
         profile: 'debug',
+        payloadSetVersion: psv,
+        service: '${run['service'] ?? ''}'.trim().isEmpty
+            ? null
+            : '${run['service']}',
+        environment: '${run['environment'] ?? ''}'.trim().isEmpty
+            ? null
+            : '${run['environment']}',
+        targetUrl: '${run['target_url'] ?? ''}'.trim().isEmpty
+            ? null
+            : '${run['target_url']}',
       );
       emit(state.copyWith(actionBusy: false));
       return _runIdFrom(out);
     } catch (e) {
-      emit(state.copyWith(actionBusy: false, error: e.toString()));
+      emit(state.copyWith(actionBusy: false, error: _executeError(e)));
       return null;
     }
   }
