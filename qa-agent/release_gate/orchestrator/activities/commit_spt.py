@@ -29,16 +29,24 @@ def _build_card(
     committer_email: str,
     matrix: dict[str, Any],
     run: dict[str, Any],
+    github_run_url: str = "",
+    environment: str = "",
 ) -> str:
     rid = str(run.get("id") or run.get("run_id") or "")
     status = str(run.get("status") or "unknown")
     passed = bool(run.get("passed") or run.get("ok"))
-    return "\n".join(
+    lines = [
+        f"SPT report — {service}",
+        f"Branch: {git_ref}",
+        f"SHA: {(git_sha or '?')[:12]}",
+        f"Committer: {committer_name or '?'} <{committer_email or '?'}>",
+    ]
+    if environment:
+        lines.append(f"Environment: {environment}")
+    if github_run_url:
+        lines.append(f"GitHub run: {github_run_url}")
+    lines.extend(
         [
-            f"SPT report — {service}",
-            f"Branch: {git_ref}",
-            f"SHA: {(git_sha or '?')[:12]}",
-            f"Committer: {committer_name or '?'} <{committer_email or '?'}>",
             f"Dataset profile: {matrix.get('dataset_profile')}",
             f"Intensity: {matrix.get('profile')} ({matrix.get('matrix_label')})",
             f"Pass / Expected / Unexpected fail: "
@@ -48,6 +56,7 @@ def _build_card(
             f"Portal: {_portal_run_url(rid) if rid else '(no run id)'}",
         ]
     )
+    return "\n".join(lines)
 
 
 async def _send_cliq(text: str) -> dict[str, Any]:
@@ -119,6 +128,17 @@ async def activity_commit_spt(payload: dict[str, Any]) -> dict[str, Any]:
         "git_ref": git_ref or None,
         "committer_email": committer_email or None,
         "committer_name": committer_name or None,
+        "trigger_source": payload.get("trigger_source") or None,
+        "github_repository": payload.get("github_repository")
+        or payload.get("repo")
+        or None,
+        "github_run_id": payload.get("github_run_id") or None,
+        "github_run_url": payload.get("github_run_url") or None,
+        "github_workflow": payload.get("github_workflow") or None,
+        "github_event_name": payload.get("github_event_name") or None,
+        "commit_message": payload.get("commit_message") or None,
+        "temporal_workflow_id": payload.get("temporal_workflow_id") or None,
+        "tracking_id": tracking_id or None,
         "wait": False,
     }
     body = {k: v for k, v in body.items() if v is not None}
@@ -187,6 +207,8 @@ async def activity_commit_spt(payload: dict[str, Any]) -> dict[str, Any]:
         committer_email=committer_email,
         matrix=matrix,
         run=run,
+        github_run_url=str(payload.get("github_run_url") or ""),
+        environment=environment,
     )
     outcome = "passed" if passed else "failed"
     subject = f"[SPT] {service} {git_ref} — {outcome}"

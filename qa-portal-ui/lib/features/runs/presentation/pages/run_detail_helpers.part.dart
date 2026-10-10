@@ -197,3 +197,44 @@ bool _chipValueMissing(String v) {
   final s = v.trim();
   return s.isEmpty || s == '—' || s == 'null' || s == '-';
 }
+
+String _triggerSourceLabel(Map<String, dynamic> params) {
+  final raw = '${params['trigger_source'] ?? ''}'.trim().toLowerCase();
+  switch (raw) {
+    case 'github_actions':
+      return 'GitHub Actions';
+    case 'github_webhook':
+      return 'GitHub webhook';
+    case 'portal':
+      return 'Portal';
+    case 'manual':
+      return 'Manual';
+    default:
+      final tb = '${params['triggered_by'] ?? ''}'.trim();
+      if (tb.startsWith('ci-')) return 'GitHub Actions';
+      return tb;
+  }
+}
+
+String _branchChip(Map<String, dynamic> params) {
+  final ref = '${params['git_ref'] ?? ''}'.trim();
+  final sha = '${params['git_sha'] ?? ''}'.trim();
+  if (ref.isEmpty && sha.isEmpty) return '';
+  final shortSha = sha.length > 7 ? sha.substring(0, 7) : sha;
+  if (ref.isEmpty) return shortSha;
+  if (shortSha.isEmpty) return ref;
+  return '$ref @$shortSha';
+}
+
+String _committerChip(Map<String, dynamic> params) {
+  final name = '${params['committer_name'] ?? ''}'.trim();
+  final email = '${params['committer_email'] ?? ''}'.trim();
+  if (name.isNotEmpty) return name;
+  return email;
+}
+
+String _sptRunIdShort(Map<String, dynamic> run) {
+  final id = '${run['id'] ?? run['run_id'] ?? ''}'.trim();
+  if (id.isEmpty) return '';
+  return id.length > 8 ? '${id.substring(0, 8)}…' : id;
+}

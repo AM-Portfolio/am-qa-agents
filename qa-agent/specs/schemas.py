@@ -138,11 +138,20 @@ class RunExecuteRequest(BaseModel):
     # Separate from API target_url — Playwright hits the Flutter app root
     ui_target_url: str | None = None
     report_formats: list[Literal["html", "pdf", "json"]] | None = None
-    # Commit→SPT provenance (Overview + notifications)
+    # Commit→SPT / CI provenance (Overview + notifications)
     git_sha: str | None = None
     git_ref: str | None = None
     committer_email: str | None = None
     committer_name: str | None = None
+    trigger_source: str | None = None  # github_actions | github_webhook | manual | portal
+    github_repository: str | None = None
+    github_run_id: str | None = None
+    github_run_url: str | None = None
+    github_workflow: str | None = None
+    github_event_name: str | None = None
+    commit_message: str | None = None
+    temporal_workflow_id: str | None = None
+    tracking_id: str | None = None
 
 
 class SavePayloadRequest(BaseModel):

@@ -88,6 +88,13 @@ class CommitSptBody(BaseModel):
     committer_email: str | None = None
     committer_name: str | None = None
     use_temporal: bool = True
+    # CI provenance (passed through to Specs execute → Overview)
+    trigger_source: str | None = None
+    github_run_id: str | None = None
+    github_run_url: str | None = None
+    github_workflow: str | None = None
+    github_event_name: str | None = None
+    commit_message: str | None = None
 
 
 class HitlSignalBody(BaseModel):
@@ -326,6 +333,14 @@ async def start_commit_spt(
         "environment": body.environment,
         "committer_email": body.committer_email,
         "committer_name": body.committer_name,
+        "trigger_source": body.trigger_source or "manual",
+        "github_repository": body.repo,
+        "github_run_id": body.github_run_id,
+        "github_run_url": body.github_run_url,
+        "github_workflow": body.github_workflow,
+        "github_event_name": body.github_event_name,
+        "commit_message": body.commit_message,
+        "temporal_workflow_id": workflow_id,
     }
     if body.use_temporal and os.getenv("QA_AGENT_FORCE_INLINE", "").lower() not in {
         "1",
@@ -532,6 +547,9 @@ async def github_webhook(
             pusher = data.get("pusher") or {}
             token = (os.getenv("QA_AGENT_GATEWAY_TOKEN") or "").strip()
             auth = f"Bearer {token}" if token else None
+            msg = str(hc.get("message") or "").strip()
+            if len(msg) > 200:
+                msg = msg[:197] + "..."
             return await start_commit_spt(
                 CommitSptBody(
                     service="am-market-data",
@@ -544,6 +562,9 @@ async def github_webhook(
                     committer_name=str(author.get("name") or pusher.get("name") or "")
                     or None,
                     use_temporal=True,
+                    trigger_source="github_webhook",
+                    github_event_name="push",
+                    commit_message=msg or None,
                 ),
                 authorization=auth,
             )

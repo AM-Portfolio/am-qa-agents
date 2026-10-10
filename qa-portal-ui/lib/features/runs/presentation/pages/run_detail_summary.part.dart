@@ -190,9 +190,23 @@ class _OverviewTab extends StatelessWidget {
                     ('service', '${run['service'] ?? ''}'),
                     ('env', '${run['environment'] ?? ''}'),
                     ('target', target),
+                    ('Trigger', _triggerSourceLabel(params)),
+                    ('Branch', _branchChip(params)),
+                    ('Committer', _committerChip(params)),
+                    ('SPT run', _sptRunIdShort(run)),
                     ('started', _shortTs(run['started_at'])),
                     ('finished', _shortTs(run['finished_at'])),
                   ]),
+                  if ('${params['github_run_url'] ?? ''}'.trim().isNotEmpty)
+                    ActionChip(
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      avatar: const Icon(Icons.open_in_new, size: 14),
+                      label: const Text('GitHub run'),
+                      onPressed: () => launchUrl(
+                        Uri.parse('${params['github_run_url']}'.trim()),
+                      ),
+                    ),
                 ],
               ),
               if (metrics.isNotEmpty)
