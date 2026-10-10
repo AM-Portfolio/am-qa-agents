@@ -112,6 +112,43 @@ async def start_release_readiness(
     return handle.id
 
 
+
+async def start_commit_spt(
+    *,
+    tracking_id: str,
+    workflow_id: str,
+    args: dict[str, Any],
+) -> str:
+    """Start CommitSptWorkflow (branch-matrix SPT + email/Cliq on qa-agent worker)."""
+    from temporalio.common import WorkflowIDReusePolicy
+
+    queue = assert_safe_task_queue()
+    namespace = resolve_namespace()
+    host = os.getenv("TEMPORAL_HOST", "localhost:7233")
+    LOG.info(
+        "temporal.start CommitSptWorkflow tracking_id=%s workflow_id=%s queue=%s",
+        tracking_id,
+        workflow_id,
+        queue,
+        extra={
+            "event": "temporal.start",
+            "domain": "workflow",
+            "flow": "commit_spt.start",
+            "workflow_id": workflow_id,
+            "tracking_id": tracking_id,
+            "target": f"{host}/{namespace}/{queue}",
+        },
+    )
+    client = await get_temporal_client()
+    handle = await client.start_workflow(
+        "CommitSptWorkflow",
+        args,
+        id=workflow_id,
+        task_queue=queue,
+        id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
+    )
+    return handle.id
+
 async def start_asrax_release_ops(
     *,
     workflow_id: str,

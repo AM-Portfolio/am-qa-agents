@@ -62,8 +62,13 @@ async def run_worker() -> None:
         activity_resolve_load_profile,
         activity_security_scan,
         activity_smoke_ui_test,
+        activity_commit_spt,
     )
-    from orchestrator.workflows import AsraxReleaseOpsWorkflow, ReleaseReadinessWorkflow
+    from orchestrator.workflows import (
+        AsraxReleaseOpsWorkflow,
+        CommitSptWorkflow,
+        ReleaseReadinessWorkflow,
+    )
 
     configure_logging()
     configure_tracing(service_name="am-qa-agents")
@@ -87,7 +92,7 @@ async def run_worker() -> None:
     worker = Worker(
         client,
         task_queue=queue,
-        workflows=[ReleaseReadinessWorkflow, AsraxReleaseOpsWorkflow],
+        workflows=[ReleaseReadinessWorkflow, AsraxReleaseOpsWorkflow, CommitSptWorkflow],
         activities=[
             activity_classify,
             activity_resolve_load_profile,
@@ -120,6 +125,7 @@ async def run_worker() -> None:
             activity_release_ops_publish_drive,
             activity_release_ops_cliq_final,
             activity_release_ops_complete,
+            activity_commit_spt,
         ],
         workflow_runner=runner,
         interceptors=temporal_worker_interceptors(),

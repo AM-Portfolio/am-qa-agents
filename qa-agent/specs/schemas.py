@@ -42,6 +42,21 @@ class TestConfigIn(BaseModel):
     ui_target_url: str | None = None
     # Which report attachments to generate: html | pdf | json
     report_formats: list[Literal["html", "pdf", "json"]] | None = None
+    dataset_profile: Literal["working", "full", "premium", "default", "prod"] | None = None
+    stages: list[dict[str, Any]] | None = None
+    git_sha: str | None = None
+    git_ref: str | None = None
+    committer_email: str | None = None
+    committer_name: str | None = None
+    trigger_source: str | None = None
+    github_repository: str | None = None
+    github_run_id: str | None = None
+    github_run_url: str | None = None
+    github_workflow: str | None = None
+    github_event_name: str | None = None
+    commit_message: str | None = None
+    temporal_workflow_id: str | None = None
+    tracking_id: str | None = None
 
 
 class TestConfigUpdate(BaseModel):
@@ -66,6 +81,21 @@ class TestConfigUpdate(BaseModel):
     design_review_enabled: bool | None = None
     ui_target_url: str | None = None
     report_formats: list[Literal["html", "pdf", "json"]] | None = None
+    dataset_profile: Literal["working", "full", "premium", "default", "prod"] | None = None
+    stages: list[dict[str, Any]] | None = None
+    git_sha: str | None = None
+    git_ref: str | None = None
+    committer_email: str | None = None
+    committer_name: str | None = None
+    trigger_source: str | None = None
+    github_repository: str | None = None
+    github_run_id: str | None = None
+    github_run_url: str | None = None
+    github_workflow: str | None = None
+    github_event_name: str | None = None
+    commit_message: str | None = None
+    temporal_workflow_id: str | None = None
+    tracking_id: str | None = None
 
 
 class UiFlowIn(BaseModel):
@@ -134,6 +164,21 @@ class RunExecuteRequest(BaseModel):
     # Separate from API target_url — Playwright hits the Flutter app root
     ui_target_url: str | None = None
     report_formats: list[Literal["html", "pdf", "json"]] | None = None
+    dataset_profile: Literal["working", "full", "premium", "default", "prod"] | None = None
+    stages: list[dict[str, Any]] | None = None
+    git_sha: str | None = None
+    git_ref: str | None = None
+    committer_email: str | None = None
+    committer_name: str | None = None
+    trigger_source: str | None = None
+    github_repository: str | None = None
+    github_run_id: str | None = None
+    github_run_url: str | None = None
+    github_workflow: str | None = None
+    github_event_name: str | None = None
+    commit_message: str | None = None
+    temporal_workflow_id: str | None = None
+    tracking_id: str | None = None
 
 
 class SavePayloadRequest(BaseModel):

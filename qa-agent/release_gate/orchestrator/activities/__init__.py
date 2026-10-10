@@ -51,6 +51,8 @@ from orchestrator.activities.release_ops import (
     activity_release_ops_wait_deploy_healthy,
 )
 
+from orchestrator.activities.commit_spt import activity_commit_spt
+
 __all__ = [
     "activity_await_index",
     "activity_classify",
@@ -84,5 +86,6 @@ __all__ = [
     "activity_release_ops_publish_drive",
     "activity_release_ops_cliq_final",
     "activity_release_ops_complete",
+    "activity_commit_spt",
     "build_evidence_bundle",
 ]

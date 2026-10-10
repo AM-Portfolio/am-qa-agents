@@ -77,6 +77,26 @@ class ReleaseReadinessBody(BaseModel):
     )
 
 
+class CommitSptBody(BaseModel):
+    """Fire-and-forget Commitâ†’SPT: Temporal worker runs matrix + notify (no GHA runner)."""
+
+    service: str = "am-market-data"
+    repo: str = "AM-Portfolio/am-market"
+    branch: str
+    head_sha: str
+    environment: str = "dev"
+    committer_email: str | None = None
+    committer_name: str | None = None
+    use_temporal: bool = True
+    # CI provenance (passed through to Specs execute â†’ Overview)
+    trigger_source: str | None = None
+    github_run_id: str | None = None
+    github_run_url: str | None = None
+    github_workflow: str | None = None
+    github_event_name: str | None = None
+    commit_message: str | None = None
+
+
 class HitlSignalBody(BaseModel):
     actor: str = "operator"
     notes: str = ""
@@ -403,6 +423,82 @@ async def start_release_readiness(
         )
 
 
+@app.post("/v2/workflows/commit-spt")
+async def start_commit_spt(
+    body: CommitSptBody,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Start CommitSptWorkflow on Temporal (qa-agent worker executes SPT + Cliq/email)."""
+    _require_token(authorization)
+    tracking_id = f"spt-{uuid.uuid4().hex[:12]}"
+    workflow_id = (
+        f"commit-spt-{body.service}-{body.branch.replace('/', '-')}-{body.head_sha[:12]}"
+    )
+    ledger = get_ledger()
+    ledger.create_run(
+        tracking_id=tracking_id,
+        workflow_id=workflow_id,
+        meta={
+            "env": body.environment,
+            "trigger_kind": "commit_spt",
+            "service": body.service,
+            "branch": body.branch,
+        },
+    )
+    args = {
+        "tracking_id": tracking_id,
+        "service": body.service,
+        "repo": body.repo,
+        "branch": body.branch,
+        "git_ref": body.branch,
+        "head_sha": body.head_sha,
+        "git_sha": body.head_sha,
+        "environment": body.environment,
+        "committer_email": body.committer_email,
+        "committer_name": body.committer_name,
+        "trigger_source": body.trigger_source or "manual",
+        "github_repository": body.repo,
+        "github_run_id": body.github_run_id,
+        "github_run_url": body.github_run_url,
+        "github_workflow": body.github_workflow,
+        "github_event_name": body.github_event_name,
+        "commit_message": body.commit_message,
+        "temporal_workflow_id": workflow_id,
+    }
+    if body.use_temporal and os.getenv("QA_AGENT_FORCE_INLINE", "").lower() not in {
+        "1",
+        "true",
+        "yes",
+    }:
+        try:
+            wf_id = await tapi.start_commit_spt(
+                tracking_id=tracking_id,
+                workflow_id=workflow_id,
+                args=args,
+            )
+            return {
+                "tracking_id": tracking_id,
+                "workflow_id": wf_id,
+                "mode": "temporal",
+                "service": body.service,
+                "branch": body.branch,
+            }
+        except Exception as exc:  # noqa: BLE001
+            LOG.exception("commit_spt.temporal_failed: %s", exc)
+            raise HTTPException(503, f"temporal_start_failed: {exc}") from exc
+
+    # Inline fallback (no Temporal) â€” run activity in-process
+    from orchestrator.activities.commit_spt import activity_commit_spt
+
+    result = await activity_commit_spt(args)
+    return {
+        "tracking_id": tracking_id,
+        "workflow_id": workflow_id,
+        "mode": "inline",
+        "result": result,
+    }
+
+
 @app.post("/webhooks/github")
 async def github_webhook(
     request: Request,
@@ -439,6 +535,37 @@ async def github_webhook(
         branch = str((pr.get("head") or {}).get("ref") or "")
     else:
         return {"ignored": True, "reason": f"unsupported_event:{event}"}
+
+    if event == "push" and str(repo).endswith("/am-market"):
+        from orchestrator.commit_spt_matrix import push_touches_market_data
+
+        if push_touches_market_data(data):
+            hc = data.get("head_commit") or {}
+            author = hc.get("author") or {}
+            pusher = data.get("pusher") or {}
+            token = (os.getenv("QA_AGENT_GATEWAY_TOKEN") or "").strip()
+            auth = f"Bearer {token}" if token else None
+            msg = str(hc.get("message") or "").strip()
+            if len(msg) > 200:
+                msg = msg[:197] + "..."
+            return await start_commit_spt(
+                CommitSptBody(
+                    service="am-market-data",
+                    repo=str(repo),
+                    branch=branch,
+                    head_sha=head_sha,
+                    environment="dev",
+                    committer_email=str(author.get("email") or pusher.get("email") or "")
+                    or None,
+                    committer_name=str(author.get("name") or pusher.get("name") or "")
+                    or None,
+                    use_temporal=True,
+                    trigger_source="github_webhook",
+                    github_event_name="push",
+                    commit_message=msg or None,
+                ),
+                authorization=auth,
+            )
 
     normalized = ReleaseReadinessBody(
         repo=repo,
