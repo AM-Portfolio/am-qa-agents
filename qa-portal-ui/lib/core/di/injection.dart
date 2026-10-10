@@ -9,6 +9,7 @@ import '../../features/profiles/data/profiles_repository.dart';
 import '../../features/execute/data/execute_repository.dart';
 import '../../features/services/data/services_repository.dart';
 import '../../features/specs/data/specs_repository.dart';
+import '../../features/specs/presentation/cubit/specs_profile_defaults.dart';
 import '../../features/flows/data/flows_repository.dart';
 import '../../features/ui_flows/data/ui_flows_repository.dart';
 
@@ -17,6 +18,9 @@ final getIt = GetIt.instance;
 Future<void> configureDependencies() async {
   if (!getIt.isRegistered<PortalConfig>()) {
     getIt.registerSingleton<PortalConfig>(PortalConfig.fromEnvironment());
+  }
+  if (!getIt.isRegistered<SpecsProfileDefaults>()) {
+    getIt.registerSingleton<SpecsProfileDefaults>(SpecsProfileDefaults());
   }
 
   if (!getIt.isRegistered<ThemeRepository>()) {

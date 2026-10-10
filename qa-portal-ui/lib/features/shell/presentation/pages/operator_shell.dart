@@ -16,10 +16,11 @@ class OperatorShell extends StatelessWidget {
   final Widget child;
 
   static const _nav = <(String route, String title, IconData icon)>[
-    (AppRoutes.services, 'Services', Icons.hub_outlined),
+    (AppRoutes.dashboard, 'Dashboard', Icons.dashboard_outlined),
     (AppRoutes.runs, 'Runs', Icons.play_circle_outline),
     (AppRoutes.profiles, 'Profiles', Icons.tune),
     (AppRoutes.specs, 'OpenAPI', Icons.api_outlined),
+    (AppRoutes.datasets, 'Datasets', Icons.storage_outlined),
     (AppRoutes.flows, 'Flows', Icons.account_tree_outlined),
     (AppRoutes.uiFlows, 'UI flows', Icons.web_asset),
   ];
@@ -138,6 +139,7 @@ class OperatorShell extends StatelessWidget {
                 children: [
                   // Specs/Flows own their own run controls; hide global profile bar.
                   if (!location.startsWith(AppRoutes.specs) &&
+                      !location.startsWith(AppRoutes.datasets) &&
                       !location.startsWith(AppRoutes.flows)) ...[
                     Material(
                       elevation: 0,

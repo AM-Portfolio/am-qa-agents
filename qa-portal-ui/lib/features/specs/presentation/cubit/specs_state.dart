@@ -36,6 +36,7 @@ class SpecsState extends Equatable {
     this.selectedApiIds = const {},
     this.payloadSets = const [],
     this.selectedPayloadVersion,
+    this.activePayloadVersion,
     this.selectedPayloadApiIds = const {},
     this.draft = const TryDraft(),
     this.tryResult,
@@ -100,6 +101,8 @@ class SpecsState extends Equatable {
   final Set<String> selectedApiIds;
   final List<Map<String, dynamic>> payloadSets;
   final String? selectedPayloadVersion;
+  /// Backend active set version (`active_version` from list envelope).
+  final String? activePayloadVersion;
   /// Multi-select of payload-set API ids on the Data tab.
   final Set<String> selectedPayloadApiIds;
   final TryDraft draft;
@@ -181,6 +184,7 @@ class SpecsState extends Equatable {
     Set<String>? selectedApiIds,
     List<Map<String, dynamic>>? payloadSets,
     String? selectedPayloadVersion,
+    String? activePayloadVersion,
     Set<String>? selectedPayloadApiIds,
     TryDraft? draft,
     String? tryResult,
@@ -216,6 +220,7 @@ class SpecsState extends Equatable {
     bool clearTryResult = false,
     bool clearActionResult = false,
     bool clearPayloadVersion = false,
+    bool clearActivePayloadVersion = false,
     bool clearPayloadApiIds = false,
     bool clearMcpSummary = false,
     bool clearMcpReport = false,
@@ -263,6 +268,9 @@ class SpecsState extends Equatable {
       selectedPayloadVersion: clearPayloadVersion
           ? null
           : (selectedPayloadVersion ?? this.selectedPayloadVersion),
+      activePayloadVersion: clearActivePayloadVersion
+          ? null
+          : (activePayloadVersion ?? this.activePayloadVersion),
       selectedPayloadApiIds: clearPayloadApiIds
           ? const {}
           : (selectedPayloadApiIds ?? this.selectedPayloadApiIds),
@@ -334,6 +342,7 @@ class SpecsState extends Equatable {
         selectedApiIds,
         payloadSets,
         selectedPayloadVersion,
+        activePayloadVersion,
         selectedPayloadApiIds,
         draft,
         tryResult,

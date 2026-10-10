@@ -1,14 +1,11 @@
 import 'dart:convert';
 
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../../data/specs_repository.dart';
+import 'specs_cubit_host.mixin.dart';
 import 'specs_state.dart';
 
 /// MCP / OpenAPI tools: selection, Run tool / Run all, report state.
-/// [prepareMcp] / [refreshOpenapiTools] live on [SpecsCubit].
-mixin SpecsCubitMcpMixin on Cubit<SpecsState> {
-  SpecsRepository get repo;
+/// [prepareMcp] / [refreshOpenapiTools] live on catalog/test mixins.
+mixin SpecsCubitMcpMixin on SpecsCubitHost {
 
   Map<String, dynamic> _argsFromPayloadRequest(Map? request) {
     if (request == null) return {};

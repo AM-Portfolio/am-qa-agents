@@ -1,7 +1,9 @@
 import 'package:am_design_system/am_design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../domain/try_draft.dart';
 import '../cubit/specs_cubit.dart';
 import '../datasets/specs_datasets_view.dart';
@@ -22,52 +24,12 @@ class SpecsShell extends StatefulWidget {
   State<SpecsShell> createState() => _SpecsShellState();
 }
 
-class _SpecsShellState extends State<SpecsShell>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabs;
+class _SpecsShellState extends State<SpecsShell> {
   bool _primaryCollapsed = false;
   double _secondaryWidth = 300;
   static const _secondaryMin = 220.0;
   static const _secondaryMax = 420.0;
   static const _secondaryDefault = 300.0;
-
-  static const _tabOrder = <SpecsWorkspaceTab>[
-    SpecsWorkspaceTab.test,
-    SpecsWorkspaceTab.swagger,
-    SpecsWorkspaceTab.mcp,
-    SpecsWorkspaceTab.sdk,
-    SpecsWorkspaceTab.usecases,
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _tabs = TabController(length: _tabOrder.length, vsync: this);
-    _tabs.addListener(_onTabController);
-  }
-
-  void _onTabController() {
-    if (_tabs.indexIsChanging) return;
-    final cubit = context.read<SpecsCubit>();
-    final tab = _tabOrder[_tabs.index];
-    if (cubit.state.workspaceTab != tab) {
-      cubit.setWorkspaceTab(tab);
-    }
-  }
-
-  @override
-  void dispose() {
-    _tabs.removeListener(_onTabController);
-    _tabs.dispose();
-    super.dispose();
-  }
-
-  void _syncTabFromState(SpecsWorkspaceTab tab) {
-    final i = _tabOrder.indexOf(tab);
-    if (i >= 0 && _tabs.index != i) {
-      _tabs.index = i;
-    }
-  }
 
   Future<void> _showDiffDialog(
     BuildContext context,
@@ -181,11 +143,9 @@ class _SpecsShellState extends State<SpecsShell>
             cubit: cubit,
             onSelectApi: () {
               cubit.setWorkspaceTab(SpecsWorkspaceTab.test);
-              _syncTabFromState(SpecsWorkspaceTab.test);
             },
             onSelectMcp: () {
               cubit.setWorkspaceTab(SpecsWorkspaceTab.mcp);
-              _syncTabFromState(SpecsWorkspaceTab.mcp);
             },
           ),
         ),
@@ -207,24 +167,11 @@ class _SpecsShellState extends State<SpecsShell>
           SpecsSharedFilters(
             state: state,
             cubit: context.read<SpecsCubit>(),
-            onOpenDatasets: () {
-              context.read<SpecsCubit>().setNavMode(SpecsNavMode.datasets);
-            },
+            onOpenDatasets: () => context.go(AppRoutes.datasets),
           ),
           const Divider(height: 1),
-          TabBar(
-            controller: _tabs,
-            isScrollable: true,
-            tabs: const [
-              Tab(text: 'Test'),
-              Tab(text: 'Swagger'),
-              Tab(text: 'MCP / AI'),
-              Tab(text: 'SDK'),
-              Tab(text: 'Use cases'),
-            ],
-          ),
           Expanded(
-            // Build only the active tab so Swagger iframe / MCP stay cold until selected.
+            // Build only the active surface so Swagger iframe / MCP stay cold.
             child: switch (state.workspaceTab) {
               SpecsWorkspaceTab.test => const SpecsTestTab(),
               SpecsWorkspaceTab.swagger => SpecsSwaggerTab(
@@ -232,7 +179,6 @@ class _SpecsShellState extends State<SpecsShell>
                     context.read<SpecsCubit>().setWorkspaceTab(
                           SpecsWorkspaceTab.test,
                         );
-                    _syncTabFromState(SpecsWorkspaceTab.test);
                   },
                 ),
               SpecsWorkspaceTab.mcp => SpecsMcpTab(state: state),
@@ -268,12 +214,6 @@ class _SpecsShellState extends State<SpecsShell>
               n.message!.startsWith('Refresh:'),
           listener: (context, state) {
             _showDiffDialog(context, state.lastPayloadDiff);
-          },
-        ),
-        BlocListener<SpecsCubit, SpecsState>(
-          listenWhen: (p, n) => p.workspaceTab != n.workspaceTab,
-          listener: (context, state) {
-            _syncTabFromState(state.workspaceTab);
           },
         ),
       ],
@@ -346,7 +286,7 @@ class _SpecsShellState extends State<SpecsShell>
                         state.navMode == SpecsNavMode.datasets
                             ? 'Datasets'
                             : (state.selectedService == null
-                                ? 'Collections'
+                                ? 'API'
                                 : state.labelFor(state.selectedService!)),
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
@@ -403,15 +343,17 @@ class _SpecsShellState extends State<SpecsShell>
                   Expanded(
                     child: Row(
                       children: [
-                        SpecsPrimaryRail(
-                          state: state,
-                          cubit: cubit,
-                          collapsed: _primaryCollapsed,
-                          onToggleCollapse: () => setState(
-                            () => _primaryCollapsed = !_primaryCollapsed,
+                        if (state.navMode != SpecsNavMode.datasets) ...[
+                          SpecsPrimaryRail(
+                            state: state,
+                            cubit: cubit,
+                            collapsed: _primaryCollapsed,
+                            onToggleCollapse: () => setState(
+                              () => _primaryCollapsed = !_primaryCollapsed,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
+                          const SizedBox(width: 6),
+                        ],
                         SizedBox(
                           width: _secondaryWidth,
                           child: _secondaryPane(state, cubit),

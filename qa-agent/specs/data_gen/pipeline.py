@@ -100,7 +100,11 @@ def data_gen_run_suite(
         set_active_payload_set(service, int(payload_set_version))
 
     sel = api_ids_for_suite(
-        service, suite, version=int(payload_set_version), case_kinds=case_kinds
+        service,
+        suite,
+        version=int(payload_set_version),
+        case_kinds=case_kinds,
+        materialize_variants=True,
     )
     if not sel.get("ok"):
         return {**sel, "run_ids": []}

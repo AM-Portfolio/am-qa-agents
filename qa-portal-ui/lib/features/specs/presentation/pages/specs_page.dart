@@ -12,9 +12,12 @@ import '../shell/specs_shell.dart';
 export '../cubit/specs_cubit.dart';
 export '../cubit/specs_state.dart';
 
-/// Specs feature entry — Collections / Datasets, Test / Swagger / MCP / SDK / Use cases.
+/// Specs feature entry — OpenAPI workspace (API + tabs) or Datasets.
 class SpecsPage extends StatelessWidget {
-  const SpecsPage({super.key});
+  const SpecsPage({super.key, this.forceNavMode});
+
+  /// When set (e.g. `/datasets` route), overrides query `mode`.
+  final SpecsNavMode? forceNavMode;
 
   static SpecsNavMode? _parseMode(String? raw) {
     switch ((raw ?? '').trim().toLowerCase()) {
@@ -53,7 +56,7 @@ class SpecsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final q = GoRouterState.of(context).uri.queryParameters;
     final spec = q['spec'];
-    final mode = _parseMode(q['mode']);
+    final mode = forceNavMode ?? _parseMode(q['mode']);
     final tab = _parseTab(q['tab']);
     final version = q['v'];
     return BlocProvider(

@@ -6,7 +6,6 @@ import '../../../../core/network/json_lists.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../services/presentation/widgets/coverage_board.dart';
 import '../cubit/specs_cubit.dart';
-import '../cubit/specs_state.dart';
 
 class SpecsUseCasesTab extends StatelessWidget {
   const SpecsUseCasesTab({required this.state});
@@ -62,6 +61,8 @@ class SpecsUseCasesTab extends StatelessWidget {
           serviceId: state.selectedService ?? '',
           payloads: payloads,
           dataGenFlows: dataGenFlows,
+          selectedPayloadVersion: state.selectedPayloadVersion,
+          onSelectVersion: cubit.setPayloadVersion,
           onOpenFlows: () => context.go(AppRoutes.flows),
         ),
         CoverageBoard(
@@ -97,12 +98,16 @@ class _DataGenPanel extends StatelessWidget {
     required this.serviceId,
     required this.payloads,
     required this.dataGenFlows,
+    required this.selectedPayloadVersion,
+    required this.onSelectVersion,
     required this.onOpenFlows,
   });
 
   final String serviceId;
   final Map<String, dynamic> payloads;
   final List<Map<String, dynamic>> dataGenFlows;
+  final String? selectedPayloadVersion;
+  final ValueChanged<String?> onSelectVersion;
   final VoidCallback onOpenFlows;
 
   @override
@@ -158,13 +163,24 @@ class _DataGenPanel extends StatelessWidget {
                   runSpacing: 6,
                   children: [
                     for (final s in sets.take(8))
-                      Chip(
-                        label: Text(
-                          'v${s['version'] ?? '?'}'
-                          '${s['label'] != null ? ' · ${s['label']}' : ''}',
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                        visualDensity: VisualDensity.compact,
+                      Builder(
+                        builder: (context) {
+                          final ver = '${s['version'] ?? ''}'.trim();
+                          final selected = ver.isNotEmpty &&
+                              ver == selectedPayloadVersion;
+                          return FilterChip(
+                            label: Text(
+                              'v${ver.isEmpty ? '?' : ver}'
+                              '${s['label'] != null ? ' · ${s['label']}' : ''}',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            selected: selected,
+                            visualDensity: VisualDensity.compact,
+                            onSelected: ver.isEmpty
+                                ? null
+                                : (_) => onSelectVersion(ver),
+                          );
+                        },
                       ),
                   ],
                 ),

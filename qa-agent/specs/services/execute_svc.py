@@ -530,4 +530,13 @@ def execute_run_sync(
         triggered_by=triggered_by,
         wait=wait,
     )
-    return asyncio.run(execute_run(body, caller=caller or Caller(role="agent")))
+    coro = execute_run(body, caller=caller or Caller(role="agent"))
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    # Called from FastAPI/async MCP — run the coroutine on a worker thread.
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()

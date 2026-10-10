@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/profiles/presentation/pages/profiles_page.dart';
 import '../../features/runs/presentation/pages/run_detail_page.dart';
 import '../../features/runs/presentation/pages/runs_page.dart';
@@ -10,21 +11,23 @@ import '../../features/flows/presentation/pages/flows_page.dart';
 import '../../features/ui_flows/presentation/pages/ui_flows_page.dart';
 
 abstract final class AppRoutes {
+  static const dashboard = '/dashboard';
   static const services = '/services';
   static const runs = '/runs';
   static const profiles = '/profiles';
   static const specs = '/specs';
+  static const datasets = '/datasets';
   static const flows = '/flows';
   static const uiFlows = '/ui-flows';
 }
 
 GoRouter createPortalRouter() {
   return GoRouter(
-    initialLocation: AppRoutes.services,
+    initialLocation: AppRoutes.dashboard,
     redirect: (context, state) {
       final loc = state.uri.path;
       if (loc.isEmpty || loc == '/') {
-        return AppRoutes.services;
+        return AppRoutes.dashboard;
       }
       final base = Uri.base.queryParameters;
       final run = base['run'];
@@ -41,6 +44,12 @@ GoRouter createPortalRouter() {
       ShellRoute(
         builder: (context, state, child) => OperatorShell(child: child),
         routes: [
+          GoRoute(
+            path: AppRoutes.dashboard,
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: DashboardPage(),
+            ),
+          ),
           GoRoute(
             path: AppRoutes.services,
             pageBuilder: (context, state) => NoTransitionPage(
@@ -83,6 +92,12 @@ GoRouter createPortalRouter() {
             path: AppRoutes.specs,
             pageBuilder: (context, state) => const NoTransitionPage(
               child: SpecsPage(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.datasets,
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: SpecsPage(forceNavMode: SpecsNavMode.datasets),
             ),
           ),
           GoRoute(

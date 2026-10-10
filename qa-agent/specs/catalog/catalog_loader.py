@@ -1478,11 +1478,69 @@ def apis_for_config(
     selected = api_ids if api_ids is not None else config.get("selected_api_ids")
     if selected:
         want = {str(x) for x in selected if x}
-        apis = [a for a in apis if str(a.get("id")) in want]
-        found = {str(a.get("id")) for a in apis if a.get("id")}
-        missing = sorted(want - found)
-        if missing:
-            raise ValueError(f"Unknown api_id(s) for service {service}: {', '.join(missing)}")
+        # Data-gen / payload-set suites select ids that may not exist in the OpenAPI
+        # catalog (slug mismatch, or multiple variants per method+path). Prefer
+        # api_overrides rows when present so suite runs are payload-set driven.
+        override_rows = [
+            o for o in (api_overrides or []) if isinstance(o, dict) and str(o.get("id") or "") in want
+        ]
+        if override_rows and len({str(o.get("id")) for o in override_rows}) >= len(want):
+            by_id = {str(o["id"]): o for o in override_rows}
+            apis = []
+            for aid in selected:
+                aid_s = str(aid)
+                if aid_s not in want or aid_s not in by_id:
+                    continue
+                o = by_id[aid_s]
+                apis.append(
+                    {
+                        "id": aid_s,
+                        "name": str(o.get("name") or aid_s),
+                        "method": str(o.get("method") or "GET").upper(),
+                        "path": str(o.get("path") or "/"),
+                        "headers": o.get("headers") if isinstance(o.get("headers"), dict) else {},
+                        "query": o.get("query") if isinstance(o.get("query"), dict) else {},
+                        "path_params": (
+                            o.get("path_params") if isinstance(o.get("path_params"), dict) else {}
+                        ),
+                        "body": o.get("body"),
+                        "checks": ["status_2xx"],
+                        "source": "payload-set",
+                    }
+                )
+        else:
+            apis = [a for a in apis if str(a.get("id")) in want]
+            found = {str(a.get("id")) for a in apis if a.get("id")}
+            missing = sorted(want - found)
+            if missing and override_rows:
+                # Partial: keep catalog hits and fill gaps from overrides
+                have = {str(a.get("id")) for a in apis if a.get("id")}
+                for o in override_rows:
+                    oid = str(o.get("id") or "")
+                    if not oid or oid in have:
+                        continue
+                    apis.append(
+                        {
+                            "id": oid,
+                            "name": str(o.get("name") or oid),
+                            "method": str(o.get("method") or "GET").upper(),
+                            "path": str(o.get("path") or "/"),
+                            "headers": o.get("headers") if isinstance(o.get("headers"), dict) else {},
+                            "query": o.get("query") if isinstance(o.get("query"), dict) else {},
+                            "path_params": (
+                                o.get("path_params") if isinstance(o.get("path_params"), dict) else {}
+                            ),
+                            "body": o.get("body"),
+                            "checks": ["status_2xx"],
+                            "source": "payload-set",
+                        }
+                    )
+                    have.add(oid)
+                missing = sorted(want - have)
+            if missing:
+                raise ValueError(
+                    f"Unknown api_id(s) for service {service}: {', '.join(missing)}"
+                )
     return base_url, [resolve_api(a, ctx, env_ctx) for a in apis if a.get("id")]
 
 

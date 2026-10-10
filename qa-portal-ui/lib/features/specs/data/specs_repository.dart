@@ -166,9 +166,15 @@ class SpecsRepository {
     return asMap(res.data);
   }
 
-  Future<List<Map<String, dynamic>>> payloadSets(String service) async {
+  /// Full list envelope (`sets` + `active_version`).
+  Future<Map<String, dynamic>> payloadSetsEnvelope(String service) async {
     final res = await _api.get('/api/payload-sets/$service');
-    return mapList(res.data, keys: const ['sets', 'payload_sets', 'items', 'versions']);
+    return asMap(res.data);
+  }
+
+  Future<List<Map<String, dynamic>>> payloadSets(String service) async {
+    final env = await payloadSetsEnvelope(service);
+    return mapList(env, keys: const ['sets', 'payload_sets', 'items', 'versions']);
   }
 
   Future<Map<String, dynamic>> getPayloadSet(String service, String version) async {

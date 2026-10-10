@@ -47,15 +47,69 @@ def find_data_gen_payload_set(service: str, profile: str) -> dict[str, Any] | No
     return None
 
 
+def _variant_api_id(base_api_id: str, variant: dict[str, Any], index: int) -> str:
+    meta = variant.get("meta") if isinstance(variant.get("meta"), dict) else {}
+    vid = (
+        str(variant.get("variant_id") or meta.get("variant_id") or variant.get("name") or index)
+        .strip()
+        .replace(" ", "_")
+    )
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in vid) or str(index)
+    return f"{base_api_id}__v__{safe}"
+
+
+def _expect_of(entry: dict[str, Any], meta: dict[str, Any]) -> Any:
+    exp = meta.get("expect_status")
+    if exp is None and entry.get("expect_status") is not None:
+        exp = entry.get("expect_status")
+    if exp is None and isinstance(entry.get("response"), dict):
+        exp = entry["response"].get("status")
+    return exp
+
+
+def _consider_row(
+    *,
+    api_id: str,
+    entry: dict[str, Any],
+    kinds: frozenset[str],
+    selected: list[str],
+    expects: dict[str, int],
+    warnings: list[str],
+) -> None:
+    meta = entry.get("meta") if isinstance(entry.get("meta"), dict) else {}
+    ck = str(
+        meta.get("case_kind") or entry.get("case_kind") or entry.get("name") or "happy"
+    ).strip().lower()
+    if ck == "cross_flow":
+        return
+    if ck not in kinds:
+        return
+    exp = _expect_of(entry, meta)
+    if ck == "technical" and exp is None:
+        warnings.append(f"{api_id}: technical missing expect_status — excluded from k6")
+        return
+    selected.append(str(api_id))
+    if exp is not None:
+        try:
+            expects[str(api_id)] = int(exp)
+        except (TypeError, ValueError):
+            expects[str(api_id)] = 200
+    else:
+        expects[str(api_id)] = 200
+
+
 def api_ids_for_suite(
     service: str,
     suite: str,
     *,
     version: int | None = None,
     case_kinds: list[str] | None = None,
+    materialize_variants: bool = False,
 ) -> dict[str, Any]:
-    """Select api_ids whose primary meta.case_kind is in suite filter.
+    """Select api_ids whose primary or variant meta.case_kind is in suite filter.
 
+    When materialize_variants=True, matching meta.variants are upserted as
+    ``{api_id}__v__{variant_id}`` rows so k6 can execute them.
     Technical rows without expect_status are excluded with a warning.
     """
     kinds = case_kinds_for_suite(suite, case_kinds)
@@ -70,41 +124,108 @@ def api_ids_for_suite(
             "expects": {},
             "warnings": [],
         }
+    ver = int(payload_set.get("version") or 0)
     selected: list[str] = []
     expects: dict[str, int] = {}
     warnings: list[str] = []
+    materialized: list[str] = []
+
     for api_id, entry in (payload_set.get("apis") or {}).items():
         if not isinstance(entry, dict):
             continue
+        # Skip already-materialized variant rows when walking primaries' variants
         meta = entry.get("meta") if isinstance(entry.get("meta"), dict) else {}
-        ck = str(meta.get("case_kind") or entry.get("name") or "happy").strip().lower()
-        if ck == "cross_flow":
+        if meta.get("materialized_from"):
+            _consider_row(
+                api_id=str(api_id),
+                entry=entry,
+                kinds=kinds,
+                selected=selected,
+                expects=expects,
+                warnings=warnings,
+            )
             continue
-        if ck not in kinds:
+
+        _consider_row(
+            api_id=str(api_id),
+            entry=entry,
+            kinds=kinds,
+            selected=selected,
+            expects=expects,
+            warnings=warnings,
+        )
+
+        variants = meta.get("variants") or []
+        if not isinstance(variants, list):
             continue
-        exp = meta.get("expect_status")
-        if exp is None and isinstance(entry.get("response"), dict):
-            exp = entry["response"].get("status")
-        if ck == "technical" and exp is None:
-            warnings.append(f"{api_id}: technical missing expect_status — excluded from k6")
-            continue
-        selected.append(str(api_id))
-        if exp is not None:
-            try:
-                expects[str(api_id)] = int(exp)
-            except (TypeError, ValueError):
-                expects[str(api_id)] = 200
-        else:
-            expects[str(api_id)] = 200
+        for idx, var in enumerate(variants):
+            if not isinstance(var, dict):
+                continue
+            vmeta = dict(var.get("meta") or {}) if isinstance(var.get("meta"), dict) else {}
+            if var.get("case_kind") and not vmeta.get("case_kind"):
+                vmeta["case_kind"] = var["case_kind"]
+            if var.get("expect_status") is not None and vmeta.get("expect_status") is None:
+                vmeta["expect_status"] = var["expect_status"]
+            if var.get("variant_id") and not vmeta.get("variant_id"):
+                vmeta["variant_id"] = var["variant_id"]
+            vck = str(vmeta.get("case_kind") or var.get("case_kind") or "").strip().lower()
+            if not vck or vck == "cross_flow" or vck not in kinds:
+                continue
+            syn_id = _variant_api_id(str(api_id), var, idx)
+            v_entry = {
+                "api_id": syn_id,
+                "name": var.get("name") or vmeta.get("variant_id") or syn_id,
+                "request": var.get("request") or {},
+                "response": var.get("response") or {},
+                "meta": {
+                    **vmeta,
+                    "materialized_from": str(api_id),
+                    "case_kind": vck,
+                },
+                "case_kind": vck,
+                "expect_status": vmeta.get("expect_status") or var.get("expect_status"),
+            }
+            if materialize_variants:
+                from specs.payloads.payload_store import upsert_api_in_payload_set
+
+                upsert_api_in_payload_set(
+                    service,
+                    syn_id,
+                    version=ver,
+                    request=v_entry.get("request") if isinstance(v_entry.get("request"), dict) else {},
+                    response=v_entry.get("response") if isinstance(v_entry.get("response"), dict) else {},
+                    meta=v_entry["meta"],
+                    name=str(v_entry.get("name") or "variant"),
+                    bump_set=False,
+                )
+                materialized.append(syn_id)
+            _consider_row(
+                api_id=syn_id,
+                entry=v_entry,
+                kinds=kinds,
+                selected=selected,
+                expects=expects,
+                warnings=warnings,
+            )
+
+    # Dedupe while preserving order
+    seen: set[str] = set()
+    unique: list[str] = []
+    for aid in selected:
+        if aid not in seen:
+            seen.add(aid)
+            unique.append(aid)
+
     return {
         "ok": True,
         "service": service,
         "suite": normalize_suite(suite),
-        "payload_set_version": int(payload_set.get("version") or 0),
-        "selected_api_ids": selected,
+        "payload_set_version": ver,
+        "selected_api_ids": unique,
         "expects": expects,
         "warnings": warnings,
-        "count": len(selected),
+        "count": len(unique),
+        "materialized_api_ids": materialized,
     }
 
 

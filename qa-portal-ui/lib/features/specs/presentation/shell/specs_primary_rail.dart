@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../cubit/specs_cubit.dart';
 import '../cubit/specs_state.dart';
 
-/// Narrow icon+label strip: Collections | Datasets.
+/// Narrow icon+label strip: Test | Swagger | MCP / AI | SDK | Use cases.
 class SpecsPrimaryRail extends StatelessWidget {
   const SpecsPrimaryRail({
     super.key,
@@ -19,10 +19,18 @@ class SpecsPrimaryRail extends StatelessWidget {
   final bool collapsed;
   final VoidCallback? onToggleCollapse;
 
+  void _selectTab(SpecsWorkspaceTab tab) {
+    if (state.navMode != SpecsNavMode.collections) {
+      cubit.setNavMode(SpecsNavMode.collections);
+    }
+    cubit.setWorkspaceTab(tab);
+  }
+
   @override
   Widget build(BuildContext context) {
     final width = collapsed ? 48.0 : 80.0;
     final cs = Theme.of(context).colorScheme;
+    final tab = state.workspaceTab;
     return GlassCard(
       padding: EdgeInsets.zero,
       child: SizedBox(
@@ -41,19 +49,43 @@ class SpecsPrimaryRail extends StatelessWidget {
               ),
             const SizedBox(height: 4),
             _NavTile(
-              icon: Icons.folder_outlined,
-              label: 'Collections',
-              selected: state.navMode == SpecsNavMode.collections,
+              icon: Icons.play_arrow_outlined,
+              label: 'Test',
+              selected: tab == SpecsWorkspaceTab.test,
               collapsed: collapsed,
-              onTap: () => cubit.setNavMode(SpecsNavMode.collections),
+              onTap: () => _selectTab(SpecsWorkspaceTab.test),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             _NavTile(
-              icon: Icons.storage_outlined,
-              label: 'Datasets',
-              selected: state.navMode == SpecsNavMode.datasets,
+              icon: Icons.description_outlined,
+              label: 'Swagger',
+              selected: tab == SpecsWorkspaceTab.swagger,
               collapsed: collapsed,
-              onTap: () => cubit.setNavMode(SpecsNavMode.datasets),
+              onTap: () => _selectTab(SpecsWorkspaceTab.swagger),
+            ),
+            const SizedBox(height: 6),
+            _NavTile(
+              icon: Icons.smart_toy_outlined,
+              label: 'MCP / AI',
+              selected: tab == SpecsWorkspaceTab.mcp,
+              collapsed: collapsed,
+              onTap: () => _selectTab(SpecsWorkspaceTab.mcp),
+            ),
+            const SizedBox(height: 6),
+            _NavTile(
+              icon: Icons.code_outlined,
+              label: 'SDK',
+              selected: tab == SpecsWorkspaceTab.sdk,
+              collapsed: collapsed,
+              onTap: () => _selectTab(SpecsWorkspaceTab.sdk),
+            ),
+            const SizedBox(height: 6),
+            _NavTile(
+              icon: Icons.checklist_outlined,
+              label: 'Use cases',
+              selected: tab == SpecsWorkspaceTab.usecases,
+              collapsed: collapsed,
+              onTap: () => _selectTab(SpecsWorkspaceTab.usecases),
             ),
             const Spacer(),
             Padding(

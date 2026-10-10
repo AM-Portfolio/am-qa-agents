@@ -165,7 +165,7 @@ class _SpecsCollectionsSidebarState extends State<SpecsCollectionsSidebar> {
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
             child: Text(
-              'Collections (${services.length})',
+              'API (${services.length})',
               style: theme.textTheme.labelLarge,
             ),
           ),
@@ -174,7 +174,7 @@ class _SpecsCollectionsSidebarState extends State<SpecsCollectionsSidebar> {
             child: TextField(
               controller: _query,
               decoration: InputDecoration(
-                hintText: 'Filter collections…',
+                hintText: 'Filter services…',
                 isDense: true,
                 filled: true,
                 fillColor: cs.surface,

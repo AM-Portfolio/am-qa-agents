@@ -331,24 +331,55 @@ def spt_data_gen_import(
     environment: str = "dev",
     pack_path: Optional[str] = None,
     payload_set_json: Optional[str] = None,
+    zip_b64: Optional[str] = None,
+    gzip_b64: Optional[str] = None,
     make_active: bool = True,
     sync_workflows: bool = True,
 ) -> dict[str, Any]:
-    """Import am-specs data-gen pack → payload set (+ cross_flow workflows). Returns handoff."""
-    from specs.data_gen.import_svc import import_data_gen
+    """Import am-specs data-gen pack → payload set (+ cross_flow workflows).
 
-    body = None
-    if payload_set_json:
-        body = {"payload_set": json.loads(payload_set_json)}
-    return import_data_gen(
-        service=service,
-        profile=profile,
-        environment=environment,
-        body=body,
-        pack_path=pack_path,
-        make_active=make_active,
-        sync_workflows=sync_workflows,
+    Prefer zip_b64 (deflated payload.json) for large packs. Returns handoff.
+    """
+    from specs.data_gen.batch_import import import_one_item
+
+    return import_one_item(
+        {
+            "service": service,
+            "profile": profile,
+            "environment": environment,
+            "pack_path": pack_path,
+            "payload_set_json": payload_set_json,
+            "zip_b64": zip_b64,
+            "gzip_b64": gzip_b64,
+            "make_active": make_active,
+            "sync_workflows": sync_workflows,
+        }
     )
+
+
+@mcp.tool(name="spt_data_gen_import_batch")
+def spt_data_gen_import_batch(
+    items_json: str,
+    environment: str = "dev",
+) -> dict[str, Any]:
+    """Batch-import data-gen packs (service × profile). Continue on failure.
+
+    items_json: JSON list of {service, profile, zip_b64|payload_set|pack_path, ...}.
+    """
+    from specs.data_gen.batch_import import import_batch
+
+    try:
+        items = json.loads(items_json) if isinstance(items_json, str) else items_json
+    except json.JSONDecodeError as exc:
+        return {"ok": False, "error": "invalid_items_json", "message": str(exc), "results": []}
+    if not isinstance(items, list):
+        return {
+            "ok": False,
+            "error": "items_must_be_list",
+            "message": "items_json must be a JSON array",
+            "results": [],
+        }
+    return import_batch(items, default_environment=environment)
 
 
 @mcp.tool(name="spt_data_gen_gapfill")

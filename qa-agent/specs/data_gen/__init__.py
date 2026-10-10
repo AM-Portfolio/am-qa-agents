@@ -6,6 +6,7 @@ from specs.data_gen.branch import (
     resolve_data_gen_environment,
     resolve_data_gen_profile,
 )
+from specs.data_gen.batch_import import import_batch, import_one_item
 from specs.data_gen.import_svc import import_data_gen, import_services
 from specs.data_gen.pipeline import (
     data_gen_gapfill,
@@ -21,7 +22,9 @@ __all__ = [
     "data_gen_pipeline",
     "data_gen_run_suite",
     "data_gen_run_workflows",
+    "import_batch",
     "import_data_gen",
+    "import_one_item",
     "import_services",
     "normalize_suite",
     "resolve_branch_defaults",

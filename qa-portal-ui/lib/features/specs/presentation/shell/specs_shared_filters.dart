@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../cubit/specs_cubit.dart';
-import '../cubit/specs_state.dart';
 
-/// Env + onboard controls for collection workspace (datasets managed under Datasets).
+/// Env + dataset version + onboard controls for the OpenAPI workspace.
 class SpecsSharedFilters extends StatelessWidget {
   const SpecsSharedFilters({
     super.key,
@@ -20,7 +19,8 @@ class SpecsSharedFilters extends StatelessWidget {
   Widget build(BuildContext context) {
     final selectedVer = state.selectedPayloadVersion;
     final apiCount = state.apis.length;
-    final busy = state.apisLoading;
+    final busy = state.apisLoading || state.payloadListLoading;
+    final sets = state.payloadSets;
 
     final denseBtn = TextButton.styleFrom(
       visualDensity: VisualDensity.compact,
@@ -83,6 +83,56 @@ class SpecsSharedFilters extends StatelessWidget {
                       if (v != null) cubit.setEnvironment(v);
                     },
             ),
+          ),
+          Builder(
+            builder: (context) {
+              final versionItems = <DropdownMenuItem<String?>>[
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('active / none'),
+                ),
+              ];
+              final seen = <String>{};
+              for (final s in sets) {
+                final v = '${s['version'] ?? s['id'] ?? ''}'.trim();
+                if (v.isEmpty || !seen.add(v)) continue;
+                final active =
+                    s['active'] == true || s['is_active'] == true;
+                versionItems.add(
+                  DropdownMenuItem<String?>(
+                    value: v,
+                    child: Text(
+                      'v$v${active ? ' · active' : ''}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                );
+              }
+              final inList =
+                  selectedVer != null && seen.contains(selectedVer);
+              return SizedBox(
+                width: 148,
+                child: DropdownButtonFormField<String?>(
+                  key: ValueKey(
+                    'shared-dataset-${inList ? selectedVer : 'none'}-'
+                    '${seen.length}',
+                  ),
+                  initialValue: inList ? selectedVer : null,
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Dataset',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  ),
+                  items: versionItems,
+                  onChanged: busy || state.selectedService == null
+                      ? null
+                      : (v) => cubit.setPayloadVersion(v),
+                ),
+              );
+            },
           ),
           TextButton(
             style: denseBtn,

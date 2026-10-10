@@ -62,6 +62,21 @@ class DataGenPipelineBody(BaseModel):
     wait_suite: bool = False
 
 
+class DataGenImportBatchBody(BaseModel):
+    """Batch feed: list of per-service×profile import items (zip_b64 preferred)."""
+
+    items: list[dict[str, Any]] = Field(default_factory=list)
+    environment: str = "dev"
+
+
+@router.post("/api/data-gen/import-batch")
+async def api_data_gen_import_batch(body: DataGenImportBatchBody) -> dict:
+    """Sequential multi pack import; continues on failure. Prefer zip_b64 per item."""
+    from specs.data_gen.batch_import import import_batch
+
+    return import_batch(body.items, default_environment=body.environment)
+
+
 @router.post("/api/data-gen/import")
 async def api_data_gen_import(body: DataGenImportBody) -> dict:
     from specs.data_gen.import_svc import import_data_gen
