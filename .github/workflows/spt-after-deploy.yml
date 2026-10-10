@@ -87,7 +87,8 @@ jobs:
   start-temporal:
     name: Start CommitSpt (${{ inputs.service }} / ${{ inputs.environment }})
     if: ${{ inputs.environment == 'dev' || inputs.environment == 'preprod' || inputs.environment == 'prod' }}
-    runs-on: [self-hosted, linux, x64, docker]
+    # ubuntu-latest: org has no self-hosted runners; public dig URL works (in-cluster preferred when on-cluster).
+    runs-on: ubuntu-latest
     steps:
       - name: Resolve QA base URL + POST commit-spt
         env:
