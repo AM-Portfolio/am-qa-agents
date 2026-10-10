@@ -65,6 +65,7 @@ def slim_run_for_list(row: dict[str, Any]) -> dict[str, Any]:
     payloads = row.get("payloads_used") or {}
     bench = payloads.get("bench_run") or {}
     auth = payloads.get("auth_env") or {}
+    run_params = payloads.get("run_params") or {}
     counts = {
         "api_pass_count": row.get("api_pass_count"),
         "api_fail_count": row.get("api_fail_count"),
@@ -106,6 +107,13 @@ def slim_run_for_list(row: dict[str, Any]) -> dict[str, Any]:
         "p90_ms": row.get("p90_ms"),
         "rps": row.get("rps"),
         "auth_username": row.get("auth_username") or auth.get("username"),
+        "git_ref": row.get("git_ref") or run_params.get("git_ref"),
+        "git_sha": row.get("git_sha") or run_params.get("git_sha"),
+        "committer_name": row.get("committer_name") or run_params.get("committer_name"),
+        "committer_email": row.get("committer_email") or run_params.get("committer_email"),
+        "trigger_source": row.get("trigger_source") or run_params.get("trigger_source"),
+        "github_run_url": row.get("github_run_url") or run_params.get("github_run_url"),
+        "github_workflow": row.get("github_workflow") or run_params.get("github_workflow"),
         "payloads_used": {
             "bench_run": bench,
             "auth_env": {

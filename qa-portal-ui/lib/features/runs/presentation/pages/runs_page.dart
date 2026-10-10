@@ -294,11 +294,12 @@ class _RunsViewState extends State<_RunsView> {
                           children: [
                             const SizedBox(width: 28),
                             _colHeader(context, 'Status', flex: 2),
-                            _colHeader(context, 'Name / id', flex: 4),
-                            _colHeader(context, 'Type', flex: 2),
-                            _colHeader(context, 'Svc / env', flex: 3),
+                            _colHeader(context, 'Name / id', flex: 3),
+                            _colHeader(context, 'Branch / by', flex: 3),
+                            _colHeader(context, 'Type', flex: 1),
+                            _colHeader(context, 'Svc / env', flex: 2),
                             _colHeader(context, 'VUs', flex: 1),
-                            _colHeader(context, 'APIs · Pass/Fail', flex: 3),
+                            _colHeader(context, 'APIs · Pass/Fail', flex: 2),
                             _colHeader(context, 'Started', flex: 2),
                           ],
                         ),
@@ -336,6 +337,26 @@ class _RunsViewState extends State<_RunsView> {
                                     ? 'FAIL'
                                     : status.toUpperCase());
                             final shortId = id.length > 8 ? id.substring(0, 8) : id;
+                            final runParams = r['payloads_used'] is Map
+                                ? ((r['payloads_used'] as Map)['run_params'] is Map
+                                    ? Map<String, dynamic>.from(
+                                        (r['payloads_used'] as Map)['run_params'] as Map,
+                                      )
+                                    : const <String, dynamic>{})
+                                : const <String, dynamic>{};
+                            final branch =
+                                '${r['git_ref'] ?? runParams['git_ref'] ?? ''}'.trim();
+                            final who =
+                                '${r['committer_name'] ?? runParams['committer_name'] ?? ''}'
+                                    .trim();
+                            final triggered =
+                                '${r['triggered_by'] ?? runParams['triggered_by'] ?? ''}'
+                                    .trim();
+                            final branchBy = [
+                              if (branch.isNotEmpty) branch,
+                              if (who.isNotEmpty) who,
+                              if (triggered.isNotEmpty) triggered,
+                            ].join(' · ');
                             return InkWell(
                               onTap: id.isEmpty ? null : () => context.go('/runs/$id'),
                               child: Padding(
@@ -364,7 +385,7 @@ class _RunsViewState extends State<_RunsView> {
                                       ),
                                     ),
                                     Expanded(
-                                      flex: 4,
+                                      flex: 3,
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
@@ -433,9 +454,20 @@ class _RunsViewState extends State<_RunsView> {
                                         ],
                                       ),
                                     ),
-                                    Expanded(flex: 2, child: Text(testType)),
                                     Expanded(
                                       flex: 3,
+                                      child: Text(
+                                        branchBy.isEmpty ? '—' : branchBy,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall,
+                                      ),
+                                    ),
+                                    Expanded(flex: 1, child: Text(testType)),
+                                    Expanded(
+                                      flex: 2,
                                       child: Text(
                                         '$svc/$env',
                                         maxLines: 1,
@@ -447,7 +479,7 @@ class _RunsViewState extends State<_RunsView> {
                                       child: Text(vus == null ? '—' : '$vus'),
                                     ),
                                     Expanded(
-                                      flex: 3,
+                                      flex: 2,
                                       child: _ApiCountsCell(
                                         apiCount: apiCount,
                                         passN: passN,

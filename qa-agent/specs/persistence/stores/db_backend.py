@@ -317,12 +317,39 @@ def list_runs(
             .limit(max(0, int(limit or 0)))
         )
         rows = session.scalars(stmt).all()
+        detail_by_id: dict[str, RunDetailRow] = {}
+        ids = [r.id for r in rows]
+        if ids:
+            for det in session.scalars(
+                select(RunDetailRow).where(RunDetailRow.run_id.in_(ids))
+            ).all():
+                detail_by_id[det.run_id] = det
         # Attach live cheaply for list (optional slim)
         out = []
+        _prov_keys = (
+            "git_ref",
+            "git_sha",
+            "committer_name",
+            "committer_email",
+            "trigger_source",
+            "github_run_url",
+            "github_workflow",
+        )
         for row in rows:
             d = _row_to_dict(row, include_detail=False)
             if row.live and row.live.live is not None:
                 d["live"] = row.live.live
+            det = detail_by_id.get(row.id)
+            run_params = {}
+            extra = {}
+            if det:
+                if isinstance(det.payloads_used, dict):
+                    run_params = det.payloads_used.get("run_params") or {}
+                if isinstance(det.extra, dict):
+                    extra = det.extra
+            slim_params = {k: run_params[k] for k in _prov_keys if run_params.get(k)}
+            for k in _prov_keys:
+                d[k] = extra.get(k) or run_params.get(k)
             # Minimal payloads for slim_run_for_list
             d["payloads_used"] = {
                 "bench_run": {
@@ -331,6 +358,7 @@ def list_runs(
                     "duration": row.duration,
                 },
                 "auth_env": {"username": row.auth_username} if row.auth_username else {},
+                "run_params": slim_params,
             }
             out.append(d)
         return out, int(total)
