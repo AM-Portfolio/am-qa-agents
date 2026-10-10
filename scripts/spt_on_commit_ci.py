@@ -73,6 +73,7 @@ def _http_json(
     data = None
     headers = {
         "Accept": "application/json",
+        "User-Agent": "am-spt-on-commit/1.0 (+https://github.com/AM-Portfolio/am-qa-agents)",
         "X-SPT-API-Key": token,
         "Authorization": f"Bearer {token}",
     }

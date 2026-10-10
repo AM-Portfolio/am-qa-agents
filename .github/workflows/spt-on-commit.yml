@@ -95,7 +95,8 @@ concurrency:
 jobs:
   spt:
     name: Execute SPT (${{ inputs.service }} / ${{ inputs.git_ref }})
-    runs-on: ubuntu-latest
+    # Self-hosted: GitHub-hosted UAs hit Cloudflare Error 1010 on am-dev.asrax.in.
+    runs-on: [self-hosted, linux, x64, docker]
     steps:
       # Caller may be am-market; script lives in this (am-qa-agents) repo.
       - name: Checkout am-qa-agents (spt_on_commit_ci.py)
