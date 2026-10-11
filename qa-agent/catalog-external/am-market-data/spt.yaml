@@ -1,0 +1,258 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-market-data
+label: am-market-data
+enabled: true
+owners:
+- market-team
+description: Market Data SPT registration with explicit apis (live /v3/api-docs StackOverflowError
+  on dig image).
+targets:
+  dev: https://am-dev.asrax.in/market
+  preprod: https://am-preprod.asrax.in/market
+  prod: https://am.asrax.in/market
+apis:
+- id: get_v1_indices_available
+  name: get_v1_indices_available
+  method: GET
+  path: /v1/indices/available
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+- id: get_v1_market-calendar_holidays_date
+  name: get_v1_market-calendar_holidays_date
+  method: GET
+  path: /v1/market-calendar/holidays/2026-01-26
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+- id: get_v1_market-data_ipo
+  name: get_v1_market-data_ipo
+  method: GET
+  path: /v1/market-data/ipo
+  headers: {}
+  query:
+    status: open
+    pageNumber: '1'
+    records: '30'
+  body: null
+  checks:
+  - status_2xx
+- id: get_v1_market-data_ipo_counts
+  name: get_v1_market-data_ipo_counts
+  method: GET
+  path: /v1/market-data/ipo/counts
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+- id: get_v1_market-data_ipo_id
+  name: get_v1_market-data_ipo_id
+  method: GET
+  path: /v1/market-data/ipo/hd-fire-protect-limited-ipo
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+- id: get_v1_market-data_live-ltp
+  name: get_v1_market-data_live-ltp
+  method: GET
+  path: /v1/market-data/live-ltp
+  headers: {}
+  query:
+    symbols: NIFTY 50
+    exchange: NSE
+    timeframe: 1D
+    isIndexSymbol: 'true'
+  body: null
+  checks:
+  - status_2xx
+- id: get_v1_market-data_quotes
+  name: get_v1_market-data_quotes
+  method: GET
+  path: /v1/market-data/quotes
+  headers: {}
+  query:
+    symbols: NIFTY 50
+    exchange: NSE
+    timeFrame: 1D
+  body: null
+  checks:
+  - status_2xx
+- id: get_v1_watchlists
+  name: get_v1_watchlists
+  method: GET
+  path: /v1/watchlists
+  headers:
+    X-User-Id: '{{user_id}}'
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+- id: get_v1_watchlists_check_symbol
+  name: get_v1_watchlists_check_symbol
+  method: GET
+  path: /v1/watchlists/check/RELIANCE
+  headers:
+    X-User-Id: '{{user_id}}'
+  query:
+    exchange: NSE
+  body: null
+  checks:
+  - status_2xx
+- id: get_v1_watchlists_watchlistId_items
+  name: get_v1_watchlists_watchlistId_items
+  method: GET
+  path: /v1/watchlists/6aca60b8085abe8fb00978f5/items
+  headers:
+    X-User-Id: '{{user_id}}'
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+- id: post_v1_indices_batch
+  name: post_v1_indices_batch
+  method: POST
+  path: /v1/indices/batch
+  headers:
+    Content-Type: application/json
+    Accept: application/json
+  query: {}
+  body: '["NIFTY 50","NIFTY BANK"]'
+  checks:
+  - status_2xx
+- id: post_v1_instruments_search
+  name: post_v1_instruments_search
+  method: POST
+  path: /v1/instruments/search
+  headers:
+    Content-Type: application/json
+    Accept: application/json
+  query: {}
+  body: '{"queries":["NIFTY 50"],"exchanges":["NSE"],"provider":"UPSTOX"}'
+  checks:
+  - status_2xx
+- id: post_v1_market-data_ohlc
+  name: post_v1_market-data_ohlc
+  method: POST
+  path: /v1/market-data/ohlc
+  headers:
+    Content-Type: application/json
+    Accept: application/json
+  query: {}
+  body: '{"symbols":["NIFTY 50"],"timeFrame":"1D","indexSymbol":true,"forceRefresh":false,"exchange":"NSE"}'
+  checks:
+  - status_2xx
+- id: post_v1_market-data_quotes
+  name: post_v1_market-data_quotes
+  method: POST
+  path: /v1/market-data/quotes
+  headers:
+    Content-Type: application/json
+    Accept: application/json
+  query: {}
+  body: '{"symbols":["NIFTY 50"],"timeFrame":"1D","indexSymbol":true,"forceRefresh":false,"exchange":"NSE"}'
+  checks:
+  - status_2xx
+- id: post_v1_watchlists_watchlistId_items
+  name: post_v1_watchlists_watchlistId_items
+  method: POST
+  path: /v1/watchlists/6aca60b8085abe8fb00978f5/items
+  headers:
+    X-User-Id: '{{user_id}}'
+    Content-Type: application/json
+    Accept: application/json
+  query: {}
+  body: '{"symbol":"TCS","exchange":"NSE"}'
+  checks:
+  - status_2xx
+- id: post_v1_market-data_ipo_admin_sync
+  name: post_v1_market-data_ipo_admin_sync
+  method: POST
+  path: /v1/market-data/ipo/admin/sync
+  headers: {}
+  query:
+    status: open
+  body: null
+  checks:
+  - status_2xx
+- id: get.v1.market.calendar.holidays.date
+  name: get.v1.market.calendar.holidays.date
+  method: GET
+  path: /v1/market-calendar/holidays/2026-01-26
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+- id: get.v1.market.data.ipo.id
+  name: get.v1.market.data.ipo.id
+  method: GET
+  path: /v1/market-data/ipo/hd-fire-protect-limited-ipo
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+- id: get.v1.market.data.ipo.counts
+  name: get.v1.market.data.ipo.counts
+  method: GET
+  path: /v1/market-data/ipo/counts
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+- id: post.v1.instruments.search
+  name: post.v1.instruments.search
+  method: POST
+  path: /v1/instruments/search
+  headers: {}
+  query: {}
+  body:
+    queries:
+    - NIFTY 50
+    exchanges:
+    - NSE
+    provider: UPSTOX
+  checks:
+  - status_2xx
+- id: post.v1.market.data.ohlc
+  name: post.v1.market.data.ohlc
+  method: POST
+  path: /v1/market-data/ohlc
+  headers: {}
+  query: {}
+  body:
+    symbols:
+    - NIFTY 50
+    timeFrame: 1D
+    indexSymbol: true
+    forceRefresh: false
+    exchange: NSE
+  checks:
+  - status_2xx
+- id: get.v1.indices.available
+  name: get.v1.indices.available
+  method: GET
+  path: /v1/indices/available
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+- id: get_v1_market-data_mutual-fund_schemeCode
+  name: get_v1_market-data_mutual-fund_schemeCode
+  method: GET
+  path: /v1/market-data/mutual-fund/120503
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx

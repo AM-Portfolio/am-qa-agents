@@ -16,8 +16,12 @@ from orchestrator.commit_spt_matrix import resolve_commit_spt_matrix
 
 
 def _portal_run_url(run_id: str) -> str:
-    base = (os.getenv("SPT_PORTAL_BASE_URL") or "https://ai-dev.asrax.in").rstrip("/")
-    return f"{base}/#/runs/{run_id}"
+    # Dig/prod portal lives under /qa/ui (legacy HTML or Flutter). Prefer ?run=
+    # so both legacy boot and Flutter redirect (query → /runs/:id) open the run.
+    base = (
+        os.getenv("SPT_PORTAL_BASE_URL") or "https://ai-dev.asrax.in/qa/ui"
+    ).rstrip("/")
+    return f"{base}/?run={run_id}"
 
 
 def _build_card(

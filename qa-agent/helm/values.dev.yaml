@@ -82,6 +82,12 @@ env:
   KEYCLOAK_TOKEN_URL: "https://auth-dev.asrax.in/auth/realms/am-realm/protocol/openid-connect/token"
   AM_MCP_CLIENT_ID: "am-mcp-service"
   SPT_PUBLIC_BASE_URL: "https://am-dev.asrax.in/qa"
+  # Portal deep links (Cliq/email) — Cloudflare hostname ai-dev (see am-gitops ai-dev-ingress).
+  SPT_PORTAL_BASE_URL: "https://ai-dev.asrax.in/qa/ui"
+  # ConfigMap spt-catalog-bundle first; baked catalog-external second.
+  SPT_CATALOG_EXTERNAL: "/catalog-external;/app/qa-agent/catalog-external"
+  # Dig Kind cannot reach Contabo Temporal NodePort — inline CommitSpt until temporal-rpc-dev works.
+  QA_AGENT_FORCE_INLINE: "true"
   SPT_UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_BASE_URL: "http://127.0.0.1:8150"

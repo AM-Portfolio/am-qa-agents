@@ -23,6 +23,7 @@ CI_PROVENANCE_KEYS: tuple[str, ...] = (
 )
 
 
+
 def extract_ci_provenance(src: Any) -> dict[str, Any]:
     """Pull non-empty provenance keys from a dict, pydantic model, or object."""
     if src is None:

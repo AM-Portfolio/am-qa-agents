@@ -784,6 +784,19 @@ def _apis_from_openapi_registration(
                 logger.info("OpenAPI try failed for %s (%s): %s", service, url, exc)
 
     logger.warning("OpenAPI fetch failed for %s after %s: %s", service, path_candidates, last_err)
+    # Prefer explicit apis on the registration (spt.yaml) before baked / health stubs.
+    reg_apis = reg.get("apis") if isinstance(reg.get("apis"), list) else []
+    if reg_apis:
+        return {
+            "base_url": "{{target_url}}",
+            "apis": list(reg_apis),
+            "source": "registration-apis-fallback",
+            "openapi_error": str(last_err),
+            "openapi_url": last_url,
+            "openapi_version": None,
+            "runtime": runtime,
+            "count": len(reg_apis),
+        }
     baked = _load_baked_apis(service)
     if baked.get("apis"):
         baked["source"] = "baked-fallback"

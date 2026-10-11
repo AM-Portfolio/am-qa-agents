@@ -25,6 +25,17 @@
         if (meta) meta.setAttribute("content", m[1]);
       }
     })();
+    // Legacy Cliq links used host/#/runs/<uuid>. Rewrite to ?run= before boot.
+    (function () {
+      var h = (location.hash || "").replace(/^#/, "");
+      var m = h.match(/^\/?runs\/([0-9a-fA-F-]{8,})\/?$/);
+      if (!m) return;
+      var root = (window.SPT && window.SPT.root) || "";
+      var base = root ? (root + "/ui") : (location.pathname.replace(/\/$/, "") || "/ui");
+      var q = new URLSearchParams(location.search);
+      q.set("run", m[1]);
+      location.replace(base + "/?" + q.toString());
+    })();
   </script>
 </head>
 <body class="mode-runs">
