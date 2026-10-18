@@ -39,7 +39,7 @@
 | S1–S3 | SpecKit/QA: no am-specs orch; live OpenAPI only; packs not loaded |
 | S4 | Prepare MCP → am-mcp-server (domain); separate from contract packs |
 | S5–S7 | QA Portal branding; no multi-tenant; docs QA-only |
-| E2E | SpecKit today ≈ contract/payload Try only — **no** Java/Python/Dart SDK plugin E2E or pack-MCP invoke gate for production ([E2E_PROD.md](E2E_PROD.md)) |
+| E2E | am-specs `scripts/e2e_pilot.py` + `sdk-changed` job: contract + Python/Java SDK + MCP on DEV for pilots; Dart analyze via smoke; GO pending healthy `am-dev.asrax.in` tunnel ([E2E_PROD.md](E2E_PROD.md)) |
 
 ## Repos
 

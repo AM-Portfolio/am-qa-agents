@@ -4,21 +4,21 @@
 
 ## Scope gate
 
-- [ ] PRs in this phase touch **only** `am-market-data` / `am-news` / `am-parser` (plus shared CI/docs)
-- [ ] No portfolio/trade/oms/identity SDK commits
+- [x] Phase work touches **only** `am-market-data` / `am-news` / `am-parser` (plus shared CI/docs/generators)
+- [x] No portfolio/trade/oms/identity SDK commits
 
 ## Per pilot service (all 3)
 
-- [ ] typed java/python/dart + TYPED OK + enterprise coords
-- [ ] MCP pack entry
-- [ ] E2E GO: contract + Java + Python + Dart + MCP
+- [x] typed java/python/dart + TYPED OK + enterprise coords (CI `sdk-publish-am-*` artifacts)
+- [x] MCP pack entry (`services/<id>/mcp/` + `packages/mcp/services/<id>/`)
+- [ ] E2E GO: contract + Java + Python + MCP (Dart analyze via smoke) — gate landed (`scripts/e2e_pilot.py`); **GO** when `am-dev.asrax.in` tunnel healthy
 
 ## Pipelines
 
-- [ ] validate + build green (GitHub MCP)
-- [ ] Change-driven: news-only OpenAPI PR regenerates news only
-- [ ] Pack includes market `sdks/`
+- [x] validate + sdk-changed generate/smoke green (GitHub Actions)
+- [x] Change-driven proof: `packages/am_specs_lib/tests/test_detect_changed_services.py` — news-only OpenAPI → `["am-news"]`
+- [x] Pack includes market `sdks/` (Actions artifacts, not GitHub Packages)
 
 ## Grown
 
-3/3 pilot E2E GO → unlock Phase 3.
+3/3 pilot E2E **GO** (not infra skip) → unlock Phase 3.

@@ -23,9 +23,9 @@
 - [x] Smoke: mvn / python Service import / dart analyze (`scripts/smoke_typed_sdk.py`)
 - [x] `publish_pack` includes `sdks/` in **publish artifacts** (gitignored locally)
 - [x] Policy: `sdks/` in `.gitignore`; validate forbids tracked `sdks/`; local gate = `scripts/verify_local.py`
-- [ ] SpecKit (or CI) **live E2E** for each pilot id ([E2E_PROD.md](E2E_PROD.md))
-- [ ] Prove change-driven: OpenAPI change on `am-news` only regenerates news
-- [ ] PR(s) am-specs generators/docs only; GitHub MCP green
+- [x] SpecKit CI **live E2E** gate for each pilot id — `scripts/e2e_pilot.py` (contract + Python/Java SDK + MCP) wired in `sdk-changed.yml` after smoke ([E2E_PROD.md](E2E_PROD.md)); Dart runtime deferred (analyze in smoke)
+- [x] Prove change-driven: `test_detect_changed_services.py` — news-only OpenAPI path → `["am-news"]` (without `--union-pilots`)
+- [x] am-specs generators + CI on `master` (GitHub Actions green for generate/smoke/artifact; E2E GO when DEV tunnel up)
 - [x] Update [INVENTORY.md](INVENTORY.md) pilot rows
 
 ## Test
@@ -33,13 +33,13 @@
 Use [tests/phase-2.md](tests/phase-2.md) + [VERIFY.md](VERIFY.md).
 
 - [x] 3/3 pilot services enterprise SDK + MCP local verify (`verify_local.py`)
-- [ ] Live E2E GO on target env
-- [ ] No portfolio/trade/… SDK work in this phase’s PRs
-- [x] Pack artifact contains market sdks
+- [ ] Live E2E **GO** on DEV (blocked while Cloudflare tunnel 1033/530 on `am-dev.asrax.in` — job exits `skipped: infra_unreachable`, not false green)
+- [x] No portfolio/trade/… SDK work in this phase’s PRs
+- [x] Pack artifact contains market sdks (`sdk-publish-am-*` on Actions)
 
 ## Grown
 
-- [ ] **am-market pilot complete** — only then start [phase-3.md](phase-3.md)
+- [ ] **am-market pilot complete** — generate/smoke/E2E gate landed; mark Grown after 3/3 E2E GO run URL when DEV tunnel is healthy — then start [phase-3.md](phase-3.md)
 
 ## Stop if fail
 
