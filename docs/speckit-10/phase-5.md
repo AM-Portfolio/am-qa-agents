@@ -10,8 +10,8 @@
 
 ### C — Publish
 
-- [ ] Asrax: Java → GH Packages; Python → PyPI or GH; Dart → pub.dev or GH
-- [ ] Version from contract meta; CI on tag / release-pack
+- [x] Asrax pilots early: Java → GH Packages Maven; Python + Dart → GH Packages as Maven-hosted `.whl` / `.tar.gz` (no PyPI/pub.dev — GitHub has no those registries). Script: `am-specs/scripts/publish_github_packages.py`; gate: E2E exit 0 on `sdk-changed` (push/dispatch, not PR).
+- [ ] Version from contract meta; CI on tag / release-pack (today: `contract_version-ci.<run_number>`)
 - [ ] **Publish only changed services** (same detect-changed set as generate) — not every package every release
 - [ ] Tenant profile YAML (Maven/PyPI/pub Vault refs); SpecKit dry-run for sample tenant
 
