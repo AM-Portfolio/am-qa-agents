@@ -45,9 +45,9 @@
 
 | Repo | Role |
 |------|------|
-| am-specs | Contract SoT + generators |
-| am-qa-agents | SpecKit runtime (rename product face) |
-| am-core-services / am-mcp-server | Domain MCP enrich + future Java SDK consumer |
+| am-specs | Contract SoT + pack/SDK generators (no MCP server process) |
+| am-qa-agents | SpecKit product face / E2E (no MCP server process) |
+| am-core-services / `services/am-mcp-server` | **Sole platform MCP runtime** (domain `@Tool`s + contract packs) — see `docs/OWNERS_MCP.md` |
 
 ## Re-measure
 

@@ -23,7 +23,7 @@ Related: [TECH_FLOW.md](TECH_FLOW.md) (process + stacks) · [qa-agent design](..
 | Overall target | **10/10** on every scorecard dimension (see below) |
 | Wave Asrax publish | Git commit/PR first; then GH Packages / PyPI / pub (**publish only changed** packages) |
 | External companies | Tenant profile: Maven / PyPI / pub credential refs (Vault) |
-| Domain MCP | **am-mcp-server** = domain enrich (Prepare MCP); **am-specs packs** = contract MCP tools |
+| Domain MCP | **Runtime SoT:** `am-core-services/services/am-mcp-server` only (domain + contract packs). **am-specs** = pack generation only. SpecKit does not host an MCP server. |
 | Verification | GitHub MCP / CI green per [VERIFY.md](VERIFY.md) — local-only does not count |
 | Internal repo (near term) | Keep `am-qa-agents` / `qa-agent` / `spt_*`; SpecKit is product face |
 
@@ -92,7 +92,8 @@ See [INVENTORY.md](INVENTORY.md) for typed OK / FAILED matrix.
 - Do not treat thin HTTP stubs as the product SDK
 - Do not soft-pass empty `typed/` in CI
 - Do not make SpecKit a second OpenAPI SoT (am-specs stays SoT)
-- Do not conflate am-mcp-server domain tools with contract MCP packs
+- Do not host a second platform MCP server outside `am-core-services/services/am-mcp-server`
+- Do not conflate am-mcp-server domain tools with am-specs contract packs (same server, different layers)
 - Do not commit registry secrets; Vault refs only
 - Do not regenerate **all** SDKs on every PR — only services with respecting contract changes (plus explicit backfill)
 - Do not sign off production on contract/payload tests alone — SDK plugins + MCP E2E required ([E2E_PROD.md](E2E_PROD.md))
