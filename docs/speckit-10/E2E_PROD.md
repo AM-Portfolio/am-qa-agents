@@ -49,7 +49,8 @@ single report: go / no-go for production
 - Shared fixture: base URL, bearer/API key, portfolio/symbol from Prepare MCP when needed  
 - Language plugins call **`*Service.from_env(env)`** (enterprise SDK), not raw thin stubs  
 - MCP runner: load `packages/mcp/services/<id>/pack.json` → set env once → invoke tools by `routes.json` tag (same as Service routes)  
-- Report artifact: JSON + portal UI (pass/fail per surface)
+- **Market-data pack prove (GET/core):** am-specs `python scripts/mcp_pack_runner.py --service am-market-data --env dev` → `dist/mcp-pack-report-am-market-data.{json,html}` — see [MCP_PACK_PROVE.md](MCP_PACK_PROVE.md)  
+- Report artifact: JSON + HTML (pass/fail per tool); portal UI optional later
 
 ## Production go criteria (service change)
 

@@ -12,6 +12,7 @@
 - [x] typed java/python/dart + TYPED OK + enterprise coords (CI `sdk-publish-am-*` artifacts)
 - [x] MCP pack entry (`services/<id>/mcp/` + `packages/mcp/services/<id>/`)
 - [ ] E2E GO: contract + Java + Python + MCP (Dart analyze via smoke) — gate landed (`scripts/e2e_pilot.py`); **GO** when `am-dev.asrax.in` tunnel healthy
+- [x] Market-data MCP pack prove (GET/core): `python scripts/mcp_pack_runner.py --service am-market-data --env dev` → `dist/mcp-pack-report-am-market-data.{json,html}` — verdict **go** (13/24 passed, health_ok; see [MCP_PACK_PROVE.md](../MCP_PACK_PROVE.md))
 
 ## Pipelines
 
