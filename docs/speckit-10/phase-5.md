@@ -11,15 +11,16 @@
 ### C — Publish
 
 - [x] Asrax pilots early: Java → GH Packages Maven; Python + Dart → GH Packages as Maven-hosted `.whl` / `.tar.gz` (no PyPI/pub.dev — GitHub has no those registries). Script: `am-specs/scripts/publish_github_packages.py`; gate: E2E exit 0 on `sdk-changed` (push/dispatch, not PR).
-- [ ] Version from contract meta; CI on tag / release-pack (today: `contract_version-ci.<run_number>`)
+- [ ] Version from contract meta; CI on tag / release-pack (today: `{contract_version}.{run_number}` e.g. `0.1.0.14`)
 - [ ] **Publish only changed services** (same detect-changed set as generate) — not every package every release
 - [ ] Tenant profile YAML (Maven/PyPI/pub Vault refs); SpecKit dry-run for sample tenant
 
 ### D — Agents / core MCP
 
-- [ ] Asrax agents + Cursor use pack-backed contract MCP
-- [ ] am-mcp-server uses generated Java enterprise SDK for focus callees
-- [ ] Prepare MCP stays on am-mcp-server for domain enrich (documented)
+- [x] am-mcp-server: pack-backed contract MCP (`am.contract-mcp` + `docs/CONTRACT_MCP.md`) — load `tools.json` when present; HTTP executor + domain `@Tool`s retained
+- [ ] Asrax agents + Cursor use pack-backed contract MCP (enable packs-dir in env)
+- [ ] Optional: wire published `com.asrax:*` jars for typed Java call path (HTTP covers fleet today)
+- [x] Prepare MCP stays on am-mcp-server for domain enrich (documented)
 
 ### E — Proof / production go
 
