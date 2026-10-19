@@ -1,0 +1,88 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-email-extractor
+label: am-email-extractor
+enabled: true
+owners:
+- speckit
+description: "Generated from am-specs/services/am-email-extractor/tools.json (7 tools)\
+  \ \u2014 Spec UI source of truth."
+source:
+  repo: am-specs
+  path: services/am-email-extractor/tools.json
+  team: speckit
+targets:
+  dev: https://am-dev.asrax.in/email
+  preprod: https://am-preprod.asrax.in/email
+  prod: https://am.asrax.in/email
+apis:
+- id: am_email_extractor_get_api_v1_health
+  name: api_am_email_extractor_get_api_v1_health
+  method: GET
+  path: /api/v1/health
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_email_extractor_get_api_v1_brokers
+  name: api_am_email_extractor_get_api_v1_brokers
+  method: GET
+  path: /api/v1/brokers
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_email_extractor_get_api_v1_gmail_connect
+  name: api_am_email_extractor_get_api_v1_gmail_connect
+  method: GET
+  path: /api/v1/gmail/connect
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_email_extractor_get_api_v1_gmail_status
+  name: api_am_email_extractor_get_api_v1_gmail_status
+  method: GET
+  path: /api/v1/gmail/status
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_email_extractor_delete_api_v1_gmail_disconnect
+  name: api_am_email_extractor_delete_api_v1_gmail_disconnect
+  method: DELETE
+  path: /api/v1/gmail/disconnect
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_email_extractor_get_api_v1_extract_gmail__broker
+  name: api_am_email_extractor_get_api_v1_extract_gmail__broker
+  method: GET
+  path: /api/v1/extract/gmail/[groww, zerodha, angleone, dhan, mstock]
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_email_extractor_post_api_v1_extract_upload__broker
+  name: api_am_email_extractor_post_api_v1_extract_upload__broker
+  method: POST
+  path: /api/v1/extract/upload/[groww, zerodha, angleone, dhan, mstock]
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other

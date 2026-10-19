@@ -208,6 +208,16 @@ class PayloadSetCreateRequest(BaseModel):
     make_active: bool = True
 
 
+class PayloadSetImportRequest(BaseModel):
+    """Import am-specs dataset export into qa-agent payload_sets."""
+
+    service: str
+    label: str | None = None
+    format: str = "am-specs-dataset"
+    payload_set: dict[str, Any] = Field(default_factory=dict)
+    make_active: bool = True
+
+
 class PayloadSetUpsertApiRequest(BaseModel):
     service: str
     api_id: str

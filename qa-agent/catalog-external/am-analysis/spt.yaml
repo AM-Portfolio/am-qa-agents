@@ -1,0 +1,58 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-analysis
+label: am-analysis
+enabled: true
+owners:
+- speckit
+description: "Generated from am-specs/services/am-analysis/tools.json (4 tools) \u2014\
+  \ Spec UI source of truth."
+source:
+  repo: am-specs
+  path: services/am-analysis/tools.json
+  team: speckit
+targets:
+  dev: https://am-dev.asrax.in/analysis
+  preprod: https://am-preprod.asrax.in/analysis
+  prod: https://am.asrax.in/analysis
+apis:
+- id: am_analysis_getTopMoversByEntity
+  name: api_am_analysis_getTopMoversByEntity
+  method: GET
+  path: /api/v1/analysis/{type}/{id}/top-movers
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_analysis_getPerformance
+  name: api_am_analysis_getPerformance
+  method: GET
+  path: /api/v1/analysis/{type}/{id}/performance
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_analysis_getAllocation
+  name: api_am_analysis_getAllocation
+  method: GET
+  path: /api/v1/analysis/{type}/{id}/allocation
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_analysis_getTopMoversByCategory
+  name: api_am_analysis_getTopMoversByCategory
+  method: GET
+  path: /api/v1/analysis/{type}/top-movers
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other

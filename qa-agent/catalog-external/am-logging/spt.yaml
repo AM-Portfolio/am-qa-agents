@@ -1,0 +1,78 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-logging
+label: am-logging
+enabled: true
+owners:
+- speckit
+description: "Generated from am-specs/services/am-logging/tools.json (6 tools) \u2014\
+  \ Spec UI source of truth."
+source:
+  repo: am-specs
+  path: services/am-logging/tools.json
+  team: speckit
+targets:
+  dev: https://am-dev.asrax.in/logging
+  preprod: https://am-preprod.asrax.in/logging
+  prod: https://am.asrax.in/logging
+apis:
+- id: am_logging_list_logs_v1_logs_get
+  name: api_am_logging_list_logs_v1_logs_get
+  method: GET
+  path: /v1/logs
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_logging_ingest_log_v1_logs_post
+  name: api_am_logging_ingest_log_v1_logs_post
+  method: POST
+  path: /v1/logs
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_logging_ingest_telemetry_v1_telemetry_events_post
+  name: api_am_logging_ingest_telemetry_v1_telemetry_events_post
+  method: POST
+  path: /v1/telemetry/events
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_logging_get_log_v1_logs__trace_id__get
+  name: api_am_logging_get_log_v1_logs__trace_id__get
+  method: GET
+  path: /v1/logs/{trace_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_logging_update_log_status_v1_logs__trace_id__put
+  name: api_am_logging_update_log_status_v1_logs__trace_id__put
+  method: PUT
+  path: /v1/logs/{trace_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_logging_health_health_get
+  name: api_am_logging_health_health_get
+  method: GET
+  path: /health
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other

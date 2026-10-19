@@ -3,24 +3,136 @@ kind: ServiceLoadTest
 service: am-notification
 label: am-notification
 enabled: true
-runtime: python
-owners: [notification-team]
-description: Notification service load-test registration (OpenAPI via FastAPI)
-createdBy: notification-team
-updatedBy: notification-team
-createdAt: "2026-07-24"
-updatedAt: "2026-07-24"
-tags: [notifications, python, fastapi]
+owners:
+- speckit
+description: "Generated from am-specs/services/am-notification/tools.json (12 tools)\
+  \ \u2014 Spec UI source of truth."
 source:
-  repo: am-platform
-  path: am-notification/spt.yaml
-  team: notification-team
-traces:
-  - name: openapi
-    ref: /openapi.json
+  repo: am-specs
+  path: services/am-notification/tools.json
+  team: speckit
 targets:
-  dev: "https://am-dev.asrax.in/notification"
-  preprod: "https://am-preprod.asrax.in/notification"
-  prod: "https://am.asrax.in/notification"
-openapi:
-  path: /openapi.json
+  dev: https://am-dev.asrax.in/notifications
+  preprod: https://am-preprod.asrax.in/notifications
+  prod: https://am.asrax.in/notifications
+apis:
+- id: am_notification_health_health_get
+  name: api_am_notification_health_health_get
+  method: GET
+  path: /health
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_notification_health_live_health_live_get
+  name: api_am_notification_health_live_health_live_get
+  method: GET
+  path: /health/live
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_notification_health_ready_health_ready_get
+  name: api_am_notification_health_ready_health_ready_get
+  method: GET
+  path: /health/ready
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_notification_list_my_notifications_notifications_me_get
+  name: api_am_notification_list_my_notifications_notifications_me_get
+  method: GET
+  path: /notifications/me
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_notification_unread_count_notifications_me_unread_count_get
+  name: api_am_notification_unread_count_notifications_me_unread_count_get
+  method: GET
+  path: /notifications/me/unread-count
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_notification_mark_notification_read_notifications__notification_id__read_patch
+  name: api_am_notification_mark_notification_read_notifications__notification_id__read_patch
+  method: PATCH
+  path: /notifications/{notification_id}/read
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_notification_mark_all_read_notifications_read_all_patch
+  name: api_am_notification_mark_all_read_notifications_read_all_patch
+  method: PATCH
+  path: /notifications/read-all
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_notification_mark_read_batch_notifications_mark_read_post
+  name: api_am_notification_mark_read_batch_notifications_mark_read_post
+  method: POST
+  path: /notifications/mark-read
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_notification_get_preferences_notifications_preferences_get
+  name: api_am_notification_get_preferences_notifications_preferences_get
+  method: GET
+  path: /notifications/preferences
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_notification_update_preferences_notifications_preferences_put
+  name: api_am_notification_update_preferences_notifications_preferences_put
+  method: PUT
+  path: /notifications/preferences
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_notification_internal_send_notifications_internal_send_post
+  name: api_am_notification_internal_send_notifications_internal_send_post
+  method: POST
+  path: /notifications/internal/send
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_notification_novu_webhook_webhooks_novu_post
+  name: api_am_notification_novu_webhook_webhooks_novu_post
+  method: POST
+  path: /webhooks/novu
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other

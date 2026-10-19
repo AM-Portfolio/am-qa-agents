@@ -1,0 +1,128 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-news
+label: am-news
+enabled: true
+owners:
+- speckit
+description: "Generated from am-specs/services/am-news/tools.json (11 tools) \u2014\
+  \ Spec UI source of truth."
+source:
+  repo: am-specs
+  path: services/am-news/tools.json
+  team: speckit
+targets:
+  dev: https://am-dev.asrax.in/news
+  preprod: https://am-preprod.asrax.in/news
+  prod: https://am.asrax.in/news
+apis:
+- id: am_news_health
+  name: api_am_news_health
+  method: GET
+  path: /health
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_news_ready
+  name: api_am_news_ready
+  method: GET
+  path: /ready
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_news_getCurrentAffairs
+  name: api_am_news_getCurrentAffairs
+  method: GET
+  path: /v1/current-affairs
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_news_postInsight
+  name: api_am_news_postInsight
+  method: POST
+  path: /v1/insight
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_news_getHoldings
+  name: api_am_news_getHoldings
+  method: GET
+  path: /v1/holdings
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_news_startFeed
+  name: api_am_news_startFeed
+  method: POST
+  path: /v1/admin/feed/start
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_news_stopFeed
+  name: api_am_news_stopFeed
+  method: POST
+  path: /v1/admin/feed/stop
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_news_getFeed
+  name: api_am_news_getFeed
+  method: GET
+  path: /v1/admin/feed
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_news_listRaw
+  name: api_am_news_listRaw
+  method: GET
+  path: /v1/admin/raw
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_news_replayPending
+  name: api_am_news_replayPending
+  method: POST
+  path: /v1/admin/replay
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_news_replayRaw
+  name: api_am_news_replayRaw
+  method: POST
+  path: /v1/admin/replay/{raw_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin

@@ -1,0 +1,988 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-trade-management-service
+label: am-trade-management-service
+enabled: true
+owners:
+- speckit
+description: "Generated from am-specs/services/am-trade-management-service/tools.json\
+  \ (97 tools) \u2014 Spec UI source of truth."
+source:
+  repo: am-specs
+  path: services/am-trade-management-service/tools.json
+  team: speckit
+targets:
+  dev: https://am-dev.asrax.in/trade
+  preprod: https://am-preprod.asrax.in/trade
+  prod: https://am.asrax.in/trade
+apis:
+- id: am_trade_management_service_findTradeReplaysByDateRange
+  name: api_am_trade_management_service_findTradeReplaysByDateRange
+  method: GET
+  path: /v1/analytics/trade-replays/date-range
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_findTradeReplaysByPortfolioId
+  name: api_am_trade_management_service_findTradeReplaysByPortfolioId
+  method: GET
+  path: /v1/analytics/trade-replays/portfolio/pf-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_findTradeReplaysByStrategyId
+  name: api_am_trade_management_service_findTradeReplaysByStrategyId
+  method: GET
+  path: /v1/analytics/trade-replays/strategy/{strategyId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_findTradeReplaysBySymbol
+  name: api_am_trade_management_service_findTradeReplaysBySymbol
+  method: GET
+  path: /v1/analytics/trade-replays/symbol/RELIANCE
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_findTradeReplaysByOriginalTradeId
+  name: api_am_trade_management_service_findTradeReplaysByOriginalTradeId
+  method: GET
+  path: /v1/analytics/trade-replays/trade/trd-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getTradeReplayById
+  name: api_am_trade_management_service_getTradeReplayById
+  method: GET
+  path: /v1/analytics/trade-replays/{replayId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_deleteTradeReplay
+  name: api_am_trade_management_service_deleteTradeReplay
+  method: DELETE
+  path: /v1/analytics/trade-replays/{replayId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_comparePortfolios
+  name: api_am_trade_management_service_comparePortfolios
+  method: GET
+  path: /v1/comparison/portfolios
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_compareStrategies
+  name: api_am_trade_management_service_compareStrategies
+  method: GET
+  path: /v1/comparison/strategies
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_compareTimePeriods
+  name: api_am_trade_management_service_compareTimePeriods
+  method: GET
+  path: /v1/comparison/time-periods
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getMetricsWithFavoriteFilter
+  name: api_am_trade_management_service_getMetricsWithFavoriteFilter
+  method: GET
+  path: /v1/filters/apply/{filterId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_deleteMultipleFilters
+  name: api_am_trade_management_service_deleteMultipleFilters
+  method: DELETE
+  path: /v1/filters/bulk
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getDefaultFilter
+  name: api_am_trade_management_service_getDefaultFilter
+  method: GET
+  path: /v1/filters/default
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_saveCurrentFilter
+  name: api_am_trade_management_service_saveCurrentFilter
+  method: POST
+  path: /v1/filters/save-current
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getFilterById
+  name: api_am_trade_management_service_getFilterById
+  method: GET
+  path: /v1/filters/{filterId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_updateFilter
+  name: api_am_trade_management_service_updateFilter
+  method: PUT
+  path: /v1/filters/{filterId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_deleteFilter
+  name: api_am_trade_management_service_deleteFilter
+  method: DELETE
+  path: /v1/filters/{filterId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_setDefaultFilter
+  name: api_am_trade_management_service_setDefaultFilter
+  method: PUT
+  path: /v1/filters/{filterId}/default
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getDailyHeatmap
+  name: api_am_trade_management_service_getDailyHeatmap
+  method: GET
+  path: /v1/heatmap/daily
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getMonthlyHeatmap
+  name: api_am_trade_management_service_getMonthlyHeatmap
+  method: GET
+  path: /v1/heatmap/monthly
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getYearlyHeatmap
+  name: api_am_trade_management_service_getYearlyHeatmap
+  method: GET
+  path: /v1/heatmap/yearly
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getFavoriteTemplates
+  name: api_am_trade_management_service_getFavoriteTemplates
+  method: GET
+  path: /v1/journal-templates/favorites
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getUserCustomTemplates
+  name: api_am_trade_management_service_getUserCustomTemplates
+  method: GET
+  path: /v1/journal-templates/my-templates
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getRecommendedTemplates
+  name: api_am_trade_management_service_getRecommendedTemplates
+  method: GET
+  path: /v1/journal-templates/recommended
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getTemplate
+  name: api_am_trade_management_service_getTemplate
+  method: GET
+  path: /v1/journal-templates/{templateId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_updateTemplate
+  name: api_am_trade_management_service_updateTemplate
+  method: PUT
+  path: /v1/journal-templates/{templateId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_deleteTemplate
+  name: api_am_trade_management_service_deleteTemplate
+  method: DELETE
+  path: /v1/journal-templates/{templateId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_toggleFavorite
+  name: api_am_trade_management_service_toggleFavorite
+  method: POST
+  path: /v1/journal-templates/{templateId}/favorite
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_useTemplate
+  name: api_am_trade_management_service_useTemplate
+  method: POST
+  path: /v1/journal-templates/{templateId}/use
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getAdherence
+  name: api_am_trade_management_service_getAdherence
+  method: GET
+  path: /v1/journal/adherence
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_bulkArchive
+  name: api_am_trade_management_service_bulkArchive
+  method: POST
+  path: /v1/journal/bulk/archive
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_bulkDelete
+  name: api_am_trade_management_service_bulkDelete
+  method: POST
+  path: /v1/journal/bulk/delete
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_bulkAddTags
+  name: api_am_trade_management_service_bulkAddTags
+  method: POST
+  path: /v1/journal/bulk/tags
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getJournalEntriesByDateRange
+  name: api_am_trade_management_service_getJournalEntriesByDateRange
+  method: GET
+  path: /v1/journal/date-range
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_exportCsv
+  name: api_am_trade_management_service_exportCsv
+  method: GET
+  path: /v1/journal/export
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_createFromTrades
+  name: api_am_trade_management_service_createFromTrades
+  method: POST
+  path: /v1/journal/from-trades
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_importCsvFile
+  name: api_am_trade_management_service_importCsvFile
+  method: POST
+  path: /v1/journal/import
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getLessons
+  name: api_am_trade_management_service_getLessons
+  method: GET
+  path: /v1/journal/lessons
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getMistakesSummary
+  name: api_am_trade_management_service_getMistakesSummary
+  method: GET
+  path: /v1/journal/mistakes/summary
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getReportCard
+  name: api_am_trade_management_service_getReportCard
+  method: GET
+  path: /v1/journal/report-card
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getSummary
+  name: api_am_trade_management_service_getSummary
+  method: GET
+  path: /v1/journal/summary
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getJournalEntriesByTrade
+  name: api_am_trade_management_service_getJournalEntriesByTrade
+  method: GET
+  path: /v1/journal/trade/trd-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getJournalEntriesByUser
+  name: api_am_trade_management_service_getJournalEntriesByUser
+  method: GET
+  path: /v1/journal/user
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getJournalEntry
+  name: api_am_trade_management_service_getJournalEntry
+  method: GET
+  path: /v1/journal/{entryId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_updateJournalEntry
+  name: api_am_trade_management_service_updateJournalEntry
+  method: PUT
+  path: /v1/journal/{entryId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_deleteJournalEntry
+  name: api_am_trade_management_service_deleteJournalEntry
+  method: DELETE
+  path: /v1/journal/{entryId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_listAttachments
+  name: api_am_trade_management_service_listAttachments
+  method: GET
+  path: /v1/journal/{entryId}/attachments
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_addAttachment
+  name: api_am_trade_management_service_addAttachment
+  method: POST
+  path: /v1/journal/{entryId}/attachments
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_removeAttachment
+  name: api_am_trade_management_service_removeAttachment
+  method: DELETE
+  path: /v1/journal/{entryId}/attachments
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_updateExecution
+  name: api_am_trade_management_service_updateExecution
+  method: PUT
+  path: /v1/journal/{entryId}/execution
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_linkTrade
+  name: api_am_trade_management_service_linkTrade
+  method: POST
+  path: /v1/journal/{entryId}/link-trade
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_updatePostReview
+  name: api_am_trade_management_service_updatePostReview
+  method: PUT
+  path: /v1/journal/{entryId}/post-review
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_updatePrePlan
+  name: api_am_trade_management_service_updatePrePlan
+  method: PUT
+  path: /v1/journal/{entryId}/pre-plan
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_compareMetrics
+  name: api_am_trade_management_service_compareMetrics
+  method: GET
+  path: /v1/metrics/compare
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getMetricsTrends
+  name: api_am_trade_management_service_getMetricsTrends
+  method: GET
+  path: /v1/metrics/trends
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getAvailableMetricTypes
+  name: api_am_trade_management_service_getAvailableMetricTypes
+  method: GET
+  path: /v1/metrics/types
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getNotebookItems
+  name: api_am_trade_management_service_getNotebookItems
+  method: GET
+  path: /v1/notebook/items
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_createNotebookItem
+  name: api_am_trade_management_service_createNotebookItem
+  method: POST
+  path: /v1/notebook/items
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getNotebookItem
+  name: api_am_trade_management_service_getNotebookItem
+  method: GET
+  path: /v1/notebook/items/{itemId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_updateNotebookItem
+  name: api_am_trade_management_service_updateNotebookItem
+  method: PUT
+  path: /v1/notebook/items/{itemId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_deleteNotebookItem
+  name: api_am_trade_management_service_deleteNotebookItem
+  method: DELETE
+  path: /v1/notebook/items/{itemId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getNotebookTags
+  name: api_am_trade_management_service_getNotebookTags
+  method: GET
+  path: /v1/notebook/tags
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_createNotebookTag
+  name: api_am_trade_management_service_createNotebookTag
+  method: POST
+  path: /v1/notebook/tags
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_updateNotebookTag
+  name: api_am_trade_management_service_updateNotebookTag
+  method: PUT
+  path: /v1/notebook/tags/{tagId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_deleteNotebookTag
+  name: api_am_trade_management_service_deleteNotebookTag
+  method: DELETE
+  path: /v1/notebook/tags/{tagId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getPortfolioSummariesForAuthenticatedUser
+  name: api_am_trade_management_service_getPortfolioSummariesForAuthenticatedUser
+  method: GET
+  path: /v1/portfolio-summary/by-owner
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getPortfolioSummaryByOwnerIdFallback
+  name: api_am_trade_management_service_getPortfolioSummaryByOwnerIdFallback
+  method: GET
+  path: /v1/portfolio-summary/by-owner/user-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getPortfolioSummary
+  name: api_am_trade_management_service_getPortfolioSummary
+  method: GET
+  path: /v1/portfolio-summary/pf-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getAssetAllocation
+  name: api_am_trade_management_service_getAssetAllocation
+  method: GET
+  path: /v1/portfolio-summary/pf-demo-001/asset-allocation
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getPortfolioPerformance
+  name: api_am_trade_management_service_getPortfolioPerformance
+  method: GET
+  path: /v1/portfolio-summary/pf-demo-001/performance
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_recalculatePortfolio
+  name: api_am_trade_management_service_recalculatePortfolio
+  method: POST
+  path: /v1/portfolio-summary/pf-demo-001/recalculate
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_updatePortfolio
+  name: api_am_trade_management_service_updatePortfolio
+  method: PUT
+  path: /v1/portfolios/pf-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_deletePortfolio
+  name: api_am_trade_management_service_deletePortfolio
+  method: DELETE
+  path: /v1/portfolios/pf-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getDashboardPreferences
+  name: api_am_trade_management_service_getDashboardPreferences
+  method: GET
+  path: /v1/preferences/dashboard
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_saveDashboardPreferences
+  name: api_am_trade_management_service_saveDashboardPreferences
+  method: POST
+  path: /v1/preferences/dashboard
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_resetDashboardPreferences
+  name: api_am_trade_management_service_resetDashboardPreferences
+  method: POST
+  path: /v1/preferences/dashboard/reset
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getAllActiveBasicByOwnerId
+  name: api_am_trade_management_service_getAllActiveBasicByOwnerId
+  method: GET
+  path: /v1/trade-summary/basic/by-owner/user-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getBasicTradeSummary
+  name: api_am_trade_management_service_getBasicTradeSummary
+  method: GET
+  path: /v1/trade-summary/basic/{id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getCompositeTradeSummary
+  name: api_am_trade_management_service_getCompositeTradeSummary
+  method: GET
+  path: /v1/trade-summary/composite/{id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getDetailedTradeSummaryByBasicId
+  name: api_am_trade_management_service_getDetailedTradeSummaryByBasicId
+  method: GET
+  path: /v1/trade-summary/detailed/by-basic/{basicId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getDetailedTradeSummary
+  name: api_am_trade_management_service_getDetailedTradeSummary
+  method: GET
+  path: /v1/trade-summary/detailed/{id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getTradeDetailsByTimePeriod
+  name: api_am_trade_management_service_getTradeDetailsByTimePeriod
+  method: GET
+  path: /v1/trade-summary/trades
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_deleteTradeSummary
+  name: api_am_trade_management_service_deleteTradeSummary
+  method: DELETE
+  path: /v1/trade-summary/{id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getTradeDetailsByDateRange
+  name: api_am_trade_management_service_getTradeDetailsByDateRange
+  method: GET
+  path: /v1/trades/calendar/custom
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getTradeDetailsByDay
+  name: api_am_trade_management_service_getTradeDetailsByDay
+  method: GET
+  path: /v1/trades/calendar/day
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getTradeDetailsByFinancialYear
+  name: api_am_trade_management_service_getTradeDetailsByFinancialYear
+  method: GET
+  path: /v1/trades/calendar/financial-year
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getTradeDetailsByMonth
+  name: api_am_trade_management_service_getTradeDetailsByMonth
+  method: GET
+  path: /v1/trades/calendar/month
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getTradeDetailsByQuarter
+  name: api_am_trade_management_service_getTradeDetailsByQuarter
+  method: GET
+  path: /v1/trades/calendar/quarter
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_addTrade
+  name: api_am_trade_management_service_addTrade
+  method: POST
+  path: /v1/trades/details
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_addOrUpdateTrades
+  name: api_am_trade_management_service_addOrUpdateTrades
+  method: POST
+  path: /v1/trades/details/batch
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getTradeDetailsByTradeIds
+  name: api_am_trade_management_service_getTradeDetailsByTradeIds
+  method: POST
+  path: /v1/trades/details/by-ids
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_filterTradeDetails
+  name: api_am_trade_management_service_filterTradeDetails
+  method: POST
+  path: /v1/trades/details/filter
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getTradeDetailsByPortfolioAndSymbols
+  name: api_am_trade_management_service_getTradeDetailsByPortfolioAndSymbols
+  method: GET
+  path: /v1/trades/details/portfolio/pf-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_updateTrade
+  name: api_am_trade_management_service_updateTrade
+  method: PUT
+  path: /v1/trades/details/trd-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_deleteTrade
+  name: api_am_trade_management_service_deleteTrade
+  method: DELETE
+  path: /v1/trades/details/trd-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getTradesByFilters
+  name: api_am_trade_management_service_getTradesByFilters
+  method: GET
+  path: /v1/trades/filter
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_trade_management_service_getTradeDetailsByPortfolio
+  name: api_am_trade_management_service_getTradeDetailsByPortfolio
+  method: GET
+  path: /v1/trades/portfolio-details/pf-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other

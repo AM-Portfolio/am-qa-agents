@@ -3,24 +3,137 @@ kind: ServiceLoadTest
 service: am-user-platform
 label: am-user-platform
 enabled: true
-runtime: python
-owners: [platform-team]
-description: User platform / AI gateway (prod OpenAPI at /ai)
-createdBy: qa-agent
-updatedBy: qa-agent
-createdAt: "2026-10-06"
-updatedAt: "2026-10-06"
-tags: [users, ai, python, fastapi]
+owners:
+- speckit
+description: "Generated from am-specs/services/am-user-platform/tools.json (12 tools)\
+  \ \u2014 Spec UI source of truth."
 source:
-  repo: am-platform
-  path: am-user-platform
-  team: platform-team
-traces:
-  - name: openapi
-    ref: /openapi.json
+  repo: am-specs
+  path: services/am-user-platform/tools.json
+  team: speckit
 targets:
-  dev: "https://am-dev.asrax.in/ai"
-  preprod: "https://am-preprod.asrax.in/ai"
-  prod: "https://am.asrax.in/ai"
-openapi:
-  path: /openapi.json
+  dev: https://am-dev.asrax.in/v1/user-platform
+  preprod: https://am-preprod.asrax.in/v1/user-platform
+  prod: https://am.asrax.in/v1/user-platform
+apis:
+- id: am_user_platform_health_health_get
+  name: api_am_user_platform_health_health_get
+  method: GET
+  path: /health
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_user_platform_health_live_health_live_get
+  name: api_am_user_platform_health_live_health_live_get
+  method: GET
+  path: /health/live
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_user_platform_ready_ready_get
+  name: api_am_user_platform_ready_ready_get
+  method: GET
+  path: /ready
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_user_platform_list_sessions_v1_user_platform_ai_sessions_get
+  name: api_am_user_platform_list_sessions_v1_user_platform_ai_sessions_get
+  method: GET
+  path: /v1/user-platform/ai/sessions
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_user_platform_create_session_v1_user_platform_ai_sessions_post
+  name: api_am_user_platform_create_session_v1_user_platform_ai_sessions_post
+  method: POST
+  path: /v1/user-platform/ai/sessions
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_user_platform_get_session_v1_user_platform_ai_sessions__session_id__get
+  name: api_am_user_platform_get_session_v1_user_platform_ai_sessions__session_id__get
+  method: GET
+  path: /v1/user-platform/ai/sessions/{session_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_user_platform_update_session_v1_user_platform_ai_sessions__session_id__patch
+  name: api_am_user_platform_update_session_v1_user_platform_ai_sessions__session_id__patch
+  method: PATCH
+  path: /v1/user-platform/ai/sessions/{session_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_user_platform_delete_session_v1_user_platform_ai_sessions__session_id__delete
+  name: api_am_user_platform_delete_session_v1_user_platform_ai_sessions__session_id__delete
+  method: DELETE
+  path: /v1/user-platform/ai/sessions/{session_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_user_platform_create_feedback_v1_user_platform_ai_feedback_post
+  name: api_am_user_platform_create_feedback_v1_user_platform_ai_feedback_post
+  method: POST
+  path: /v1/user-platform/ai/feedback
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_user_platform_get_session_context_internal_ai_sessions__session_id__context_get
+  name: api_am_user_platform_get_session_context_internal_ai_sessions__session_id__context_get
+  method: GET
+  path: /internal/ai/sessions/{session_id}/context
+  headers: {}
+  query:
+    user_id: user-demo-001
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_user_platform_append_session_messages_internal_ai_sessions__session_id__messages_post
+  name: api_am_user_platform_append_session_messages_internal_ai_sessions__session_id__messages_post
+  method: POST
+  path: /internal/ai/sessions/{session_id}/messages
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_user_platform_purge_user_ai_data_internal_ai_users__user_id__data_delete
+  name: api_am_user_platform_purge_user_ai_data_internal_ai_users__user_id__data_delete
+  method: DELETE
+  path: /internal/ai/users/user-demo-001/data
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other

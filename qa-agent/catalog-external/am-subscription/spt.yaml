@@ -3,24 +3,206 @@ kind: ServiceLoadTest
 service: am-subscription
 label: am-subscription
 enabled: true
-runtime: python
-owners: [billing-team]
-description: Subscription service load-test registration (OpenAPI via FastAPI)
-createdBy: billing-team
-updatedBy: billing-team
-createdAt: "2026-07-24"
-updatedAt: "2026-07-24"
-tags: [billing, python, fastapi]
+owners:
+- speckit
+description: "Generated from am-specs/services/am-subscription/tools.json (19 tools)\
+  \ \u2014 Spec UI source of truth."
 source:
-  repo: am-platform
-  path: am-subscription/spt.yaml
-  team: billing-team
-traces:
-  - name: openapi
-    ref: /openapi.json
+  repo: am-specs
+  path: services/am-subscription/tools.json
+  team: speckit
 targets:
-  dev: "https://am-dev.asrax.in/subscription"
-  preprod: "https://am-preprod.asrax.in/subscription"
-  prod: "https://am.asrax.in/subscription"
-openapi:
-  path: /openapi.json
+  dev: https://am-dev.asrax.in/subscriptions
+  preprod: https://am-preprod.asrax.in/subscriptions
+  prod: https://am.asrax.in/subscriptions
+apis:
+- id: am_subscription_health_health_get
+  name: api_am_subscription_health_health_get
+  method: GET
+  path: /health
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_list_plans_subscriptions_plans_get
+  name: api_am_subscription_list_plans_subscriptions_plans_get
+  method: GET
+  path: /subscriptions/plans
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_create_subscription_subscriptions_post
+  name: api_am_subscription_create_subscription_subscriptions_post
+  method: POST
+  path: /subscriptions
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_get_my_subscription_subscriptions_me_get
+  name: api_am_subscription_get_my_subscription_subscriptions_me_get
+  method: GET
+  path: /subscriptions/me
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_cancel_subscription_subscriptions__subscription_id__cancel_patch
+  name: api_am_subscription_cancel_subscription_subscriptions__subscription_id__cancel_patch
+  method: PATCH
+  path: /subscriptions/{subscription_id}/cancel
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_pause_subscription_subscriptions__subscription_id__pause_patch
+  name: api_am_subscription_pause_subscription_subscriptions__subscription_id__pause_patch
+  method: PATCH
+  path: /subscriptions/{subscription_id}/pause
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_resume_subscription_subscriptions__subscription_id__resume_patch
+  name: api_am_subscription_resume_subscription_subscriptions__subscription_id__resume_patch
+  method: PATCH
+  path: /subscriptions/{subscription_id}/resume
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_upgrade_subscription_subscriptions__subscription_id__upgrade_patch
+  name: api_am_subscription_upgrade_subscription_subscriptions__subscription_id__upgrade_patch
+  method: PATCH
+  path: /subscriptions/{subscription_id}/upgrade
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_usage_history_subscriptions_usage_history_get
+  name: api_am_subscription_usage_history_subscriptions_usage_history_get
+  method: GET
+  path: /subscriptions/usage/history
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_get_my_referral_subscriptions_referrals_me_get
+  name: api_am_subscription_get_my_referral_subscriptions_referrals_me_get
+  method: GET
+  path: /subscriptions/referrals/me
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_get_my_referral_history_subscriptions_referrals_me_history_get
+  name: api_am_subscription_get_my_referral_history_subscriptions_referrals_me_history_get
+  method: GET
+  path: /subscriptions/referrals/me/history
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_get_user_entitlements_subscriptions_internal_entitlements__user_id__get
+  name: api_am_subscription_get_user_entitlements_subscriptions_internal_entitlements__user_id__get
+  method: GET
+  path: /subscriptions/internal/entitlements/user-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_check_entitlement_subscriptions_internal_check_post
+  name: api_am_subscription_check_entitlement_subscriptions_internal_check_post
+  method: POST
+  path: /subscriptions/internal/check
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_record_meter_subscriptions_internal_meter_post
+  name: api_am_subscription_record_meter_subscriptions_internal_meter_post
+  method: POST
+  path: /subscriptions/internal/meter
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_bootstrap_subscription_subscriptions_internal_bootstrap__user_id__post
+  name: api_am_subscription_bootstrap_subscription_subscriptions_internal_bootstrap__user_id__post
+  method: POST
+  path: /subscriptions/internal/bootstrap/user-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_attribute_referral_subscriptions_internal_referrals_attribute_post
+  name: api_am_subscription_attribute_referral_subscriptions_internal_referrals_attribute_post
+  method: POST
+  path: /subscriptions/internal/referrals/attribute
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_qualify_referral_subscriptions_internal_referrals_qualify_post
+  name: api_am_subscription_qualify_referral_subscriptions_internal_referrals_qualify_post
+  method: POST
+  path: /subscriptions/internal/referrals/qualify
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_grant_pro_days_subscriptions_internal_grants_pro_days_post
+  name: api_am_subscription_grant_pro_days_subscriptions_internal_grants_pro_days_post
+  method: POST
+  path: /subscriptions/internal/grants/pro-days
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_subscription_provider_webhook_webhooks_provider_post
+  name: api_am_subscription_provider_webhook_webhooks_provider_post
+  method: POST
+  path: /webhooks/provider
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other

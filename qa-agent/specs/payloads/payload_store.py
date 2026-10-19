@@ -390,6 +390,71 @@ def ensure_payload_set(service: str, *, label: str = "working") -> dict[str, Any
     return create_payload_set(service, label=label, clone_from=None, make_active=True)
 
 
+def import_am_specs_payload_set(
+    service: str,
+    payload_set: dict[str, Any],
+    *,
+    label: str | None = None,
+    make_active: bool = True,
+) -> dict[str, Any]:
+    """Replace/create active payload set from an am-specs dataset export.
+
+    Expects qa-agents shape: ``{apis: {api_id: {request, response, meta, name}}}``.
+    """
+    apis_in = payload_set.get("apis") if isinstance(payload_set.get("apis"), dict) else {}
+    apis: dict[str, Any] = {}
+    now = _now()
+    for api_id, row in apis_in.items():
+        if not isinstance(row, dict):
+            continue
+        req = dict(row.get("request") or {})
+        req["headers"] = redact_headers(req.get("headers"))
+        resp = dict(row.get("response") or {})
+        resp["headers"] = redact_headers(resp.get("headers"))
+        apis[str(api_id)] = {
+            "api_id": str(api_id),
+            "name": row.get("name") or "working",
+            "request": req,
+            "response": resp,
+            "meta": dict(row.get("meta") or {}),
+            "updated_at": now,
+        }
+
+    created = create_payload_set(
+        service,
+        label=label or payload_set.get("label") or "data-gen",
+        clone_from=None,
+        make_active=make_active,
+    )
+    ver = int(created.get("version") or 0)
+    created["apis"] = apis
+    created["updated_at"] = now
+    created["source"] = payload_set.get("source") or {"kind": "am-specs-datasets"}
+    _set_file_path(service, ver).write_text(
+        json.dumps(created, indent=2, default=str), encoding="utf-8"
+    )
+    meta = _read_sets_meta(service)
+    sets = []
+    for s in meta.get("sets") or []:
+        if int(s.get("version") or 0) == ver:
+            sets.append(_summarize_set(created))
+        else:
+            sets.append(s)
+    meta["sets"] = sets
+    if make_active:
+        meta["active_version"] = ver
+    _write_sets_meta(service, meta)
+    return {
+        "ok": True,
+        "service": service,
+        "version": ver,
+        "label": created.get("label"),
+        "api_count": len(apis),
+        "active": bool(make_active),
+        "set": _summarize_set(created),
+    }
+
+
 def set_active_payload_set(service: str, version: int) -> dict[str, Any]:
     payload_set = get_payload_set(service, version)
     if not payload_set:

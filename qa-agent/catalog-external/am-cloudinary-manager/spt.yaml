@@ -1,0 +1,68 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-cloudinary-manager
+label: am-cloudinary-manager
+enabled: true
+owners:
+- speckit
+description: "Generated from am-specs/services/am-cloudinary-manager/tools.json (5\
+  \ tools) \u2014 Spec UI source of truth."
+source:
+  repo: am-specs
+  path: services/am-cloudinary-manager/tools.json
+  team: speckit
+targets:
+  dev: https://am-dev.asrax.in/v1/cloudinary
+  preprod: https://am-preprod.asrax.in/v1/cloudinary
+  prod: https://am.asrax.in/v1/cloudinary
+apis:
+- id: am_cloudinary_manager_uploadFile
+  name: api_am_cloudinary_manager_uploadFile
+  method: POST
+  path: /v1/cloudinary/upload
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_cloudinary_manager_generateSignature
+  name: api_am_cloudinary_manager_generateSignature
+  method: POST
+  path: /v1/cloudinary/signature
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_cloudinary_manager_listResources
+  name: api_am_cloudinary_manager_listResources
+  method: GET
+  path: /v1/cloudinary/resources
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_cloudinary_manager_getResource
+  name: api_am_cloudinary_manager_getResource
+  method: GET
+  path: /v1/cloudinary/resources/{*publicId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_cloudinary_manager_deleteResource
+  name: api_am_cloudinary_manager_deleteResource
+  method: DELETE
+  path: /v1/cloudinary/resources/{*publicId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other

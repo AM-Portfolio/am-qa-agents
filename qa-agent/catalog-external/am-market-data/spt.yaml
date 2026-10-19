@@ -4,16 +4,530 @@ service: am-market-data
 label: am-market-data
 enabled: true
 owners:
-- market-team
-description: Market Data SPT registration with explicit apis (live /v3/api-docs StackOverflowError
-  on dig image).
+- speckit
+description: "Generated from am-specs/services/am-market-data/tools.json (104 tools)\
+  \ \u2014 Spec UI source of truth."
+source:
+  repo: am-specs
+  path: services/am-market-data/tools.json
+  team: speckit
 targets:
   dev: https://am-dev.asrax.in/market
   preprod: https://am-preprod.asrax.in/market
   prod: https://am.asrax.in/market
 apis:
-- id: get_v1_indices_available
-  name: get_v1_indices_available
+- id: am_market_data_getBalanceSheet
+  name: api_am_market_data_getBalanceSheet
+  method: GET
+  path: /api/v1/stocks/RELIANCE/balance-sheet
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_get_api_v1_stocks__symbol__board_of_directors
+  name: api_am_market_data_get_api_v1_stocks__symbol__board_of_directors
+  method: GET
+  path: /api/v1/stocks/RELIANCE/board-of-directors
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_get_api_v1_stocks__symbol__cash_flow
+  name: api_am_market_data_get_api_v1_stocks__symbol__cash_flow
+  method: GET
+  path: /api/v1/stocks/RELIANCE/cash-flow
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_get_api_v1_stocks__symbol__factsheet_dividend
+  name: api_am_market_data_get_api_v1_stocks__symbol__factsheet_dividend
+  method: GET
+  path: /api/v1/stocks/RELIANCE/factsheet-dividend
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_get_api_v1_stocks__symbol__profit_and_loss
+  name: api_am_market_data_get_api_v1_stocks__symbol__profit_and_loss
+  method: GET
+  path: /api/v1/stocks/RELIANCE/profit-and-loss
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_get_api_v1_stocks__symbol__quaterly_financials
+  name: api_am_market_data_get_api_v1_stocks__symbol__quaterly_financials
+  method: GET
+  path: /api/v1/stocks/RELIANCE/quaterly-financials
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_checkAllEndpoints
+  name: api_am_market_data_checkAllEndpoints
+  method: GET
+  path: /health/check/all
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_checkEndpoint
+  name: api_am_market_data_checkEndpoint
+  method: GET
+  path: /health/check/{endpointId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_getOverallStatus
+  name: api_am_market_data_getOverallStatus
+  method: GET
+  path: /health/status
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_getHealthStatus
+  name: api_am_market_data_getHealthStatus
+  method: GET
+  path: /health/{endpointId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_scrapeCookies
+  name: api_am_market_data_scrapeCookies
+  method: GET
+  path: /scraper/cookies
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_getAllApiResponses
+  name: api_am_market_data_getAllApiResponses
+  method: GET
+  path: /tradebrain/api-responses
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_getAllEndpoints
+  name: api_am_market_data_getAllEndpoints
+  method: GET
+  path: /tradebrain/endpoints
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_getEndpoint
+  name: api_am_market_data_getEndpoint
+  method: GET
+  path: /tradebrain/endpoints/{endpointId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_checkEndpointsHealth
+  name: api_am_market_data_checkEndpointsHealth
+  method: GET
+  path: /tradebrain/health
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_getAllIndices
+  name: api_am_market_data_getAllIndices
+  method: GET
+  path: /tradebrain/indices
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_getStockDetails
+  name: api_am_market_data_getStockDetails
+  method: GET
+  path: /tradebrain/stock/RELIANCE
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_startIngestion
+  name: api_am_market_data_startIngestion
+  method: POST
+  path: /v1/admin/ingestion/start
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_stopIngestion
+  name: api_am_market_data_stopIngestion
+  method: POST
+  path: /v1/admin/ingestion/stop
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_getLogs
+  name: api_am_market_data_getLogs
+  method: GET
+  path: /v1/admin/logs
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_getJobDetails
+  name: api_am_market_data_getJobDetails
+  method: GET
+  path: /v1/admin/logs/{jobId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_setNseCookies
+  name: api_am_market_data_setNseCookies
+  method: PUT
+  path: /v1/admin/nse/cookies
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_getNseCookiesStatus
+  name: api_am_market_data_getNseCookiesStatus
+  method: GET
+  path: /v1/admin/nse/cookies/status
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerCookieRefresh
+  name: api_am_market_data_triggerCookieRefresh
+  method: POST
+  path: /v1/admin/scheduler/cookie/refresh
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerEveningIndicesFetch
+  name: api_am_market_data_triggerEveningIndicesFetch
+  method: POST
+  path: /v1/admin/scheduler/indices/evening
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_forceTriggerIndicesProcessing
+  name: api_am_market_data_forceTriggerIndicesProcessing
+  method: POST
+  path: /v1/admin/scheduler/indices/force-process
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerMorningIndicesFetch
+  name: api_am_market_data_triggerMorningIndicesFetch
+  method: POST
+  path: /v1/admin/scheduler/indices/morning
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerIndicesProcessing
+  name: api_am_market_data_triggerIndicesProcessing
+  method: POST
+  path: /v1/admin/scheduler/indices/process
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerIndicesRetry
+  name: api_am_market_data_triggerIndicesRetry
+  method: POST
+  path: /v1/admin/scheduler/indices/retry
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerMarketClose
+  name: api_am_market_data_triggerMarketClose
+  method: POST
+  path: /v1/admin/scheduler/market/close
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerMarketOpen
+  name: api_am_market_data_triggerMarketOpen
+  method: POST
+  path: /v1/admin/scheduler/market/open
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerPreviousCloseFetch
+  name: api_am_market_data_triggerPreviousCloseFetch
+  method: POST
+  path: /v1/admin/scheduler/prev-close/trigger
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerRedisCleanup
+  name: api_am_market_data_triggerRedisCleanup
+  method: POST
+  path: /v1/admin/scheduler/redis/cleanup
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerStreamerStart
+  name: api_am_market_data_triggerStreamerStart
+  method: POST
+  path: /v1/admin/scheduler/streamer/start
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerStreamerStop
+  name: api_am_market_data_triggerStreamerStop
+  method: POST
+  path: /v1/admin/scheduler/streamer/stop
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_refreshSymbolUniverse
+  name: api_am_market_data_refreshSymbolUniverse
+  method: POST
+  path: /v1/admin/scheduler/symbols/refresh
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerGlobalSync
+  name: api_am_market_data_triggerGlobalSync
+  method: POST
+  path: /v1/admin/sync/global
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerHistoricalSync
+  name: api_am_market_data_triggerHistoricalSync
+  method: POST
+  path: /v1/admin/sync/historical
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_syncIpo
+  name: api_am_market_data_syncIpo
+  method: POST
+  path: /v1/admin/sync/ipo
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_syncMarketCalendar
+  name: api_am_market_data_syncMarketCalendar
+  method: POST
+  path: /v1/admin/sync/market-calendar
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_calculateBreakeven
+  name: api_am_market_data_calculateBreakeven
+  method: GET
+  path: /v1/brokerage/breakeven
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_calculateBrokerage
+  name: api_am_market_data_calculateBrokerage
+  method: POST
+  path: /v1/brokerage/calculate
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_post_v1_brokerage_calculate_async
+  name: api_am_market_data_post_v1_brokerage_calculate_async
+  method: POST
+  path: /v1/brokerage/calculate-async
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_get_v1_fundamentals__symbol_
+  name: api_am_market_data_get_v1_fundamentals__symbol_
+  method: GET
+  path: /v1/fundamentals/RELIANCE
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_get_v1_fundamentals__symbol__analytics
+  name: api_am_market_data_get_v1_fundamentals__symbol__analytics
+  method: GET
+  path: /v1/fundamentals/RELIANCE/analytics
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_get_v1_fundamentals__symbol__corporate_actions
+  name: api_am_market_data_get_v1_fundamentals__symbol__corporate_actions
+  method: GET
+  path: /v1/fundamentals/RELIANCE/corporate-actions
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_get_v1_fundamentals__symbol__financials
+  name: api_am_market_data_get_v1_fundamentals__symbol__financials
+  method: GET
+  path: /v1/fundamentals/RELIANCE/financials
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_get_v1_fundamentals__symbol__peers
+  name: api_am_market_data_get_v1_fundamentals__symbol__peers
+  method: GET
+  path: /v1/fundamentals/RELIANCE/peers
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_get_v1_fundamentals__symbol__profile
+  name: api_am_market_data_get_v1_fundamentals__symbol__profile
+  method: GET
+  path: /v1/fundamentals/RELIANCE/profile
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_get_v1_fundamentals__symbol__ratios
+  name: api_am_market_data_get_v1_fundamentals__symbol__ratios
+  method: GET
+  path: /v1/fundamentals/RELIANCE/ratios
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_get_v1_fundamentals__symbol__shareholding
+  name: api_am_market_data_get_v1_fundamentals__symbol__shareholding
+  method: GET
+  path: /v1/fundamentals/RELIANCE/shareholding
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_getAvailableIndices
+  name: api_am_market_data_getAvailableIndices
   method: GET
   path: /v1/indices/available
   headers: {}
@@ -21,187 +535,219 @@ apis:
   body: null
   checks:
   - status_2xx
-- id: get_v1_market-calendar_holidays_date
-  name: get_v1_market-calendar_holidays_date
-  method: GET
-  path: /v1/market-calendar/holidays/2026-01-26
+  group: core
+- id: am_market_data_post_v1_indices_batch
+  name: api_am_market_data_post_v1_indices_batch
+  method: POST
+  path: /v1/indices/batch
   headers: {}
   query: {}
   body: null
   checks:
   - status_2xx
-- id: get_v1_market-data_ipo
-  name: get_v1_market-data_ipo
+  group: core
+- id: am_market_data_getAvailableGlobalIndices
+  name: api_am_market_data_getAvailableGlobalIndices
+  method: GET
+  path: /v1/indices/global/available
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_searchInstruments
+  name: api_am_market_data_searchInstruments
+  method: POST
+  path: /v1/instruments/search
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_updateInstruments
+  name: api_am_market_data_updateInstruments
+  method: POST
+  path: /v1/instruments/update
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_get_v1_ipo
+  name: api_am_market_data_get_v1_ipo
+  method: GET
+  path: /v1/ipo
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_syncMeta
+  name: api_am_market_data_syncMeta
+  method: GET
+  path: /v1/ipo/meta/sync
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_bySymbol
+  name: api_am_market_data_bySymbol
+  method: GET
+  path: /v1/ipo/RELIANCE
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_detail
+  name: api_am_market_data_detail
+  method: GET
+  path: /v1/ipo/RELIANCE/{openDate}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_subscription
+  name: api_am_market_data_subscription
+  method: GET
+  path: /v1/ipo/RELIANCE/{openDate}/subscription
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: ipo
+- id: am_market_data_post_v1_margin_calculate
+  name: api_am_market_data_post_v1_margin_calculate
+  method: POST
+  path: /v1/margin/calculate
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_post_v1_margin_calculate_async
+  name: api_am_market_data_post_v1_margin_calculate_async
+  method: POST
+  path: /v1/margin/calculate-async
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: trading
+- id: am_market_data_holidays
+  name: api_am_market_data_holidays
+  method: GET
+  path: /v1/market-calendar/holidays
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_holiday
+  name: api_am_market_data_holiday
+  method: GET
+  path: /v1/market-calendar/holidays/{date}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_status
+  name: api_am_market_data_status
+  method: GET
+  path: /v1/market-calendar/status
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_timings
+  name: api_am_market_data_timings
+  method: GET
+  path: /v1/market-calendar/timings
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_getLoginUrl
+  name: api_am_market_data_getLoginUrl
+  method: GET
+  path: /v1/market-data/auth/login-url
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_logout
+  name: api_am_market_data_logout
+  method: POST
+  path: /v1/market-data/auth/logout
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_generateSession
+  name: api_am_market_data_generateSession
+  method: GET
+  path: /v1/market-data/auth/session
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_getHistoricalData
+  name: api_am_market_data_getHistoricalData
+  method: POST
+  path: /v1/market-data/historical-data
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_get_v1_market_data_ipo
+  name: api_am_market_data_get_v1_market_data_ipo
   method: GET
   path: /v1/market-data/ipo
   headers: {}
-  query:
-    status: open
-    pageNumber: '1'
-    records: '30'
-  body: null
-  checks:
-  - status_2xx
-- id: get_v1_market-data_ipo_counts
-  name: get_v1_market-data_ipo_counts
-  method: GET
-  path: /v1/market-data/ipo/counts
-  headers: {}
   query: {}
   body: null
   checks:
   - status_2xx
-- id: get_v1_market-data_ipo_id
-  name: get_v1_market-data_ipo_id
-  method: GET
-  path: /v1/market-data/ipo/hd-fire-protect-limited-ipo
-  headers: {}
-  query: {}
-  body: null
-  checks:
-  - status_2xx
-- id: get_v1_market-data_live-ltp
-  name: get_v1_market-data_live-ltp
-  method: GET
-  path: /v1/market-data/live-ltp
-  headers: {}
-  query:
-    symbols: NIFTY 50
-    exchange: NSE
-    timeframe: 1D
-    isIndexSymbol: 'true'
-  body: null
-  checks:
-  - status_2xx
-- id: get_v1_market-data_quotes
-  name: get_v1_market-data_quotes
-  method: GET
-  path: /v1/market-data/quotes
-  headers: {}
-  query:
-    symbols: NIFTY 50
-    exchange: NSE
-    timeFrame: 1D
-  body: null
-  checks:
-  - status_2xx
-- id: get_v1_watchlists
-  name: get_v1_watchlists
-  method: GET
-  path: /v1/watchlists
-  headers:
-    X-User-Id: '{{user_id}}'
-  query: {}
-  body: null
-  checks:
-  - status_2xx
-- id: get_v1_watchlists_check_symbol
-  name: get_v1_watchlists_check_symbol
-  method: GET
-  path: /v1/watchlists/check/RELIANCE
-  headers:
-    X-User-Id: '{{user_id}}'
-  query:
-    exchange: NSE
-  body: null
-  checks:
-  - status_2xx
-- id: get_v1_watchlists_watchlistId_items
-  name: get_v1_watchlists_watchlistId_items
-  method: GET
-  path: /v1/watchlists/6aca60b8085abe8fb00978f5/items
-  headers:
-    X-User-Id: '{{user_id}}'
-  query: {}
-  body: null
-  checks:
-  - status_2xx
-- id: post_v1_indices_batch
-  name: post_v1_indices_batch
-  method: POST
-  path: /v1/indices/batch
-  headers:
-    Content-Type: application/json
-    Accept: application/json
-  query: {}
-  body: '["NIFTY 50","NIFTY BANK"]'
-  checks:
-  - status_2xx
-- id: post_v1_instruments_search
-  name: post_v1_instruments_search
-  method: POST
-  path: /v1/instruments/search
-  headers:
-    Content-Type: application/json
-    Accept: application/json
-  query: {}
-  body: '{"queries":["NIFTY 50"],"exchanges":["NSE"],"provider":"UPSTOX"}'
-  checks:
-  - status_2xx
-- id: post_v1_market-data_ohlc
-  name: post_v1_market-data_ohlc
-  method: POST
-  path: /v1/market-data/ohlc
-  headers:
-    Content-Type: application/json
-    Accept: application/json
-  query: {}
-  body: '{"symbols":["NIFTY 50"],"timeFrame":"1D","indexSymbol":true,"forceRefresh":false,"exchange":"NSE"}'
-  checks:
-  - status_2xx
-- id: post_v1_market-data_quotes
-  name: post_v1_market-data_quotes
-  method: POST
-  path: /v1/market-data/quotes
-  headers:
-    Content-Type: application/json
-    Accept: application/json
-  query: {}
-  body: '{"symbols":["NIFTY 50"],"timeFrame":"1D","indexSymbol":true,"forceRefresh":false,"exchange":"NSE"}'
-  checks:
-  - status_2xx
-- id: post_v1_watchlists_watchlistId_items
-  name: post_v1_watchlists_watchlistId_items
-  method: POST
-  path: /v1/watchlists/6aca60b8085abe8fb00978f5/items
-  headers:
-    X-User-Id: '{{user_id}}'
-    Content-Type: application/json
-    Accept: application/json
-  query: {}
-  body: '{"symbol":"TCS","exchange":"NSE"}'
-  checks:
-  - status_2xx
-- id: post_v1_market-data_ipo_admin_sync
-  name: post_v1_market-data_ipo_admin_sync
+  group: ipo
+- id: am_market_data_triggerSync
+  name: api_am_market_data_triggerSync
   method: POST
   path: /v1/market-data/ipo/admin/sync
   headers: {}
-  query:
-    status: open
-  body: null
-  checks:
-  - status_2xx
-- id: get.v1.market.calendar.holidays.date
-  name: get.v1.market.calendar.holidays.date
-  method: GET
-  path: /v1/market-calendar/holidays/2026-01-26
-  headers: {}
   query: {}
   body: null
   checks:
   - status_2xx
-- id: get.v1.market.data.ipo.id
-  name: get.v1.market.data.ipo.id
-  method: GET
-  path: /v1/market-data/ipo/hd-fire-protect-limited-ipo
-  headers: {}
-  query: {}
-  body: null
-  checks:
-  - status_2xx
-- id: get.v1.market.data.ipo.counts
-  name: get.v1.market.data.ipo.counts
+  group: ipo
+- id: am_market_data_get_v1_market_data_ipo_counts
+  name: api_am_market_data_get_v1_market_data_ipo_counts
   method: GET
   path: /v1/market-data/ipo/counts
   headers: {}
@@ -209,50 +755,306 @@ apis:
   body: null
   checks:
   - status_2xx
-- id: post.v1.instruments.search
-  name: post.v1.instruments.search
-  method: POST
-  path: /v1/instruments/search
+  group: ipo
+- id: am_market_data_get_v1_market_data_ipo__id_
+  name: api_am_market_data_get_v1_market_data_ipo__id_
+  method: GET
+  path: /v1/market-data/ipo/{id}
   headers: {}
   query: {}
-  body:
-    queries:
-    - NIFTY 50
-    exchanges:
-    - NSE
-    provider: UPSTOX
+  body: null
   checks:
   - status_2xx
-- id: post.v1.market.data.ohlc
-  name: post.v1.market.data.ohlc
+  group: ipo
+- id: am_market_data_getLiveLTP
+  name: api_am_market_data_getLiveLTP
+  method: GET
+  path: /v1/market-data/live-ltp
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_getLivePrices
+  name: api_am_market_data_getLivePrices
+  method: GET
+  path: /v1/market-data/live-prices
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_getMutualFundDetails
+  name: api_am_market_data_getMutualFundDetails
+  method: GET
+  path: /v1/market-data/mutual-fund/{schemeCode}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_getMutualFundNavHistory
+  name: api_am_market_data_getMutualFundNavHistory
+  method: GET
+  path: /v1/market-data/mutual-fund/{schemeCode}/history
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_post_v1_market_data_ohlc
+  name: api_am_market_data_post_v1_market_data_ohlc
   method: POST
   path: /v1/market-data/ohlc
   headers: {}
   query: {}
-  body:
-    symbols:
-    - NIFTY 50
-    timeFrame: 1D
-    indexSymbol: true
-    forceRefresh: false
-    exchange: NSE
+  body: null
   checks:
   - status_2xx
-- id: get.v1.indices.available
-  name: get.v1.indices.available
+  group: core
+- id: am_market_data_getOptionChain
+  name: api_am_market_data_getOptionChain
   method: GET
-  path: /v1/indices/available
+  path: /v1/market-data/option-chain
   headers: {}
   query: {}
   body: null
   checks:
   - status_2xx
-- id: get_v1_market-data_mutual-fund_schemeCode
-  name: get_v1_market-data_mutual-fund_schemeCode
+  group: core
+- id: am_market_data_getQuotes
+  name: api_am_market_data_getQuotes
   method: GET
-  path: /v1/market-data/mutual-fund/120503
+  path: /v1/market-data/quotes
   headers: {}
   query: {}
   body: null
   checks:
   - status_2xx
+  group: core
+- id: am_market_data_post_v1_market_data_quotes
+  name: api_am_market_data_post_v1_market_data_quotes
+  method: POST
+  path: /v1/market-data/quotes
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_connect
+  name: api_am_market_data_connect
+  method: POST
+  path: /v1/market-data/stream/connect
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: stream
+- id: am_market_data_disconnect
+  name: api_am_market_data_disconnect
+  method: POST
+  path: /v1/market-data/stream/disconnect
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: stream
+- id: am_market_data_initiate
+  name: api_am_market_data_initiate
+  method: POST
+  path: /v1/market-data/stream/initiate
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: stream
+- id: am_market_data_getSymbolsForExchange
+  name: api_am_market_data_getSymbolsForExchange
+  method: GET
+  path: /v1/market-data/symbols/{exchange}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_getChangeOi
+  name: api_am_market_data_getChangeOi
+  method: GET
+  path: /v1/market-info/change-oi
+  headers: {}
+  query:
+    symbol: RELIANCE
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_getDii
+  name: api_am_market_data_getDii
+  method: GET
+  path: /v1/market-info/dii
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_getFii
+  name: api_am_market_data_getFii
+  method: GET
+  path: /v1/market-info/fii
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_getFlowsOverview
+  name: api_am_market_data_getFlowsOverview
+  method: GET
+  path: /v1/market-info/flows-overview
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_getOi
+  name: api_am_market_data_getOi
+  method: GET
+  path: /v1/market-info/oi
+  headers: {}
+  query:
+    symbol: RELIANCE
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_listSchedulers
+  name: api_am_market_data_listSchedulers
+  method: GET
+  path: /v1/scheduler/jobs
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_triggerScheduler
+  name: api_am_market_data_triggerScheduler
+  method: POST
+  path: /v1/scheduler/trigger/{jobName}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_batchSearch
+  name: api_am_market_data_batchSearch
+  method: POST
+  path: /v1/securities/batch-search
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_bulkUpdate
+  name: api_am_market_data_bulkUpdate
+  method: POST
+  path: /v1/securities/bulk-update
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_search
+  name: api_am_market_data_search
+  method: GET
+  path: /v1/securities/search
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_searchAdvanced
+  name: api_am_market_data_searchAdvanced
+  method: POST
+  path: /v1/securities/search
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: admin
+- id: am_market_data_checkSymbolAcrossWatchlists
+  name: api_am_market_data_checkSymbolAcrossWatchlists
+  method: GET
+  path: /v1/watchlists/check/RELIANCE
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_renameWatchlist
+  name: api_am_market_data_renameWatchlist
+  method: PUT
+  path: /v1/watchlists/{watchlistId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_deleteWatchlist
+  name: api_am_market_data_deleteWatchlist
+  method: DELETE
+  path: /v1/watchlists/{watchlistId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_getWatchlistItems
+  name: api_am_market_data_getWatchlistItems
+  method: GET
+  path: /v1/watchlists/{watchlistId}/items
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_addStockToWatchlist
+  name: api_am_market_data_addStockToWatchlist
+  method: POST
+  path: /v1/watchlists/{watchlistId}/items
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_market_data_removeStockFromWatchlist
+  name: api_am_market_data_removeStockFromWatchlist
+  method: DELETE
+  path: /v1/watchlists/{watchlistId}/items/RELIANCE
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core

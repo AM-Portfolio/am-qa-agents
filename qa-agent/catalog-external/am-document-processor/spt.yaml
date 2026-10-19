@@ -1,0 +1,88 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-document-processor
+label: am-document-processor
+enabled: true
+owners:
+- speckit
+description: "Generated from am-specs/services/am-document-processor/tools.json (7\
+  \ tools) \u2014 Spec UI source of truth."
+source:
+  repo: am-specs
+  path: services/am-document-processor/tools.json
+  team: speckit
+targets:
+  dev: https://am-dev.asrax.in/doc/processor
+  preprod: https://am-preprod.asrax.in/doc/processor
+  prod: https://am.asrax.in/doc/processor
+apis:
+- id: am_document_processor_processDocument
+  name: api_am_document_processor_processDocument
+  method: POST
+  path: /documents/process
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_document_processor_processBatchDocuments
+  name: api_am_document_processor_processBatchDocuments
+  method: POST
+  path: /documents/batch-process
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_document_processor_getProcessingStatus
+  name: api_am_document_processor_getProcessingStatus
+  method: GET
+  path: /documents/status/{processId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_document_processor_submitBatchSync
+  name: api_am_document_processor_submitBatchSync
+  method: POST
+  path: /documents/sync
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_document_processor_getBatchSyncStatus
+  name: api_am_document_processor_getBatchSyncStatus
+  method: GET
+  path: /documents/sync/{batchId}/status
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_document_processor_streamBatchSyncProgress
+  name: api_am_document_processor_streamBatchSyncProgress
+  method: GET
+  path: /documents/sync/{batchId}/stream
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_document_processor_getSupportedDocumentTypes
+  name: api_am_document_processor_getSupportedDocumentTypes
+  method: GET
+  path: /documents/types
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other

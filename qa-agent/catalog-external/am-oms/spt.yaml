@@ -1,0 +1,178 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-oms
+label: am-oms
+enabled: true
+owners:
+- speckit
+description: "Generated from am-specs/services/am-oms/tools.json (16 tools) \u2014\
+  \ Spec UI source of truth."
+source:
+  repo: am-specs
+  path: services/am-oms/tools.json
+  team: speckit
+targets:
+  dev: https://am-dev.asrax.in/oms
+  preprod: https://am-preprod.asrax.in/oms
+  prod: https://am.asrax.in/oms
+apis:
+- id: am_oms_live_health_live_get
+  name: api_am_oms_live_health_live_get
+  method: GET
+  path: /health/live
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_live_health_get
+  name: api_am_oms_live_health_get
+  method: GET
+  path: /health
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_ready_health_ready_get
+  name: api_am_oms_ready_health_ready_get
+  method: GET
+  path: /health/ready
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_list_wallets_v1_wallets_get
+  name: api_am_oms_list_wallets_v1_wallets_get
+  method: GET
+  path: /v1/wallets
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_create_wallet_v1_wallets_post
+  name: api_am_oms_create_wallet_v1_wallets_post
+  method: POST
+  path: /v1/wallets
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_get_wallet_v1_wallets__wallet_id__get
+  name: api_am_oms_get_wallet_v1_wallets__wallet_id__get
+  method: GET
+  path: /v1/wallets/{wallet_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_list_positions_v1_wallets__wallet_id__positions_get
+  name: api_am_oms_list_positions_v1_wallets__wallet_id__positions_get
+  method: GET
+  path: /v1/wallets/{wallet_id}/positions
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_ledger_v1_wallets__wallet_id__ledger_get
+  name: api_am_oms_ledger_v1_wallets__wallet_id__ledger_get
+  method: GET
+  path: /v1/wallets/{wallet_id}/ledger
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_list_orders_v1_orders_get
+  name: api_am_oms_list_orders_v1_orders_get
+  method: GET
+  path: /v1/orders
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_create_order_v1_orders_post
+  name: api_am_oms_create_order_v1_orders_post
+  method: POST
+  path: /v1/orders
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_cancel_all_v1_orders_cancel_all_post
+  name: api_am_oms_cancel_all_v1_orders_cancel_all_post
+  method: POST
+  path: /v1/orders/cancel-all
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_get_order_v1_orders__order_id__get
+  name: api_am_oms_get_order_v1_orders__order_id__get
+  method: GET
+  path: /v1/orders/ord-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_cancel_order_v1_orders__order_id__cancel_post
+  name: api_am_oms_cancel_order_v1_orders__order_id__cancel_post
+  method: POST
+  path: /v1/orders/ord-001/cancel
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_replace_order_v1_orders__order_id__replace_post
+  name: api_am_oms_replace_order_v1_orders__order_id__replace_post
+  method: POST
+  path: /v1/orders/ord-001/replace
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_get_prefs_v1_prefs_get
+  name: api_am_oms_get_prefs_v1_prefs_get
+  method: GET
+  path: /v1/prefs
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_oms_put_prefs_v1_prefs_put
+  name: api_am_oms_put_prefs_v1_prefs_put
+  method: PUT
+  path: /v1/prefs
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other

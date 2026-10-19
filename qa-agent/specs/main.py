@@ -33,6 +33,7 @@ from specs.payloads.payload_store import (
     ensure_payload_set,
     get_payload,
     get_payload_set,
+    import_am_specs_payload_set,
     list_payload_sets,
     list_payloads,
     save_from_trace,
@@ -61,6 +62,7 @@ from specs.persistence.run_store import (
 from specs.schemas import (
     PayloadCreateRequest,
     PayloadSetCreateRequest,
+    PayloadSetImportRequest,
     PayloadSetUpsertApiRequest,
     RunExecuteRequest,
     SavePayloadRequest,
@@ -537,6 +539,22 @@ async def api_create_payload_set(body: PayloadSetCreateRequest) -> dict:
         body.service,
         label=body.label,
         clone_from=body.clone_from,
+        make_active=body.make_active,
+    )
+
+
+@app.post("/api/payloads/import")
+async def api_payloads_import(body: PayloadSetImportRequest) -> dict:
+    """Import am-specs dataset pack into payload_sets (SpecKit sync path)."""
+    fmt = (body.format or "am-specs-dataset").strip().lower()
+    if fmt not in ("am-specs-dataset", "am-specs-datasets", "payload_set"):
+        raise HTTPException(status_code=400, detail=f"unsupported format: {body.format}")
+    if not body.payload_set:
+        raise HTTPException(status_code=400, detail="payload_set required")
+    return import_am_specs_payload_set(
+        body.service,
+        body.payload_set,
+        label=body.label,
         make_active=body.make_active,
     )
 

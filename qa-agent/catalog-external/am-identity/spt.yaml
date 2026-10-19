@@ -3,24 +3,486 @@ kind: ServiceLoadTest
 service: am-identity
 label: am-identity
 enabled: true
-runtime: python
-owners: [identity-team]
-description: Identity service load-test registration (OpenAPI via FastAPI)
-createdBy: identity-team
-updatedBy: identity-team
-createdAt: "2026-07-24"
-updatedAt: "2026-07-24"
-tags: [auth, python, fastapi]
+owners:
+- speckit
+description: "Generated from am-specs/services/am-identity/tools.json (47 tools) \u2014\
+  \ Spec UI source of truth."
 source:
-  repo: am-platform
-  path: am-identity/spt.yaml
-  team: identity-team
-traces:
-  - name: openapi
-    ref: /openapi.json
+  repo: am-specs
+  path: services/am-identity/tools.json
+  team: speckit
 targets:
-  dev: "https://am-dev.asrax.in/identity"
-  preprod: "https://am-preprod.asrax.in/identity"
-  prod: "https://am.asrax.in/identity"
-openapi:
-  path: /openapi.json
+  dev: https://am-dev.asrax.in/identity
+  preprod: https://am-preprod.asrax.in/identity
+  prod: https://am.asrax.in/identity
+apis:
+- id: am_identity_health_health_get
+  name: api_am_identity_health_health_get
+  method: GET
+  path: /health
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_register_user_auth_register_post
+  name: api_am_identity_register_user_auth_register_post
+  method: POST
+  path: /auth/register
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_login_auth_login_post
+  name: api_am_identity_login_auth_login_post
+  method: POST
+  path: /auth/login
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_login_otp_auth_login_otp_post
+  name: api_am_identity_login_otp_auth_login_otp_post
+  method: POST
+  path: /auth/login/otp
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_google_auth_url_auth_google_url_post
+  name: api_am_identity_google_auth_url_auth_google_url_post
+  method: POST
+  path: /auth/google/url
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_google_callback_auth_google_callback_post
+  name: api_am_identity_google_callback_auth_google_callback_post
+  method: POST
+  path: /auth/google/callback
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_google_token_auth_google_token_post
+  name: api_am_identity_google_token_auth_google_token_post
+  method: POST
+  path: /auth/google/token
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_refresh_auth_refresh_post
+  name: api_am_identity_refresh_auth_refresh_post
+  method: POST
+  path: /auth/refresh
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_logout_auth_logout_post
+  name: api_am_identity_logout_auth_logout_post
+  method: POST
+  path: /auth/logout
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_password_reset_auth_password_reset_post
+  name: api_am_identity_password_reset_auth_password_reset_post
+  method: POST
+  path: /auth/password-reset
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_password_reset_confirm_auth_password_reset_confirm_post
+  name: api_am_identity_password_reset_confirm_auth_password_reset_confirm_post
+  method: POST
+  path: /auth/password-reset/confirm
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_resend_verify_email_auth_verify_email_resend_post
+  name: api_am_identity_resend_verify_email_auth_verify_email_resend_post
+  method: POST
+  path: /auth/verify-email/resend
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_confirm_verify_email_auth_verify_email_confirm_post
+  name: api_am_identity_confirm_verify_email_auth_verify_email_confirm_post
+  method: POST
+  path: /auth/verify-email/confirm
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_change_password_auth_change_password_post
+  name: api_am_identity_change_password_auth_change_password_post
+  method: POST
+  path: /auth/change-password
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_start_device_link_auth_device_link_start_post
+  name: api_am_identity_start_device_link_auth_device_link_start_post
+  method: POST
+  path: /auth/device-link/start
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_device_link_status_auth_device_link__device_link_id__status_get
+  name: api_am_identity_device_link_status_auth_device_link__device_link_id__status_get
+  method: GET
+  path: /auth/device-link/{device_link_id}/status
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_device_link_preview_auth_device_link__device_link_id__preview_get
+  name: api_am_identity_device_link_preview_auth_device_link__device_link_id__preview_get
+  method: GET
+  path: /auth/device-link/{device_link_id}/preview
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_device_link_approve_auth_device_link__device_link_id__approve_post
+  name: api_am_identity_device_link_approve_auth_device_link__device_link_id__approve_post
+  method: POST
+  path: /auth/device-link/{device_link_id}/approve
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_device_link_deny_auth_device_link__device_link_id__deny_post
+  name: api_am_identity_device_link_deny_auth_device_link__device_link_id__deny_post
+  method: POST
+  path: /auth/device-link/{device_link_id}/deny
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_device_link_cancel_auth_device_link__device_link_id__cancel_post
+  name: api_am_identity_device_link_cancel_auth_device_link__device_link_id__cancel_post
+  method: POST
+  path: /auth/device-link/{device_link_id}/cancel
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_web_otp_send_auth_web_otp_send_post
+  name: api_am_identity_web_otp_send_auth_web_otp_send_post
+  method: POST
+  path: /auth/web/otp/send
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_web_otp_verify_auth_web_otp_verify_post
+  name: api_am_identity_web_otp_verify_auth_web_otp_verify_post
+  method: POST
+  path: /auth/web/otp/verify
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_step_up_auth_step_up_post
+  name: api_am_identity_step_up_auth_step_up_post
+  method: POST
+  path: /auth/step-up
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_bff_me_bff_me_get
+  name: api_am_identity_bff_me_bff_me_get
+  method: GET
+  path: /bff/me
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_bff_audit_bff_audit_get
+  name: api_am_identity_bff_audit_bff_audit_get
+  method: GET
+  path: /bff/audit
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_get_me_users_me_get
+  name: api_am_identity_get_me_users_me_get
+  method: GET
+  path: /users/me
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_request_deletion_users_me_request_deletion_post
+  name: api_am_identity_request_deletion_users_me_request_deletion_post
+  method: POST
+  path: /users/me/request-deletion
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_restore_account_users_me_restore_post
+  name: api_am_identity_restore_account_users_me_restore_post
+  method: POST
+  path: /users/me/restore
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_update_my_settings_users_me_settings_patch
+  name: api_am_identity_update_my_settings_users_me_settings_patch
+  method: PATCH
+  path: /users/me/settings
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_list_security_events_users_me_security_events_get
+  name: api_am_identity_list_security_events_users_me_security_events_get
+  method: GET
+  path: /users/me/security-events
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_acknowledge_security_event_users_me_security_events__event_id__ack_post
+  name: api_am_identity_acknowledge_security_event_users_me_security_events__event_id__ack_post
+  method: POST
+  path: /users/me/security-events/{event_id}/ack
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_list_login_sessions_users_me_login_sessions_get
+  name: api_am_identity_list_login_sessions_users_me_login_sessions_get
+  method: GET
+  path: /users/me/login-sessions
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_revoke_all_login_sessions_users_me_login_sessions_delete
+  name: api_am_identity_revoke_all_login_sessions_users_me_login_sessions_delete
+  method: DELETE
+  path: /users/me/login-sessions
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_revoke_login_session_users_me_login_sessions__session_id__delete
+  name: api_am_identity_revoke_login_session_users_me_login_sessions__session_id__delete
+  method: DELETE
+  path: /users/me/login-sessions/{session_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_list_roles_admin_roles_get
+  name: api_am_identity_list_roles_admin_roles_get
+  method: GET
+  path: /admin/roles
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_list_users_admin_users_get
+  name: api_am_identity_list_users_admin_users_get
+  method: GET
+  path: /admin/users
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_create_user_admin_users_post
+  name: api_am_identity_create_user_admin_users_post
+  method: POST
+  path: /admin/users
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_get_user_admin_users__user_id__get
+  name: api_am_identity_get_user_admin_users__user_id__get
+  method: GET
+  path: /admin/users/user-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_update_user_admin_users__user_id__patch
+  name: api_am_identity_update_user_admin_users__user_id__patch
+  method: PATCH
+  path: /admin/users/user-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_set_enabled_admin_users__user_id__enabled_post
+  name: api_am_identity_set_enabled_admin_users__user_id__enabled_post
+  method: POST
+  path: /admin/users/user-demo-001/enabled
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_send_verify_email_admin_users__user_id__send_verify_email_post
+  name: api_am_identity_send_verify_email_admin_users__user_id__send_verify_email_post
+  method: POST
+  path: /admin/users/user-demo-001/send-verify-email
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_logout_user_admin_users__user_id__logout_post
+  name: api_am_identity_logout_user_admin_users__user_id__logout_post
+  method: POST
+  path: /admin/users/user-demo-001/logout
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_add_roles_admin_users__user_id__roles_post
+  name: api_am_identity_add_roles_admin_users__user_id__roles_post
+  method: POST
+  path: /admin/users/user-demo-001/roles
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_replace_roles_admin_users__user_id__roles_put
+  name: api_am_identity_replace_roles_admin_users__user_id__roles_put
+  method: PUT
+  path: /admin/users/user-demo-001/roles
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_remove_role_admin_users__user_id__roles__role__delete
+  name: api_am_identity_remove_role_admin_users__user_id__roles__role__delete
+  method: DELETE
+  path: /admin/users/user-demo-001/roles/{role}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_get_internal_user_internal_users__user_id__get
+  name: api_am_identity_get_internal_user_internal_users__user_id__get
+  method: GET
+  path: /internal/users/user-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_identity_issue_service_token_internal_auth_service_token_post
+  name: api_am_identity_issue_service_token_internal_auth_service_token_post
+  method: POST
+  path: /internal/auth/service-token
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other

@@ -1,0 +1,311 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-parser
+label: am-parser
+enabled: true
+owners:
+- speckit
+description: "Generated from am-specs/services/am-parser/tools.json (29 tools) \u2014\
+  \ Spec UI source of truth."
+source:
+  repo: am-specs
+  path: services/am-parser/tools.json
+  team: speckit
+targets:
+  dev: https://am-dev.asrax.in/parser
+  preprod: https://am-preprod.asrax.in/parser
+  prod: https://am.asrax.in/parser
+apis:
+- id: am_parser_upload_excel_async_v1_upload_excel_async_post
+  name: api_am_parser_upload_excel_async_v1_upload_excel_async_post
+  method: POST
+  path: /v1/upload-excel-async
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: jobs
+- id: am_parser_get_job_status_v1__job_id__status_get
+  name: api_am_parser_get_job_status_v1__job_id__status_get
+  method: GET
+  path: /v1/{job_id}/status
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: jobs
+- id: am_parser_get_job_result_v1__job_id__result_get
+  name: api_am_parser_get_job_result_v1__job_id__result_get
+  method: GET
+  path: /v1/{job_id}/result
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: jobs
+- id: am_parser_cancel_job_v1__job_id__delete
+  name: api_am_parser_cancel_job_v1__job_id__delete
+  method: DELETE
+  path: /v1/{job_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: jobs
+- id: am_parser_list_jobs_v1__get
+  name: api_am_parser_list_jobs_v1__get
+  method: GET
+  path: /v1/
+  headers: {}
+  query:
+    user_id: user-demo-001
+  body: null
+  checks:
+  - status_2xx
+  group: jobs
+- id: am_parser_fix_stuck_job_v1_admin_fix_stuck_job__job_id__post
+  name: api_am_parser_fix_stuck_job_v1_admin_fix_stuck_job__job_id__post
+  method: POST
+  path: /v1/admin/fix-stuck-job/{job_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: jobs
+- id: am_parser_recover_all_stuck_jobs_v1_admin_recover_stuck_jobs_post
+  name: api_am_parser_recover_all_stuck_jobs_v1_admin_recover_stuck_jobs_post
+  method: POST
+  path: /v1/admin/recover-stuck-jobs
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: jobs
+- id: am_parser_fetch_all_etf_holdings_v1_fetch_all_holdings_post
+  name: api_am_parser_fetch_all_etf_holdings_v1_fetch_all_holdings_post
+  method: POST
+  path: /v1/fetch-all-holdings
+  headers: {}
+  query:
+    user_id: user-demo-001
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_search_etfs_v1_search_get
+  name: api_am_parser_search_etfs_v1_search_get
+  method: GET
+  path: /v1/search
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_fetch_holdings_for_etf_v1_fetch_holdings__symbol__post
+  name: api_am_parser_fetch_holdings_for_etf_v1_fetch_holdings__symbol__post
+  method: POST
+  path: /v1/fetch-holdings/RELIANCE
+  headers: {}
+  query:
+    user_id: user-demo-001
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_get_etf_holdings_v1_holdings__symbol__get
+  name: api_am_parser_get_etf_holdings_v1_holdings__symbol__get
+  method: GET
+  path: /v1/holdings/RELIANCE
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_get_cache_statistics_v1_cache_stats_get
+  name: api_am_parser_get_cache_statistics_v1_cache_stats_get
+  method: GET
+  path: /v1/cache-stats
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_get_etf_stats_v1_stats_get
+  name: api_am_parser_get_etf_stats_v1_stats_get
+  method: GET
+  path: /v1/stats
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_load_etfs_from_json_v1_load_from_json_post
+  name: api_am_parser_load_etfs_from_json_v1_load_from_json_post
+  method: POST
+  path: /v1/load-from-json
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_root__get
+  name: api_am_parser_root__get
+  method: GET
+  path: /
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_health_check_health_get
+  name: api_am_parser_health_check_health_get
+  method: GET
+  path: /health
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_list_portfolios_v1_portfolios_get
+  name: api_am_parser_list_portfolios_v1_portfolios_get
+  method: GET
+  path: /v1/portfolios
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_save_portfolio_v1_portfolios_post
+  name: api_am_parser_save_portfolio_v1_portfolios_post
+  method: POST
+  path: /v1/portfolios
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_get_portfolio_v1_portfolios__portfolio_id__get
+  name: api_am_parser_get_portfolio_v1_portfolios__portfolio_id__get
+  method: GET
+  path: /v1/portfolios/pf-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_search_portfolios_v1_portfolios_search_get
+  name: api_am_parser_search_portfolios_v1_portfolios_search_get
+  method: GET
+  path: /v1/portfolios/search
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_get_holdings_by_isin_v1_holdings__isin_code__get
+  name: api_am_parser_get_holdings_by_isin_v1_holdings__isin_code__get
+  method: GET
+  path: /v1/holdings/{isin_code}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_get_fund_statistics_v1_funds__fund_name__statistics_get
+  name: api_am_parser_get_fund_statistics_v1_funds__fund_name__statistics_get
+  method: GET
+  path: /v1/funds/{fund_name}/statistics
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_upload_file_v1_upload_post
+  name: api_am_parser_upload_file_v1_upload_post
+  method: POST
+  path: /v1/upload
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_upload_excel_complete_v1_upload_excel_post
+  name: api_am_parser_upload_excel_complete_v1_upload_excel_post
+  method: POST
+  path: /v1/upload/excel
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_process_file_v1_process__file_id__post
+  name: api_am_parser_process_file_v1_process__file_id__post
+  method: POST
+  path: /v1/process/{file_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_parse_sheet_v1_parse__sheet_id__post
+  name: api_am_parser_parse_sheet_v1_parse__sheet_id__post
+  method: POST
+  path: /v1/parse/{sheet_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_list_files_v1_files_get
+  name: api_am_parser_list_files_v1_files_get
+  method: GET
+  path: /v1/files
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_get_file_status_v1_files__file_id__get
+  name: api_am_parser_get_file_status_v1_files__file_id__get
+  method: GET
+  path: /v1/files/{file_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core
+- id: am_parser_parse_all_sheets_v1_parse_all__file_id__post
+  name: api_am_parser_parse_all_sheets_v1_parse_all__file_id__post
+  method: POST
+  path: /v1/parse-all/{file_id}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: core

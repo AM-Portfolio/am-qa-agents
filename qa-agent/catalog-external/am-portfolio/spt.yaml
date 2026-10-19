@@ -1,0 +1,544 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-portfolio
+label: am-portfolio
+enabled: true
+owners:
+- speckit
+description: "Generated from am-specs/services/am-portfolio/tools.json (52 tools)\
+  \ \u2014 Spec UI source of truth."
+source:
+  repo: am-specs
+  path: services/am-portfolio/tools.json
+  team: speckit
+targets:
+  dev: https://am-dev.asrax.in/portfolio
+  preprod: https://am-preprod.asrax.in/portfolio
+  prod: https://am.asrax.in/portfolio
+apis:
+- id: am_portfolio_getAdvancedAnalytics
+  name: api_am_portfolio_getAdvancedAnalytics
+  method: POST
+  path: /v1/analytics/index/{indexSymbol}/advanced
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getAllPortfoliosAdvancedAnalytics
+  name: api_am_portfolio_getAllPortfoliosAdvancedAnalytics
+  method: POST
+  path: /v1/analytics/portfolio/all/advanced
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getAllPortfoliosIntelligence
+  name: api_am_portfolio_getAllPortfoliosIntelligence
+  method: POST
+  path: /v1/analytics/portfolio/all/intelligence
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_runAllPortfoliosStress
+  name: api_am_portfolio_runAllPortfoliosStress
+  method: POST
+  path: /v1/analytics/portfolio/all/stress
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_suggestAllPortfoliosIntelligence
+  name: api_am_portfolio_suggestAllPortfoliosIntelligence
+  method: GET
+  path: /v1/analytics/portfolio/all/suggest
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_runAllPortfoliosWhatIf
+  name: api_am_portfolio_runAllPortfoliosWhatIf
+  method: POST
+  path: /v1/analytics/portfolio/all/what-if
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getIntelligence
+  name: api_am_portfolio_getIntelligence
+  method: POST
+  path: /v1/analytics/portfolio/pf-demo-001/intelligence
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_reportPreview
+  name: api_am_portfolio_reportPreview
+  method: POST
+  path: /v1/analytics/portfolio/pf-demo-001/report/preview
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_runStress
+  name: api_am_portfolio_runStress
+  method: POST
+  path: /v1/analytics/portfolio/pf-demo-001/stress
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_suggest
+  name: api_am_portfolio_suggest
+  method: GET
+  path: /v1/analytics/portfolio/pf-demo-001/suggest
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_runWhatIf
+  name: api_am_portfolio_runWhatIf
+  method: POST
+  path: /v1/analytics/portfolio/pf-demo-001/what-if
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getBasketAllocations
+  name: api_am_portfolio_getBasketAllocations
+  method: POST
+  path: /v1/basket/allocations
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_applySubstitutes
+  name: api_am_portfolio_applySubstitutes
+  method: POST
+  path: /v1/basket/apply-substitutes
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_calculateQuantities
+  name: api_am_portfolio_calculateQuantities
+  method: POST
+  path: /v1/basket/calculate-quantities
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_calculateQuantitiesFinalPreview
+  name: api_am_portfolio_calculateQuantitiesFinalPreview
+  method: POST
+  path: /v1/basket/calculate-quantities/final-preview
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getBasketCatalog
+  name: api_am_portfolio_getBasketCatalog
+  method: GET
+  path: /v1/basket/catalog
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_upsertBasketCatalog
+  name: api_am_portfolio_upsertBasketCatalog
+  method: PUT
+  path: /v1/basket/catalog
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_createBasketPortfolio
+  name: api_am_portfolio_createBasketPortfolio
+  method: POST
+  path: /v1/basket/create-portfolio
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_listBasketDrafts
+  name: api_am_portfolio_listBasketDrafts
+  method: GET
+  path: /v1/basket/drafts
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_upsertBasketDraftPost
+  name: api_am_portfolio_upsertBasketDraftPost
+  method: POST
+  path: /v1/basket/drafts
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_upsertBasketDraft
+  name: api_am_portfolio_upsertBasketDraft
+  method: PUT
+  path: /v1/basket/drafts
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getBasketDraft
+  name: api_am_portfolio_getBasketDraft
+  method: GET
+  path: /v1/basket/drafts/{draftId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_deleteBasketDraft
+  name: api_am_portfolio_deleteBasketDraft
+  method: DELETE
+  path: /v1/basket/drafts/{draftId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getBasketExposure
+  name: api_am_portfolio_getBasketExposure
+  method: POST
+  path: /v1/basket/exposure
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getMyBaskets
+  name: api_am_portfolio_getMyBaskets
+  method: GET
+  path: /v1/basket/my
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getOpportunities
+  name: api_am_portfolio_getOpportunities
+  method: POST
+  path: /v1/basket/opportunities
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getPreview
+  name: api_am_portfolio_getPreview
+  method: POST
+  path: /v1/basket/preview
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getBasketDetail
+  name: api_am_portfolio_getBasketDetail
+  method: GET
+  path: /v1/basket/{basketId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_deleteBasket
+  name: api_am_portfolio_deleteBasket
+  method: DELETE
+  path: /v1/basket/{basketId}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getRawMarketData
+  name: api_am_portfolio_getRawMarketData
+  method: GET
+  path: /v1/debug/market-data/raw
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getRawNseIndicesData
+  name: api_am_portfolio_getRawNseIndicesData
+  method: GET
+  path: /v1/debug/nse-indices/raw
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getAllMarketIndices
+  name: api_am_portfolio_getAllMarketIndices
+  method: GET
+  path: /v1/market-index/all
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_dismissDemoPortfolio
+  name: api_am_portfolio_dismissDemoPortfolio
+  method: DELETE
+  path: /v1/portfolios/demo
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_backfillSnapshots
+  name: api_am_portfolio_backfillSnapshots
+  method: POST
+  path: /v1/portfolios/dev/backfill-snapshots
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_migrateGrowwNames
+  name: api_am_portfolio_migrateGrowwNames
+  method: POST
+  path: /v1/portfolios/dev/migrate-groww
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_normalizeStoredSymbols
+  name: api_am_portfolio_normalizeStoredSymbols
+  method: POST
+  path: /v1/portfolios/dev/normalize-symbols
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_deleteSnapshot
+  name: api_am_portfolio_deleteSnapshot
+  method: DELETE
+  path: /v1/portfolios/dev/snapshot
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_triggerCatchUpForUser
+  name: api_am_portfolio_triggerCatchUpForUser
+  method: POST
+  path: /v1/portfolios/dev/trigger-catchup
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_triggerSnapshotForUser
+  name: api_am_portfolio_triggerSnapshotForUser
+  method: POST
+  path: /v1/portfolios/dev/trigger-snapshot
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getPortfolioHistory
+  name: api_am_portfolio_getPortfolioHistory
+  method: GET
+  path: /v1/portfolios/history
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getPortfolioHoldings
+  name: api_am_portfolio_getPortfolioHoldings
+  method: GET
+  path: /v1/portfolios/holdings
+  headers: {}
+  query:
+    userId: user-demo-001
+    portfolioId: pf-demo-001
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getAllPortfoliosIntraday
+  name: api_am_portfolio_getAllPortfoliosIntraday
+  method: GET
+  path: /v1/portfolios/intraday
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getPortfolioBasicDetails
+  name: api_am_portfolio_getPortfolioBasicDetails
+  method: GET
+  path: /v1/portfolios/list
+  headers: {}
+  query:
+    userId: user-demo-001
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getPortfolioSummary
+  name: api_am_portfolio_getPortfolioSummary
+  method: GET
+  path: /v1/portfolios/summary
+  headers: {}
+  query:
+    userId: user-demo-001
+    portfolioId: pf-demo-001
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_syncPortfolioFromTrade
+  name: api_am_portfolio_syncPortfolioFromTrade
+  method: POST
+  path: /v1/portfolios/sync
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_triggerSnapshot
+  name: api_am_portfolio_triggerSnapshot
+  method: POST
+  path: /v1/portfolios/trigger-snapshot
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getPortfolioById
+  name: api_am_portfolio_getPortfolioById
+  method: GET
+  path: /v1/portfolios/pf-demo-001
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getPortfolioAnalysis
+  name: api_am_portfolio_getPortfolioAnalysis
+  method: GET
+  path: /v1/portfolios/pf-demo-001/analysis
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_replaceAssetClassList
+  name: api_am_portfolio_replaceAssetClassList
+  method: PUT
+  path: /v1/portfolios/pf-demo-001/asset-classes/{assetClass}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getSpecificPortfolioHistory
+  name: api_am_portfolio_getSpecificPortfolioHistory
+  method: GET
+  path: /v1/portfolios/pf-demo-001/history
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getPortfolioIntraday
+  name: api_am_portfolio_getPortfolioIntraday
+  method: GET
+  path: /v1/portfolios/pf-demo-001/intraday
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_portfolio_getPortfolios
+  name: api_am_portfolio_getPortfolios
+  method: GET
+  path: /v1/portfolios
+  headers: {}
+  query:
+    userId: user-demo-001
+  body: null
+  checks:
+  - status_2xx
+  group: other

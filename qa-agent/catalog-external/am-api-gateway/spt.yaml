@@ -1,0 +1,298 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-api-gateway
+label: am-api-gateway
+enabled: true
+owners:
+- speckit
+description: "Generated from am-specs/services/am-api-gateway/tools.json (28 tools)\
+  \ \u2014 Spec UI source of truth."
+source:
+  repo: am-specs
+  path: services/am-api-gateway/tools.json
+  team: speckit
+targets:
+  dev: https://am-dev.asrax.in/router
+  preprod: https://am.asrax.in/am
+  prod: https://am.munish.org/am
+apis:
+- id: am_api_gateway_health_check_health_get
+  name: api_am_api_gateway_health_check_health_get
+  method: GET
+  path: /health
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_health_check_router_health_get
+  name: api_am_api_gateway_health_check_router_health_get
+  method: GET
+  path: /router/health
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_root__get
+  name: api_am_api_gateway_root__get
+  method: GET
+  path: /
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_root_router_get
+  name: api_am_api_gateway_root_router_get
+  method: GET
+  path: /router
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_proxy_am__service_name___path__get
+  name: api_am_api_gateway_dynamic_proxy_am__service_name___path__get
+  method: GET
+  path: /am/{service_name}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_proxy_am__service_name___path__post
+  name: api_am_api_gateway_dynamic_proxy_am__service_name___path__post
+  method: POST
+  path: /am/{service_name}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_proxy_am__service_name___path__put
+  name: api_am_api_gateway_dynamic_proxy_am__service_name___path__put
+  method: PUT
+  path: /am/{service_name}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_proxy_am__service_name___path__patch
+  name: api_am_api_gateway_dynamic_proxy_am__service_name___path__patch
+  method: PATCH
+  path: /am/{service_name}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_proxy_am__service_name___path__delete
+  name: api_am_api_gateway_dynamic_proxy_am__service_name___path__delete
+  method: DELETE
+  path: /am/{service_name}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_proxy_am__service_name___path__options
+  name: api_am_api_gateway_dynamic_proxy_am__service_name___path__options
+  method: OPTIONS
+  path: /am/{service_name}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_proxy_router_am__service_name___path__get
+  name: api_am_api_gateway_dynamic_proxy_router_am__service_name___path__get
+  method: GET
+  path: /router/am/{service_name}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_proxy_router_am__service_name___path__post
+  name: api_am_api_gateway_dynamic_proxy_router_am__service_name___path__post
+  method: POST
+  path: /router/am/{service_name}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_proxy_router_am__service_name___path__put
+  name: api_am_api_gateway_dynamic_proxy_router_am__service_name___path__put
+  method: PUT
+  path: /router/am/{service_name}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_proxy_router_am__service_name___path__patch
+  name: api_am_api_gateway_dynamic_proxy_router_am__service_name___path__patch
+  method: PATCH
+  path: /router/am/{service_name}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_proxy_router_am__service_name___path__delete
+  name: api_am_api_gateway_dynamic_proxy_router_am__service_name___path__delete
+  method: DELETE
+  path: /router/am/{service_name}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_proxy_router_am__service_name___path__options
+  name: api_am_api_gateway_dynamic_proxy_router_am__service_name___path__options
+  method: OPTIONS
+  path: /router/am/{service_name}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_direct_proxy__first_segment___path__get
+  name: api_am_api_gateway_dynamic_direct_proxy__first_segment___path__get
+  method: GET
+  path: /{first_segment}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_direct_proxy__first_segment___path__post
+  name: api_am_api_gateway_dynamic_direct_proxy__first_segment___path__post
+  method: POST
+  path: /{first_segment}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_direct_proxy__first_segment___path__put
+  name: api_am_api_gateway_dynamic_direct_proxy__first_segment___path__put
+  method: PUT
+  path: /{first_segment}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_direct_proxy__first_segment___path__patch
+  name: api_am_api_gateway_dynamic_direct_proxy__first_segment___path__patch
+  method: PATCH
+  path: /{first_segment}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_direct_proxy__first_segment___path__delete
+  name: api_am_api_gateway_dynamic_direct_proxy__first_segment___path__delete
+  method: DELETE
+  path: /{first_segment}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_direct_proxy__first_segment___path__options
+  name: api_am_api_gateway_dynamic_direct_proxy__first_segment___path__options
+  method: OPTIONS
+  path: /{first_segment}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_direct_proxy_router__first_segment___path__get
+  name: api_am_api_gateway_dynamic_direct_proxy_router__first_segment___path__get
+  method: GET
+  path: /router/{first_segment}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_direct_proxy_router__first_segment___path__post
+  name: api_am_api_gateway_dynamic_direct_proxy_router__first_segment___path__post
+  method: POST
+  path: /router/{first_segment}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_direct_proxy_router__first_segment___path__put
+  name: api_am_api_gateway_dynamic_direct_proxy_router__first_segment___path__put
+  method: PUT
+  path: /router/{first_segment}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_direct_proxy_router__first_segment___path__patch
+  name: api_am_api_gateway_dynamic_direct_proxy_router__first_segment___path__patch
+  method: PATCH
+  path: /router/{first_segment}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_direct_proxy_router__first_segment___path__delete
+  name: api_am_api_gateway_dynamic_direct_proxy_router__first_segment___path__delete
+  method: DELETE
+  path: /router/{first_segment}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
+- id: am_api_gateway_dynamic_direct_proxy_router__first_segment___path__options
+  name: api_am_api_gateway_dynamic_direct_proxy_router__first_segment___path__options
+  method: OPTIONS
+  path: /router/{first_segment}/{path}
+  headers: {}
+  query: {}
+  body: null
+  checks:
+  - status_2xx
+  group: other
