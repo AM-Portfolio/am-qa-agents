@@ -4,6 +4,7 @@
 
 | File | Role |
 |------|------|
+| **[../speckit-10/](../speckit-10/)** | **SpecKit 10/10** — enterprise SDK/MCP/orchestrator phase plan (product track) |
 | [RELEASE_REPORT.md](RELEASE_REPORT.md) | Generate Drive pack / full release evidence / PR readiness |
 | [QA_AGENT_PLAN.md](QA_AGENT_PLAN.md) | Full design spec (§1–§24) |
 | [UPCOMING_WORK_AND_TEST.md](UPCOMING_WORK_AND_TEST.md) | Pilot handoff + test plan |
