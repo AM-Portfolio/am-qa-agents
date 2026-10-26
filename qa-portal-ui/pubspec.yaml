@@ -17,6 +17,7 @@ dependencies:
   equatable: ^2.0.7
   url_launcher: ^6.3.2
   file_picker: ^8.0.0
+  shared_preferences: ^2.3.0
   am_design_system:
     path: ../../am-modern-ui/am_design_system
 

@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/json_lists.dart';
@@ -43,8 +44,105 @@ class OperatorShell extends StatelessWidget {
     }
   }
 
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('Sign Out of QA Portal'),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to log out of your operator session? '
+          'This will clear active platform tokens and operator caches.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await context.read<_ShellCubit>().logout();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Successfully signed out of QA Portal session'),
+            backgroundColor: Colors.blueGrey,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _showProfile(BuildContext context, _ShellState state) async {
     final op = state.operator;
+    if (state.isLoggedOut || op == null) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.account_circle_outlined),
+              SizedBox(width: 8),
+              Text('Operator Sign In'),
+            ],
+          ),
+          content: SizedBox(
+            width: 360,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'You are currently signed out of the QA Portal operator session.',
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Connect to resume operator access using the configured environment credentials.',
+                  style: Theme.of(ctx).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.login_rounded),
+              label: const Text('Sign In as Operator'),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await context.read<_ShellCubit>().login();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Operator session restored')),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -58,21 +156,21 @@ class OperatorShell extends StatelessWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                  backgroundColor: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.2),
                   child: Text(
                     () {
                       final name =
-                          '${op?['display_name'] ?? op?['email'] ?? 'O'}';
+                          '${op['display_name'] ?? op['email'] ?? 'O'}';
                       return name.isEmpty ? 'O' : name[0].toUpperCase();
                     }(),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-                title: Text('${op?['display_name'] ?? 'Operator'}'),
-                subtitle: Text('${op?['email'] ?? '—'}'),
+                title: Text('${op['display_name'] ?? 'Operator'}'),
+                subtitle: Text('${op['email'] ?? '—'}'),
               ),
               const Divider(),
-              Text('User id: ${op?['user_id'] ?? '—'}'),
+              Text('User id: ${op['user_id'] ?? '—'}'),
               const SizedBox(height: 8),
               Text(
                 'QA portal uses SPT operator credentials from api-load (.env). '
@@ -83,6 +181,14 @@ class OperatorShell extends StatelessWidget {
           ),
         ),
         actions: [
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _handleLogout(context);
+            },
+            child: const Text('Sign Out'),
+          ),
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
         ],
       ),
@@ -105,25 +211,23 @@ class OperatorShell extends StatelessWidget {
                 return BlocBuilder<ThemeCubit, ThemeState>(
                   builder: (context, themeState) {
                     final op = shell.operator;
+                    final isLoggedOut = shell.isLoggedOut || op == null;
                     return GlobalSidebar(
                       activeNavItem: _activeTitle(location),
                       items: _items,
                       isDarkMode: themeState.isDarkMode || isDark,
-                      userName: op?['display_name']?.toString() ?? 'Operator',
-                      userEmail: op?['email']?.toString(),
+                      userName: isLoggedOut
+                          ? null
+                          : (op['display_name']?.toString() ?? 'Operator'),
+                      userEmail: isLoggedOut
+                          ? 'Signed out'
+                          : op['email']?.toString(),
                       onThemeToggle: () =>
                           context.read<ThemeCubit>().toggleTheme(),
                       onProfileTap: () => _showProfile(context, shell),
-                      onLogout: () async {
-                        await context.read<_ShellCubit>().clearCache();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Operator caches cleared'),
-                            ),
-                          );
-                        }
-                      },
+                      onLogout: isLoggedOut
+                          ? null
+                          : () => _handleLogout(context),
                       onNavigate: (title) => _onNavigate(context, title),
                     );
                   },
@@ -145,7 +249,7 @@ class OperatorShell extends StatelessWidget {
                             return ExecuteBar(
                               apiOk: shell.apiOk && shell.k6Ok != false,
                               apiMessage: shell.k6Ok == false
-                                  ? 'k6 missing'
+                                   ? 'k6 missing'
                                   : shell.message,
                               onClearCache: () =>
                                   context.read<_ShellCubit>().clearCache(),
@@ -175,6 +279,7 @@ class _ShellState {
     this.minioUrl,
     this.operator,
     this.message,
+    this.isLoggedOut = false,
   });
 
   final bool apiOk;
@@ -183,6 +288,7 @@ class _ShellState {
   final String? minioUrl;
   final Map<String, dynamic>? operator;
   final String? message;
+  final bool isLoggedOut;
 
   _ShellState copyWith({
     bool? apiOk,
@@ -191,14 +297,17 @@ class _ShellState {
     String? minioUrl,
     Map<String, dynamic>? operator,
     String? message,
+    bool? isLoggedOut,
+    bool clearOperator = false,
   }) {
     return _ShellState(
       apiOk: apiOk ?? this.apiOk,
       k6Ok: k6Ok ?? this.k6Ok,
       grafanaUrl: grafanaUrl ?? this.grafanaUrl,
       minioUrl: minioUrl ?? this.minioUrl,
-      operator: operator ?? this.operator,
+      operator: clearOperator ? null : (operator ?? this.operator),
       message: message,
+      isLoggedOut: isLoggedOut ?? this.isLoggedOut,
     );
   }
 }
@@ -206,10 +315,25 @@ class _ShellState {
 class _ShellCubit extends Cubit<_ShellState> {
   _ShellCubit(this._dio) : super(const _ShellState());
 
+  static const _signedOutKey = 'qa_portal_signed_out';
   final Dio _dio;
 
   Future<void> refresh() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final isSignedOut = prefs.getBool(_signedOutKey) ?? false;
+      if (isSignedOut) {
+        emit(
+          state.copyWith(
+            apiOk: true,
+            isLoggedOut: true,
+            clearOperator: true,
+            message: 'Signed out',
+          ),
+        );
+        return;
+      }
+
       final res = await _dio.get<dynamic>('/api/platform/health');
       final data = asMap(res.data);
       final op = data['operator'];
@@ -224,6 +348,7 @@ class _ShellCubit extends Cubit<_ShellState> {
                   : null),
           operator: op is Map ? Map<String, dynamic>.from(op) : null,
           message: data['k6_binary'] == true ? null : 'k6 binary missing on agent',
+          isLoggedOut: false,
         ),
       );
     } catch (e) {
@@ -235,6 +360,7 @@ class _ShellCubit extends Cubit<_ShellState> {
           operator: state.operator,
           grafanaUrl: state.grafanaUrl,
           minioUrl: state.minioUrl,
+          isLoggedOut: state.isLoggedOut,
         ),
       );
     }
@@ -248,5 +374,31 @@ class _ShellCubit extends Cubit<_ShellState> {
     } catch (e) {
       emit(state.copyWith(message: e.toString()));
     }
+  }
+
+  Future<void> logout() async {
+    try {
+      await _dio.post<dynamic>('/api/platform/clear-cache');
+    } catch (_) {}
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_signedOutKey, true);
+    } catch (_) {}
+    emit(
+      state.copyWith(
+        isLoggedOut: true,
+        clearOperator: true,
+        message: 'Logged out of QA portal',
+      ),
+    );
+  }
+
+  Future<void> login() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_signedOutKey);
+    } catch (_) {}
+    emit(state.copyWith(isLoggedOut: false));
+    await refresh();
   }
 }
