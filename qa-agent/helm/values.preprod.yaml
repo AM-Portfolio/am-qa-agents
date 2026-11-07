@@ -23,7 +23,7 @@ ingress:
       am-apps-preprod-global-cors@kubernetescrd,
       am-apps-preprod-strip-prefix-apps@kubernetescrd
   hosts:
-    - host: am.asrax.in
+    - host: am-preprod.asrax.in
       paths:
         - path: /qa
           pathType: Prefix
@@ -43,4 +43,4 @@ env:
   TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-apps-preprod.svc.cluster.local:8141"
   GNX_MCP_URL: "https://gitnexus.asrax.in"
   KEYCLOAK_TOKEN_URL: "http://auth.munish.org/auth/realms/am-preprod-realm/protocol/openid-connect/token"
-  SPT_PUBLIC_BASE_URL: "https://am.asrax.in/qa"
+  SPT_PUBLIC_BASE_URL: "https://am-preprod.asrax.in/qa"
