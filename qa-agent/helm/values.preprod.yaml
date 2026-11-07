@@ -19,13 +19,17 @@ vault:
 ingress:
   annotations:
     traefik.ingress.kubernetes.io/router.priority: "100"
+    # CORS only for /qa — never strip /qa (ROOT_PATH=/qa; portal is /qa/ui). Same as dig.
+    # /spt-poc + /ui-test still stripped via am-agents-preprod-strip-prefix (no /qa).
     traefik.ingress.kubernetes.io/router.middlewares: >-
       am-apps-preprod-global-cors@kubernetescrd,
-      am-apps-preprod-strip-prefix-apps@kubernetescrd
+      am-agents-preprod-strip-prefix@kubernetescrd
   hosts:
     - host: am-preprod.asrax.in
       paths:
         - path: /qa
+          pathType: Prefix
+        - path: /qa/ui
           pathType: Prefix
         - path: /spt-poc
           pathType: Prefix
