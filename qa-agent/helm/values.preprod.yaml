@@ -19,11 +19,10 @@ vault:
 ingress:
   annotations:
     traefik.ingress.kubernetes.io/router.priority: "100"
-    # CORS only for /qa — never strip /qa (ROOT_PATH=/qa; portal is /qa/ui). Same as dig.
-    # /spt-poc + /ui-test still stripped via am-agents-preprod-strip-prefix (no /qa).
+    # CORS only — never strip /qa (ROOT_PATH=/qa; portal is /qa/ui). Same as dig live.
+    # Do not attach strip-prefix-apps (it strips /qa and 404s the Flutter SPA).
     traefik.ingress.kubernetes.io/router.middlewares: >-
-      am-apps-preprod-global-cors@kubernetescrd,
-      am-agents-preprod-strip-prefix@kubernetescrd
+      am-apps-preprod-global-cors@kubernetescrd
   hosts:
     - host: am-preprod.asrax.in
       paths:
