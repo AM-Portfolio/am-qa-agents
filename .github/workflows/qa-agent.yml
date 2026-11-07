@@ -79,11 +79,25 @@ jobs:
           channel: stable
           cache: true
 
+      # am_design_system / am_common freezed+json_serializable outputs are gitignored.
+      # Without build_runner the portal dart2js fails and we ship a Specs-only image.
+      - name: Generate am-modern-ui freezed/json code
+        run: |
+          set -euo pipefail
+          for pkg in am_common am_design_system; do
+            echo "== generate $pkg =="
+            (
+              cd "am-modern-ui/$pkg"
+              flutter pub get
+              dart run build_runner build --delete-conflicting-outputs
+            )
+          done
+
       - name: Build Flutter portal (cluster)
         id: portal
-        continue-on-error: true
         working-directory: am-qa-agents/qa-portal-ui
         run: |
+          set -euo pipefail
           flutter pub get
           flutter build web --release \
             --base-href=/qa/ui/ \
@@ -94,20 +108,14 @@ jobs:
           echo "built=true" >> "$GITHUB_OUTPUT"
           du -sh build/web
 
-      - name: Portal bake status
-        run: |
-          if [ "${{ steps.portal.outcome }}" != "success" ]; then
-            echo "::warning::Flutter portal bake failed (am-modern-ui). Publishing agent image without SPA; Specs/k6 still ship."
-            rm -rf am-qa-agents/qa-portal-ui/build/web || true
-          else
-            echo "Portal web assets ready"
-            du -sh am-qa-agents/qa-portal-ui/build/web
-          fi
-
       - name: Image tag
         id: meta
         run: |
           TAG="sha-${GITHUB_SHA::7}"
+          # Match dig's working convention when portal assets are present.
+          if [ -f am-qa-agents/qa-portal-ui/build/web/index.html ]; then
+            TAG="${TAG}-flutter"
+          fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "IMAGE=ghcr.io/am-portfolio/am-qa-agents:$TAG" >> "$GITHUB_OUTPUT"
 
