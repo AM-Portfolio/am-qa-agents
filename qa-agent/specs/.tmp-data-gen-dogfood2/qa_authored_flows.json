@@ -1,0 +1,547 @@
+{
+  "version": 1,
+  "flows": {
+    "dg_am-market-data_prod_search_to_fundamentals": {
+      "id": "dg_am-market-data_prod_search_to_fundamentals",
+      "title": "am-market-data · search_to_fundamentals (prod)",
+      "gate": "prod_safe",
+      "source": "authored",
+      "created_by": "authored",
+      "group": "data_gen",
+      "category": "cross_flow",
+      "description": "am-specs cross_flow search_to_fundamentals",
+      "tags": [
+        "am-specs-data-gen",
+        "profile:prod",
+        "flow:search_to_fundamentals",
+        "am-market-data"
+      ],
+      "env_default": null,
+      "credential_id": null,
+      "api_pack": "am-market-data",
+      "variables": {},
+      "payload_set_version": 1,
+      "nodes": [
+        {
+          "id": "xf-search_to_fundamentals-s0-v1_instruments_search",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "post",
+          "path": "/v1/instruments/search",
+          "path_contains": null,
+          "exact_path": "/v1/instruments/search",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "search_to_fundamentals/step-0"
+        },
+        {
+          "id": "xf-search_to_fundamentals-s1-v1_fundamentals__symbol",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "get",
+          "path": "/v1/fundamentals/{symbol}",
+          "path_contains": null,
+          "exact_path": "/v1/fundamentals/{symbol}",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "search_to_fundamentals/step-1"
+        }
+      ],
+      "edges": [
+        {
+          "from": "xf-search_to_fundamentals-s0-v1_instruments_search",
+          "to": "xf-search_to_fundamentals-s1-v1_fundamentals__symbol",
+          "optional": false
+        }
+      ],
+      "updated_at": "2026-10-08T22:11:15Z"
+    },
+    "dg_am-market-data_prod_index_quote_cluster": {
+      "id": "dg_am-market-data_prod_index_quote_cluster",
+      "title": "am-market-data · index_quote_cluster (prod)",
+      "gate": "prod_safe",
+      "source": "authored",
+      "created_by": "authored",
+      "group": "data_gen",
+      "category": "cross_flow",
+      "description": "am-specs cross_flow index_quote_cluster",
+      "tags": [
+        "am-specs-data-gen",
+        "profile:prod",
+        "flow:index_quote_cluster",
+        "am-market-data"
+      ],
+      "env_default": null,
+      "credential_id": null,
+      "api_pack": "am-market-data",
+      "variables": {},
+      "payload_set_version": 1,
+      "nodes": [
+        {
+          "id": "xf-index_quote_cluster-s0-v1_indices_available",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "get",
+          "path": "/v1/indices/available",
+          "path_contains": null,
+          "exact_path": "/v1/indices/available",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "index_quote_cluster/step-0"
+        },
+        {
+          "id": "xf-index_quote_cluster-s1-v1_market-data_live-ltp",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "get",
+          "path": "/v1/market-data/live-ltp",
+          "path_contains": null,
+          "exact_path": "/v1/market-data/live-ltp",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "index_quote_cluster/step-1"
+        },
+        {
+          "id": "xf-index_quote_cluster-s2-v1_market-data_quotes",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "get",
+          "path": "/v1/market-data/quotes",
+          "path_contains": null,
+          "exact_path": "/v1/market-data/quotes",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "index_quote_cluster/step-2"
+        },
+        {
+          "id": "xf-index_quote_cluster-s3-v1_market-data_ohlc",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "post",
+          "path": "/v1/market-data/ohlc",
+          "path_contains": null,
+          "exact_path": "/v1/market-data/ohlc",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "index_quote_cluster/step-3"
+        }
+      ],
+      "edges": [
+        {
+          "from": "xf-index_quote_cluster-s0-v1_indices_available",
+          "to": "xf-index_quote_cluster-s1-v1_market-data_live-ltp",
+          "optional": false
+        },
+        {
+          "from": "xf-index_quote_cluster-s1-v1_market-data_live-ltp",
+          "to": "xf-index_quote_cluster-s2-v1_market-data_quotes",
+          "optional": false
+        },
+        {
+          "from": "xf-index_quote_cluster-s2-v1_market-data_quotes",
+          "to": "xf-index_quote_cluster-s3-v1_market-data_ohlc",
+          "optional": false
+        }
+      ],
+      "updated_at": "2026-10-08T22:11:15Z"
+    },
+    "dg_am-market-data_prod_open_ipo_to_detail": {
+      "id": "dg_am-market-data_prod_open_ipo_to_detail",
+      "title": "am-market-data · open_ipo_to_detail (prod)",
+      "gate": "prod_safe",
+      "source": "authored",
+      "created_by": "authored",
+      "group": "data_gen",
+      "category": "cross_flow",
+      "description": "am-specs cross_flow open_ipo_to_detail",
+      "tags": [
+        "am-specs-data-gen",
+        "profile:prod",
+        "flow:open_ipo_to_detail",
+        "am-market-data"
+      ],
+      "env_default": null,
+      "credential_id": null,
+      "api_pack": "am-market-data",
+      "variables": {},
+      "payload_set_version": 1,
+      "nodes": [
+        {
+          "id": "xf-open_ipo_to_detail-s0-v1_market-data_ipo",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "get",
+          "path": "/v1/market-data/ipo",
+          "path_contains": null,
+          "exact_path": "/v1/market-data/ipo",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "open_ipo_to_detail/step-0"
+        },
+        {
+          "id": "xf-open_ipo_to_detail-s1-v1_market-data_ipo_counts",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "get",
+          "path": "/v1/market-data/ipo/counts",
+          "path_contains": null,
+          "exact_path": "/v1/market-data/ipo/counts",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "open_ipo_to_detail/step-1"
+        },
+        {
+          "id": "xf-open_ipo_to_detail-s2-v1_market-data_ipo__id",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "get",
+          "path": "/v1/market-data/ipo/{id}",
+          "path_contains": null,
+          "exact_path": "/v1/market-data/ipo/{id}",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "open_ipo_to_detail/step-2"
+        }
+      ],
+      "edges": [
+        {
+          "from": "xf-open_ipo_to_detail-s0-v1_market-data_ipo",
+          "to": "xf-open_ipo_to_detail-s1-v1_market-data_ipo_counts",
+          "optional": false
+        },
+        {
+          "from": "xf-open_ipo_to_detail-s1-v1_market-data_ipo_counts",
+          "to": "xf-open_ipo_to_detail-s2-v1_market-data_ipo__id",
+          "optional": false
+        }
+      ],
+      "updated_at": "2026-10-08T22:11:15Z"
+    },
+    "dg_am-market-data_prod_watchlist_to_ltp": {
+      "id": "dg_am-market-data_prod_watchlist_to_ltp",
+      "title": "am-market-data · watchlist_to_ltp (prod)",
+      "gate": "prod_safe",
+      "source": "authored",
+      "created_by": "authored",
+      "group": "data_gen",
+      "category": "cross_flow",
+      "description": "am-specs cross_flow watchlist_to_ltp",
+      "tags": [
+        "am-specs-data-gen",
+        "profile:prod",
+        "flow:watchlist_to_ltp",
+        "am-market-data"
+      ],
+      "env_default": null,
+      "credential_id": null,
+      "api_pack": "am-market-data",
+      "variables": {},
+      "payload_set_version": 1,
+      "nodes": [
+        {
+          "id": "xf-watchlist_to_ltp-s0-v1_watchlists",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "get",
+          "path": "/v1/watchlists",
+          "path_contains": null,
+          "exact_path": "/v1/watchlists",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "watchlist_to_ltp/step-0"
+        },
+        {
+          "id": "xf-watchlist_to_ltp-s1-v1_watchlists__watchlistId__items",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "get",
+          "path": "/v1/watchlists/{watchlistId}/items",
+          "path_contains": null,
+          "exact_path": "/v1/watchlists/{watchlistId}/items",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "watchlist_to_ltp/step-1"
+        },
+        {
+          "id": "xf-watchlist_to_ltp-s2-v1_market-data_live-ltp",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "get",
+          "path": "/v1/market-data/live-ltp",
+          "path_contains": null,
+          "exact_path": "/v1/market-data/live-ltp",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "watchlist_to_ltp/step-2"
+        }
+      ],
+      "edges": [
+        {
+          "from": "xf-watchlist_to_ltp-s0-v1_watchlists",
+          "to": "xf-watchlist_to_ltp-s1-v1_watchlists__watchlistId__items",
+          "optional": false
+        },
+        {
+          "from": "xf-watchlist_to_ltp-s1-v1_watchlists__watchlistId__items",
+          "to": "xf-watchlist_to_ltp-s2-v1_market-data_live-ltp",
+          "optional": false
+        }
+      ],
+      "updated_at": "2026-10-08T22:11:15Z"
+    },
+    "dg_am-market-data_prod_mf_detail_to_history": {
+      "id": "dg_am-market-data_prod_mf_detail_to_history",
+      "title": "am-market-data · mf_detail_to_history (prod)",
+      "gate": "prod_safe",
+      "source": "authored",
+      "created_by": "authored",
+      "group": "data_gen",
+      "category": "cross_flow",
+      "description": "am-specs cross_flow mf_detail_to_history",
+      "tags": [
+        "am-specs-data-gen",
+        "profile:prod",
+        "flow:mf_detail_to_history",
+        "am-market-data"
+      ],
+      "env_default": null,
+      "credential_id": null,
+      "api_pack": "am-market-data",
+      "variables": {},
+      "payload_set_version": 1,
+      "nodes": [
+        {
+          "id": "xf-mf_detail_to_history-s0-v1_market-data_mutual-fund__schemeCode",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "get",
+          "path": "/v1/market-data/mutual-fund/{schemeCode}",
+          "path_contains": null,
+          "exact_path": "/v1/market-data/mutual-fund/{schemeCode}",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "mf_detail_to_history/step-0"
+        },
+        {
+          "id": "xf-mf_detail_to_history-s1-v1_market-data_mutual-fund__schemeCode__history",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "get",
+          "path": "/v1/market-data/mutual-fund/{schemeCode}/history",
+          "path_contains": null,
+          "exact_path": "/v1/market-data/mutual-fund/{schemeCode}/history",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "mf_detail_to_history/step-1"
+        }
+      ],
+      "edges": [
+        {
+          "from": "xf-mf_detail_to_history-s0-v1_market-data_mutual-fund__schemeCode",
+          "to": "xf-mf_detail_to_history-s1-v1_market-data_mutual-fund__schemeCode__history",
+          "optional": false
+        }
+      ],
+      "updated_at": "2026-10-08T22:11:15Z"
+    },
+    "dg_am-market-data_prod_watchlist_create_to_items": {
+      "id": "dg_am-market-data_prod_watchlist_create_to_items",
+      "title": "am-market-data · watchlist_create_to_items (prod)",
+      "gate": "prod_safe",
+      "source": "authored",
+      "created_by": "authored",
+      "group": "data_gen",
+      "category": "cross_flow",
+      "description": "am-specs cross_flow watchlist_create_to_items",
+      "tags": [
+        "am-specs-data-gen",
+        "profile:prod",
+        "flow:watchlist_create_to_items",
+        "am-market-data"
+      ],
+      "env_default": null,
+      "credential_id": null,
+      "api_pack": "am-market-data",
+      "variables": {},
+      "payload_set_version": 1,
+      "nodes": [
+        {
+          "id": "xf-watchlist_create_to_items-s0-v1_watchlists",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "post",
+          "path": "/v1/watchlists",
+          "path_contains": null,
+          "exact_path": "/v1/watchlists",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "watchlist_create_to_items/step-0"
+        },
+        {
+          "id": "xf-watchlist_create_to_items-s1-v1_watchlists__watchlistId__items",
+          "kind": "call_tool",
+          "service": "am-market-data",
+          "method": "post",
+          "path": "/v1/watchlists/{watchlistId}/items",
+          "path_contains": null,
+          "exact_path": "/v1/watchlists/{watchlistId}/items",
+          "tool_match": null,
+          "auth": true,
+          "optional": false,
+          "capture_tokens": false,
+          "uses_spt_auth_creds": false,
+          "credential_id": null,
+          "base_url_override": null,
+          "body_override": null,
+          "expect_status": [
+            200
+          ],
+          "label": "watchlist_create_to_items/step-1"
+        }
+      ],
+      "edges": [
+        {
+          "from": "xf-watchlist_create_to_items-s0-v1_watchlists",
+          "to": "xf-watchlist_create_to_items-s1-v1_watchlists__watchlistId__items",
+          "optional": false
+        }
+      ],
+      "updated_at": "2026-10-08T22:11:15Z"
+    }
+  }
+}

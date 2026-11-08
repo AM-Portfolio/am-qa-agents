@@ -1,8 +1,10 @@
-# Subscription QA module — machine-readable mapping (SoT with docs/SUBSCRIPTION_MODULE_CATALOG.md)
+# Shim — SoT is qa-agent/plugins/am-subscription/plugin.yaml (Phase 1).
+# Kept for parity tests with suite_profiles / legacy docs.
 id: subscription_module
 title: Subscription-only API + modern-ui pack
 suite: subscription_module
 api_pack: subscription
+plugin: am-subscription
 
 trigger_paths:
   - am-subscription/**
@@ -37,7 +39,7 @@ portal:
   ops_start: POST /qa/v2/releases/ops/start
   suite: subscription_module
   api_pack: subscription
-  default_env: preprod
+  default_env: dev
   skip_soak: true
 
 orchestrator: ui_evidence/scripts/run_subscription_module_complete.py

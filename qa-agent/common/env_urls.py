@@ -39,9 +39,18 @@ def normalize_env(raw: str | None) -> str | None:
     key = raw.strip().lower()
     if key in ("development", "local", "test"):
         return None
+    # Contabo dig Kind fleet → public dig/dev host (am-dev.asrax.in).
+    if key == "dig":
+        return "dev"
     if key in _PUBLIC_HOST:
         return "prod" if key == "production" else key
     return None
+
+
+def identity_url_for_env(environment: str | None) -> str:
+    """Public identity base for a run environment (dig→dev)."""
+    canonical = normalize_env(environment) or "dev"
+    return product_url(canonical, "identity")
 
 
 def public_host(env: str) -> str:

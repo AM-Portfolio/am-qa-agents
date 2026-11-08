@@ -1,0 +1,16 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-market-data
+label: am-market-data
+enabled: true
+runtime: unknown
+description: Domain feed registration from am-specs (am-market-data)
+source:
+  repo: am-market
+  path: am-market-data/spt.yaml
+targets:
+  dev: https://am-dev.asrax.in/market
+  preprod: https://am-preprod.asrax.in/market
+  prod: https://am.asrax.in/market
+openapi:
+  path: /openapi.json

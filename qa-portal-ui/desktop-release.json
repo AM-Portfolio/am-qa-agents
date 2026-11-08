@@ -1,0 +1,8 @@
+{
+  "version": "0.1.0",
+  "releasedAt": "2026-11-08",
+  "windowsSetup": "desktop/QAPortal-win-Setup.exe",
+  "windowsSetupName": "QAPortal-win-Setup.exe",
+  "webPath": "ui/",
+  "notes": "Windows thin installer for QA Portal. Talks to this environment's qa-agent API."
+}

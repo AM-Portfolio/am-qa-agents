@@ -1,10 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'openapi_browser.dart';
 import 'swagger_embed_stub.dart'
     if (dart.library.html) 'swagger_embed_web.dart' as impl;
 
-/// In-widget Swagger UI (Flutter web). Non-web shows a fallback message.
+/// Swagger UI on web; native [OpenApiBrowser] on desktop/Windows.
 class SwaggerEmbed extends StatelessWidget {
   const SwaggerEmbed({
     super.key,
@@ -31,14 +32,21 @@ class SwaggerEmbed extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!kIsWeb) {
-      return const Center(
-        child: Text('Swagger UI embed is available on Flutter web.'),
-      );
-    }
     if (spec.isEmpty || !spec.containsKey('paths')) {
       return const Center(
         child: Text('No OpenAPI document loaded for this service.'),
+      );
+    }
+    if (!kIsWeb) {
+      return OpenApiBrowser(
+        key: ValueKey('native-$specRevision'),
+        spec: spec,
+        service: service,
+        environment: environment,
+        tryBase: tryBase,
+        token: token,
+        onUseInTest: onUseInTest,
+        onRefresh: onRefresh,
       );
     }
     return impl.SwaggerEmbedView(

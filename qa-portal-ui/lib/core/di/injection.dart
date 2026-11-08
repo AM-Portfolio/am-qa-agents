@@ -3,11 +3,14 @@ import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 import '../config/portal_config.dart';
+import '../config/portal_runtime.dart';
 import '../network/api_client.dart';
 import '../../features/runs/data/runs_repository.dart';
 import '../../features/profiles/data/profiles_repository.dart';
 import '../../features/execute/data/execute_repository.dart';
+import '../../features/services/data/services_repository.dart';
 import '../../features/specs/data/specs_repository.dart';
+import '../../features/flows/data/flows_repository.dart';
 import '../../features/ui_flows/data/ui_flows_repository.dart';
 
 final getIt = GetIt.instance;
@@ -15,6 +18,11 @@ final getIt = GetIt.instance;
 Future<void> configureDependencies() async {
   if (!getIt.isRegistered<PortalConfig>()) {
     getIt.registerSingleton<PortalConfig>(PortalConfig.fromEnvironment());
+  }
+  if (!getIt.isRegistered<PortalRuntime>()) {
+    getIt.registerSingleton<PortalRuntime>(
+      PortalRuntime.fromConfig(getIt<PortalConfig>()),
+    );
   }
 
   if (!getIt.isRegistered<ThemeRepository>()) {
@@ -28,12 +36,12 @@ Future<void> configureDependencies() async {
 
   if (!getIt.isRegistered<Dio>()) {
     getIt.registerLazySingleton<Dio>(() {
-      final cfg = getIt<PortalConfig>();
+      final runtime = getIt<PortalRuntime>();
       return Dio(
         BaseOptions(
-          baseUrl: cfg.apiBase,
-          connectTimeout: const Duration(seconds: 20),
-          receiveTimeout: const Duration(seconds: 60),
+          baseUrl: runtime.apiBase,
+          connectTimeout: const Duration(seconds: 45),
+          receiveTimeout: const Duration(seconds: 90),
           headers: {'Accept': 'application/json'},
         ),
       );
@@ -63,9 +71,19 @@ Future<void> configureDependencies() async {
       () => SpecsRepository(getIt<ApiClient>()),
     );
   }
+  if (!getIt.isRegistered<ServicesRepository>()) {
+    getIt.registerLazySingleton<ServicesRepository>(
+      () => ServicesRepository(getIt<ApiClient>(), getIt<SpecsRepository>()),
+    );
+  }
   if (!getIt.isRegistered<UiFlowsRepository>()) {
     getIt.registerLazySingleton<UiFlowsRepository>(
       () => UiFlowsRepository(getIt<ApiClient>()),
+    );
+  }
+  if (!getIt.isRegistered<FlowsRepository>()) {
+    getIt.registerLazySingleton<FlowsRepository>(
+      () => FlowsRepository(getIt<ApiClient>()),
     );
   }
 }

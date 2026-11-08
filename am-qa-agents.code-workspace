@@ -11,6 +11,10 @@
     {
       "name": "qa-portal-ui",
       "path": "F:/am-repos/am-repos/am-qa-agents/qa-portal-ui"
+    },
+    {
+      "name": "am-n8n-workflows",
+      "path": "F:/am-repos/am-repos/am-n8n-workflows"
     }
   ],
   "settings": {}

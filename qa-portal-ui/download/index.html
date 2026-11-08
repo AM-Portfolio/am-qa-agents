@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QA Portal — Download</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a222c;
+      --text: #e8eef4;
+      --muted: #9aa8b5;
+      --accent: #3d8bfd;
+      --accent2: #2a9d8f;
+      --border: #2a3542;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #1a3a5c 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #1a3d36 0%, transparent 50%),
+        var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .card {
+      width: min(440px, 100%);
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem 1.75rem;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+    }
+    .brand {
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 0.5rem;
+    }
+    h1 {
+      margin: 0 0 0.75rem;
+      font-size: 1.75rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .badge.env-preprod { color: #7dd3fc; border-color: #0369a1; }
+    .badge.env-prod { color: #86efac; border-color: #166534; }
+    .badge.env-dev { color: #fcd34d; border-color: #a16207; }
+    .badge.env-local { color: #c4b5fd; border-color: #6d28d9; }
+    p.help {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+    .actions { display: flex; flex-direction: column; gap: 0.75rem; }
+    a.btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+    }
+    a.btn:hover { transform: translateY(-1px); }
+    a.btn:active { transform: none; opacity: 0.9; }
+    a.btn.primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    a.btn.secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    a.btn.disabled {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+    .status {
+      margin-top: 1.25rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      min-height: 1.2em;
+    }
+    .status.error { color: #fca5a5; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <p class="brand">Asrax</p>
+    <h1>QA Portal</h1>
+    <div class="meta">
+      <span class="badge" id="envBadge">…</span>
+      <span class="badge" id="verBadge">Version …</span>
+    </div>
+    <p class="help">
+      Installs to your PC and talks to this environment’s API.
+      Same operator UI as the browser portal.
+    </p>
+    <div class="actions">
+      <a class="btn primary disabled" id="btnWindows" href="#">Download for Windows</a>
+      <a class="btn secondary" id="btnWeb" href="../ui/">Open in browser</a>
+    </div>
+    <p class="status" id="status"></p>
+  </main>
+  <script>
+    (function () {
+      const host = (location.hostname || "").toLowerCase();
+      let env = "local";
+      let envLabel = "Local";
+      if (host.includes("preprod")) { env = "preprod"; envLabel = "Preprod"; }
+      else if (host === "am.asrax.in" || host.includes("prod")) { env = "prod"; envLabel = "Prod"; }
+      else if (host.includes("dev") || host.includes("am-dev")) { env = "dev"; envLabel = "Dev"; }
+      else if (host && host !== "localhost" && host !== "127.0.0.1") { envLabel = host; }
+
+      const envBadge = document.getElementById("envBadge");
+      envBadge.textContent = envLabel;
+      envBadge.classList.add("env-" + env);
+
+      const verBadge = document.getElementById("verBadge");
+      const btnWin = document.getElementById("btnWindows");
+      const btnWeb = document.getElementById("btnWeb");
+      const status = document.getElementById("status");
+
+      // Prefer same-folder manifest; fall back to sibling published at portal root.
+      const manifestUrls = [
+        "desktop-release.json",
+        "../desktop-release.json",
+      ];
+
+      function applyRelease(data) {
+        const version = data.version || "unknown";
+        verBadge.textContent = "Version " + version;
+        const web = data.webPath || "../ui/";
+        btnWeb.href = web.startsWith("http") || web.startsWith("/")
+          ? web
+          : web;
+        const setup = data.windowsSetup || "desktop/QAPortal-win-Setup.exe";
+        btnWin.href = setup;
+        btnWin.classList.remove("disabled");
+        btnWin.setAttribute("download", data.windowsSetupName || "QAPortal-win-Setup.exe");
+        status.textContent = data.notes || "";
+      }
+
+      function fail(msg) {
+        verBadge.textContent = "Version —";
+        status.textContent = msg;
+        status.classList.add("error");
+        btnWin.classList.add("disabled");
+      }
+
+      (async function load() {
+        for (const url of manifestUrls) {
+          try {
+            const res = await fetch(url, { cache: "no-store" });
+            if (!res.ok) continue;
+            applyRelease(await res.json());
+            // Probe setup availability (HEAD); soften message if missing.
+            try {
+              const head = await fetch(btnWin.getAttribute("href"), { method: "HEAD", cache: "no-store" });
+              if (!head.ok) {
+                status.textContent = "Windows installer not published on this host yet. Use Open in browser, or ask for a fresh release.";
+                status.classList.add("error");
+                btnWin.classList.add("disabled");
+              }
+            } catch (_) { /* ignore CORS/HEAD limits */ }
+            return;
+          } catch (_) { /* try next */ }
+        }
+        fail("Could not load desktop-release.json");
+      })();
+    })();
+  </script>
+</body>
+</html>

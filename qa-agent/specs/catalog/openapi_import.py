@@ -98,12 +98,29 @@ def _needs_auth(doc: dict[str, Any], op: dict[str, Any], path: str = "") -> bool
     return True
 
 
+def count_openapi_operations(doc: dict[str, Any]) -> int:
+    """Count HTTP operations on paths (same verbs as openapi_to_apis / Specs Swagger)."""
+    paths = doc.get("paths") or {}
+    total = 0
+    for item in paths.values():
+        if not isinstance(item, dict):
+            continue
+        for method in _HTTP_METHODS:
+            if isinstance(item.get(method), dict):
+                total += 1
+    return total
+
+
 def openapi_to_apis(
     doc: dict[str, Any],
     *,
-    include_mutating: bool = False,
+    include_mutating: bool = True,
 ) -> list[dict[str, Any]]:
-    """Map OpenAPI paths → SPT api rows. Prefer safe GETs; skip unresolved path params."""
+    """Map OpenAPI paths → SPT api rows (all methods by default for Specs sync).
+
+    Unresolved path templates and required query without examples are kept with
+    ``needs_params: true`` so the APIs list matches Swagger operation counts.
+    """
     paths = doc.get("paths") or {}
     apis: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -120,9 +137,8 @@ def openapi_to_apis(
                 continue
             params = shared_params + list(op.get("parameters") or [])
             resolved = _resolve_path(str(raw_path), params)
-            if resolved is None:
-                logger.debug("skip openapi op %s %s (missing path examples)", method, raw_path)
-                continue
+            needs_params = resolved is None
+            path_out = resolved if resolved is not None else str(raw_path)
 
             op_id = str(op.get("operationId") or f"{method}.{raw_path}")
             api_id = _slug(op_id)
@@ -141,32 +157,32 @@ def openapi_to_apis(
                 if example is not None:
                     query[name] = example
                 elif param.get("required"):
-                    # required query without example — skip whole op
-                    resolved = None
-                    break
-            if resolved is None:
-                continue
+                    needs_params = True
 
             headers: dict[str, str] = {"Accept": "application/json"}
             if _needs_auth(doc, op, str(raw_path)):
                 headers["Authorization"] = "{{env.SPT_AUTH_TOKEN}}"
 
-            summary = str(op.get("summary") or op.get("operationId") or f"{method.upper()} {resolved}")
-            apis.append(
-                {
-                    "id": api_id,
-                    "name": summary,
-                    "method": method.upper(),
-                    "path": resolved,
-                    "headers": headers,
-                    "query": query,
-                    "body": None,
-                    "checks": ["status_2xx"],
-                    "source": "openapi",
-                }
+            summary = str(
+                op.get("summary") or op.get("operationId") or f"{method.upper()} {path_out}"
             )
+            row: dict[str, Any] = {
+                "id": api_id,
+                "name": summary,
+                "method": method.upper(),
+                "path": path_out,
+                "operation_id": op_id,
+                "headers": headers,
+                "query": query,
+                "body": None,
+                "checks": ["status_2xx"],
+                "source": "openapi",
+            }
+            if needs_params:
+                row["needs_params"] = True
+                row["path_template"] = str(raw_path)
+            apis.append(row)
 
-    # Always ensure a health probe if present in doc or as convention fallback handled by caller
     return apis
 
 

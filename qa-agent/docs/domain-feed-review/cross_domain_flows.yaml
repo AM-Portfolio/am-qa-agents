@@ -1,0 +1,28 @@
+# Cross-domain journeys for first feed (review + import later)
+version: 1
+flows:
+  - id: xd_market_search_to_portfolio_holdings
+    env: nonprod
+    services: [am-market-data, am-portfolio]
+    steps:
+      - service: am-market-data
+        op: POST /v1/instruments/search
+        symbol_kind: equity
+        capture: { symbol: "$.[0].symbol" }
+      - service: am-market-data
+        op: "GET /v1/fundamentals/{symbol}"
+        bind_path: { symbol: "{{symbol}}" }
+      - service: am-portfolio
+        op: GET /v1/portfolios/holdings
+    note: Discover instrument then inspect book holdings.
+
+  - id: xd_parser_jobs_to_portfolio
+    env: dev-only
+    services: [am-parser, am-portfolio]
+    steps:
+      - service: am-parser
+        op: GET /v1/
+        query: { user_id: "{{user_id}}" }
+      - service: am-portfolio
+        op: GET /v1/portfolios
+    note: Parser job list then portfolio list — dev Contabo dig first.

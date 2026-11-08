@@ -38,11 +38,14 @@ RUN apt-get update \
 
 COPY pyproject.toml README.md ./
 COPY qa-agent qa-agent/
+# Portal SPA is preferred as a separate nginx image (am-qa-portal-ui). Optional
+# bake remains for single-pod fallback when build/web exists at build time.
 COPY qa-portal-ui qa-portal-ui/
 
 RUN pip install --no-cache-dir ".[temporal,pdf,otel]" tzdata \
     && (test -x qa-agent/vendor/bin/k6 && cp qa-agent/vendor/bin/k6 /usr/local/bin/k6 || true) \
-    && test -x /usr/local/bin/k6
+    && test -x /usr/local/bin/k6 \
+    && mkdir -p qa-portal-ui/build/web
 # Chromium already present in playwright/python base (UI evidence)
 
 EXPOSE 8150

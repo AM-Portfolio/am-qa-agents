@@ -1,0 +1,481 @@
+<mxfile host="app.diagrams.net" agent="am-architecture-drawio">
+  <diagram id="context" name="Context">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ctx_title" value="LLM scenario bank — Context" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1080" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx_purpose" value="Purpose: QA operators onboard once; warm runs reuse a ~200-cap grounded bank (skip LLM); dev may mutate; Contabo prod is read-only." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="64" width="1000" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx_actor" value="QA / release&#10;operator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="200" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx_sys" value="AM QA platform&#10;am-qa-agents&#10;(scenario bank + packs)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1168BD;fontColor=#FFFFFF;strokeColor=#0B4F8A;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="180" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx_sub" value="am-subscription&#10;+ am-identity&#10;(OpenAPI / SPT)" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="640" y="120" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx_llm" value="LLM invent&#10;(cold / hash drift only)" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="640" y="240" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx_temp" value="Temporal Contabo&#10;(dev task queue)" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="900" y="180" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx_e1" value="onboard / pack run" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="ctx_actor" target="ctx_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx_e2" value="contract smoke + execute" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="ctx_sys" target="ctx_sub">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx_e3" value="chunked invent ≤2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="ctx_sys" target="ctx_llm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx_e4" value="release_ops activities" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="ctx_sys" target="ctx_temp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="760" width="1080" height="36" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="business" name="BusinessFlow">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="bf_title" value="LLM scenario bank — BusinessFlow" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
+          <mxGeometry x="40" y="16" width="1520" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_purpose" value="Purpose: first onboard (cold invent) then warm reuse; reject when contract smoke fails or Contabo prod tries L5/mutate." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="58" width="1100" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_user" value="Operator" style="swimlane;fontStyle=1;startSize=32;horizontal=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontColor=#08427B;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="280" height="700" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_u1" value="First-run: empty bank&#10;triggers onboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="lane_user">
+          <mxGeometry x="20" y="50" width="240" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_u2" value="Starts pack / select-few" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="lane_user">
+          <mxGeometry x="20" y="220" width="240" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_u3" value="Sees GO + bank coverage&#10;+ draft_ui backlog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="lane_user">
+          <mxGeometry x="20" y="390" width="240" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_u4" value="Sees onboard_blocked&#10;or env policy skip" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;fontColor=#333333;strokeColor=#B85450;" vertex="1" parent="lane_user">
+          <mxGeometry x="20" y="560" width="240" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_ui" value="QA Portal / CLI" style="swimlane;fontStyle=1;startSize=32;horizontal=1;fillColor=#BBDEFB;strokeColor=#1168BD;fontColor=#08427B;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="90" width="300" height="700" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_ui1" value="onboard_service(svc,env)&#10;/ complete script entry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1168BD;fontColor=#FFFFFF;strokeColor=#0B4F8A;" vertex="1" parent="lane_ui">
+          <mxGeometry x="20" y="50" width="260" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_ui2" value="Select-few + report HTML&#10;(skill matrix)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="lane_ui">
+          <mxGeometry x="20" y="220" width="260" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_ui3" value="Renders run GO/NO_GO&#10;+ draft_ui backlog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="lane_ui">
+          <mxGeometry x="20" y="390" width="260" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_ui4" value="Shows smoke/prep fail&#10;or Contabo L5 blocked" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" vertex="1" parent="lane_ui">
+          <mxGeometry x="20" y="560" width="260" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_svc" value="am-qa-agents" style="swimlane;fontStyle=1;startSize=32;horizontal=1;fillColor=#90CAF9;strokeColor=#438DD5;fontColor=#0B4F8A;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="660" y="90" width="320" height="700" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_s1" value="Knowledge + contract smoke&#10;+ hand-seed data_generator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="lane_svc">
+          <mxGeometry x="20" y="50" width="280" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_s2" value="Warm: invent_complete&#10;→ skip LLM; select → prep → run" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="lane_svc">
+          <mxGeometry x="20" y="220" width="280" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_s3" value="Upsert outcomes + report&#10;bank coverage advisory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="lane_svc">
+          <mxGeometry x="20" y="390" width="280" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_s4" value="onboard_blocked / env filter&#10;no invent / no L5 on Contabo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" vertex="1" parent="lane_svc">
+          <mxGeometry x="20" y="560" width="280" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_ext" value="External" style="swimlane;fontStyle=1;startSize=32;horizontal=1;dashed=1;fillColor=#F5F5F5;strokeColor=#666666;fontColor=#333333;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="90" width="320" height="700" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_e1" value="OpenAPI subscription/identity&#10;SPT tools on env=dev or Contabo" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" vertex="1" parent="lane_ext">
+          <mxGeometry x="20" y="50" width="280" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_e2" value="LLM invent (cold only)&#10;chunked ≤2 calls" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" vertex="1" parent="lane_ext">
+          <mxGeometry x="20" y="220" width="280" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_e3" value="Target APIs execute&#10;happy/L2…L5 per env" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" vertex="1" parent="lane_ext">
+          <mxGeometry x="20" y="390" width="280" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_edge1" value="opens" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="bf_u1" target="bf_ui1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_edge2" value="onboard" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="bf_ui1" target="bf_s1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_edge3" value="GET OpenAPI + smoke" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="bf_s1" target="bf_e1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_edge4" value="starts pack" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="bf_u2" target="bf_ui2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_edge5" value="warm path" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="bf_ui2" target="bf_s2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_edge6" value="invent cold/drift" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="bf_s2" target="bf_e2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_edge7" value="execute SPT" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="bf_s2" target="bf_e3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_edge8" value="success report" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="bf_s3" target="bf_ui3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_edge9" value="shows" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="bf_ui3" target="bf_u3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_edge10" value="reject" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" edge="1" parent="1" source="bf_s4" target="bf_ui4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_edge11" value="shows error" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" edge="1" parent="1" source="bf_ui4" target="bf_u4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bf_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="940" width="1520" height="36" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="containers" name="Containers">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="c_title" value="LLM scenario bank — Containers" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
+          <mxGeometry x="40" y="16" width="1320" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="c_purpose" value="Purpose: nested AM QA boundary. Bank + knowledge are stores. Edges are method/path or invent/async." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="58" width="1000" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="c_boundary" value="am-qa-agents" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#1168BD;strokeWidth=2;verticalAlign=top;align=left;spacingLeft=10;spacingTop=6;fontColor=#1168BD;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="980" height="520" as="geometry" />
+        </mxCell>
+        <mxCell id="c_portal" value="QA Portal / CLI&#10;complete script" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" vertex="1" parent="c_boundary">
+          <mxGeometry x="30" y="50" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c_onboard" value="onboard_service&#10;contract smoke" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" vertex="1" parent="c_boundary">
+          <mxGeometry x="240" y="50" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c_planner" value="scenario_planner&#10;grounding gate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" vertex="1" parent="c_boundary">
+          <mxGeometry x="460" y="50" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c_seed" value="seed_subscription&#10;data_generator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" vertex="1" parent="c_boundary">
+          <mxGeometry x="680" y="50" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c_select" value="select-few + env&#10;filter + execute" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" vertex="1" parent="c_boundary">
+          <mxGeometry x="240" y="180" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c_ops" value="release_ops&#10;Temporal activities" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" vertex="1" parent="c_boundary">
+          <mxGeometry x="460" y="180" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c_skills" value="skills.yaml&#10;L1–L5 taxonomy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" vertex="1" parent="c_boundary">
+          <mxGeometry x="680" y="180" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c_bank" value="ScenarioBank&#10;200-cap · dedupe&#10;invent_complete" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;" vertex="1" parent="c_boundary">
+          <mxGeometry x="240" y="320" width="160" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="c_know" value="Knowledge&#10;openapi_hash&#10;tools[] · smoke" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;" vertex="1" parent="c_boundary">
+          <mxGeometry x="460" y="320" width="160" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="c_lock" value="Invent lock&#10;(service, env) TTL" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;" vertex="1" parent="c_boundary">
+          <mxGeometry x="680" y="320" width="160" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="c_openapi" value="am-subscription&#10;am-identity OpenAPI" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="140" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="c_llm" value="LLM vendor&#10;chunked invent" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="280" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="c_temp" value="Temporal Contabo&#10;dev queue" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="420" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="c_e1" value="onboard_service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="c_portal" target="c_onboard">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_e2" value="GET OpenAPI + hash" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="c_onboard" target="c_openapi">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_e3" value="persist knowledge" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="c_onboard" target="c_know">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_e4" value="cold invent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="c_onboard" target="c_planner">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_e5" value="acquire lock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="c_planner" target="c_lock">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_e6" value="LLM invent ≤2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="c_planner" target="c_llm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_e7" value="upsert scenarios" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="c_planner" target="c_bank">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_e8" value="seed FLOW / prep" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="c_seed" target="c_bank">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_e9" value="read bank + skills" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="c_select" target="c_bank">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_e10" value="POST SPT execute" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="c_select" target="c_openapi">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_e11" value="activity schedule" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="c_ops" target="c_temp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_e12" value="skill mix policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="c_skills" target="c_select">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="840" width="1320" height="36" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sequence" name="Sequence">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="seq_title" value="LLM scenario bank — Sequence" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
+          <mxGeometry x="40" y="16" width="1320" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="seq_purpose" value="Purpose: cold invent once → warm run. Reject path = smoke fail or Contabo L5 block." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="58" width="1000" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="life_op" value="Operator" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;size=40;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="100" height="680" as="geometry" />
+        </mxCell>
+        <mxCell id="life_qa" value="qa-agents" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;size=40;" vertex="1" parent="1">
+          <mxGeometry x="200" y="100" width="120" height="680" as="geometry" />
+        </mxCell>
+        <mxCell id="life_bank" value="Bank+Know" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;size=40;" vertex="1" parent="1">
+          <mxGeometry x="400" y="100" width="120" height="680" as="geometry" />
+        </mxCell>
+        <mxCell id="life_api" value="Sub+Id APIs" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#F5F5F5;fontColor=#333333;strokeColor=#666666;dashed=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="600" y="100" width="120" height="680" as="geometry" />
+        </mxCell>
+        <mxCell id="life_llm" value="LLM" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#F5F5F5;fontColor=#333333;strokeColor=#666666;dashed=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="800" y="100" width="100" height="680" as="geometry" />
+        </mxCell>
+        <mxCell id="life_spt" value="SPT execute" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;size=40;" vertex="1" parent="1">
+          <mxGeometry x="980" y="100" width="120" height="680" as="geometry" />
+        </mxCell>
+        <mxCell id="seq_m1" value="1 onboard_service" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=1;exitY=0.12;entryX=0;entryY=0.12;" edge="1" parent="1" source="life_op" target="life_qa">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="seq_m2" value="2 GET OpenAPI + smoke" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=1;exitY=0.20;entryX=0;entryY=0.20;" edge="1" parent="1" source="life_qa" target="life_api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="seq_m3" value="3 persist knowledge + seed" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=1;exitY=0.28;entryX=0;entryY=0.28;" edge="1" parent="1" source="life_qa" target="life_bank">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="seq_m4" value="4 cold invent (locked)" style="html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;exitX=1;exitY=0.36;entryX=0;entryY=0.36;" edge="1" parent="1" source="life_qa" target="life_llm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="seq_m5" value="5 ground + upsert bank" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=0;exitY=0.44;entryX=1;entryY=0.44;" edge="1" parent="1" source="life_qa" target="life_bank">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="seq_m6" value="6 warm pack: select-few" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=1;exitY=0.54;entryX=0;entryY=0.54;" edge="1" parent="1" source="life_op" target="life_qa">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="seq_m7" value="7 prep data_generator" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=1;exitY=0.62;entryX=0;entryY=0.62;" edge="1" parent="1" source="life_qa" target="life_api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="seq_m8" value="8 execute runnable steps" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=1;exitY=0.70;entryX=0;entryY=0.70;" edge="1" parent="1" source="life_qa" target="life_spt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="seq_m9" value="9 report GO + coverage" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=0;exitY=0.78;entryX=1;entryY=0.78;" edge="1" parent="1" source="life_qa" target="life_op">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="seq_m10" value="10 Reject: smoke HTML/empty → no LLM" style="html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;exitX=1;exitY=0.90;entryX=0;entryY=0.90;" edge="1" parent="1" source="life_qa" target="life_bank">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="seq_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="840" width="1320" height="36" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="data" name="DataIdentity">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="di_title" value="LLM scenario bank — DataIdentity" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
+          <mxGeometry x="40" y="16" width="1080" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="di_purpose" value="Purpose: knowledge owns openapi_hash; bank owns scenario ids + invent flags; outcomes feed coverage." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="58" width="900" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="di_know" value="Knowledge store&#10;service + env&#10;openapi_hash&#10;contract_smoke&#10;invent_complete&#10;needs_reinvent&#10;tools[] apis[]" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="120" width="240" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="di_bank" value="ScenarioBank row&#10;scenario_id&#10;skill · kind · status&#10;steps[] prep_needs[]&#10;dedupe_key&#10;outcomes&#10;cap 200 / svc+env" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="420" y="120" width="240" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="di_skills" value="skills.yaml&#10;skill_id&#10;level L1–L5&#10;dev vs Contabo policy&#10;quotas / select mix" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="780" y="120" width="240" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="di_run" value="Run ledger / report&#10;run_id · llm_invoked&#10;smoke/prep status&#10;selected GO/NO_GO&#10;draft_ui backlog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="420" y="400" width="240" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="di_e1" value="hash drift → reinvent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="di_know" target="di_bank">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="di_e2" value="skill enum constrains" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="di_skills" target="di_bank">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="di_e3" value="upsert outcomes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="di_run" target="di_bank">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="di_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="760" width="1080" height="36" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="security" name="SecurityTrust">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="st_title" value="LLM scenario bank — SecurityTrust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
+          <mxGeometry x="40" y="16" width="1080" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="st_purpose" value="Purpose: SPT auth names only; dev may mutate; Contabo prod blocks L5/security/mutate." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="58" width="900" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="st_auth" value="SPT_AUTH_*&#10;identity login&#10;(env names only)" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="60" y="140" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="st_dig" value="dev env&#10;mutate + L5 + security&#10;prep fail-closed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
+          <mxGeometry x="340" y="120" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="st_prod" value="Contabo prod&#10;happy / L2 / read-only&#10;assert prep only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1168BD;fontColor=#FFFFFF;strokeColor=#0B4F8A;" vertex="1" parent="1">
+          <mxGeometry x="340" y="260" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="st_block" value="Blocked on Contabo prod&#10;level5_abuse · security&#10;grant/ensure mutate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" vertex="1" parent="1">
+          <mxGeometry x="660" y="180" width="240" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="st_ground" value="Grounding gate&#10;steps must match tools[]&#10;else status=draft" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
+          <mxGeometry x="340" y="420" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="st_e1" value="Bearer login dev/prod" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="st_auth" target="st_dig">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st_e2" value="assert-only prep" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="st_auth" target="st_prod">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st_e3" value="env filter reject" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" edge="1" parent="1" source="st_prod" target="st_block">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st_e4" value="ungrounded → draft" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" edge="1" parent="1" source="st_ground" target="st_block">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="760" width="1080" height="36" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="failures" name="Failures">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="fail_title" value="LLM scenario bank — Failures" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
+          <mxGeometry x="40" y="16" width="1320" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_purpose" value="Purpose: each row Trigger → system → operator-sees. Smoke, prep, env, and invent failures." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="58" width="1000" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_h1" value="Trigger" style="text;html=1;fontStyle=1;fontColor=#B85450;align=center;" vertex="1" parent="1">
+          <mxGeometry x="60" y="100" width="280" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_h2" value="System" style="text;html=1;fontStyle=1;fontColor=#0B4F8A;align=center;" vertex="1" parent="1">
+          <mxGeometry x="460" y="100" width="280" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_h3" value="Operator sees" style="text;html=1;fontStyle=1;fontColor=#08427B;align=center;" vertex="1" parent="1">
+          <mxGeometry x="860" y="100" width="280" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_t1" value="OpenAPI HTML / 401 /&#10;tools[] empty" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="140" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_s1" value="contract_smoke fail →&#10;onboard_blocked; no LLM;&#10;seed-only happy/L2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
+          <mxGeometry x="460" y="140" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_u1" value="Report: onboard_blocked;&#10;invent skipped" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="1">
+          <mxGeometry x="860" y="140" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_e1a" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_t1" target="fail_s1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_e1b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_s1" target="fail_u1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_t2" value="dev prep login/me fail&#10;or ensure tool missing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="250" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_s2" value="data_generator fail-closed&#10;pack stops before execute" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
+          <mxGeometry x="460" y="250" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_u2" value="NO_GO; prep status&#10;in report" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="1">
+          <mxGeometry x="860" y="250" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_e2a" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_t2" target="fail_s2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_e2b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_s2" target="fail_u2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_t3" value="Contabo prod selects&#10;L5 / security / mutate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="360" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_s3" value="Env filter blocks before&#10;execute; no grant calls" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
+          <mxGeometry x="460" y="360" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_u3" value="Skill skipped in matrix;&#10;prod book untouched" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="1">
+          <mxGeometry x="860" y="360" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_e3a" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_t3" target="fail_s3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_e3b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_s3" target="fail_u3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_t4" value="openapi_hash drift&#10;or concurrent cold invent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="470" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_s4" value="needs_reinvent + invent lock;&#10;ungrounded steps → draft" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
+          <mxGeometry x="460" y="470" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_u4" value="Warm skip until reinvent;&#10;draft_ui backlog listed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="1">
+          <mxGeometry x="860" y="470" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_e4a" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;" edge="1" parent="1" source="fail_t4" target="fail_s4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_e4b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;" edge="1" parent="1" source="fail_s4" target="fail_u4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="840" width="1320" height="36" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

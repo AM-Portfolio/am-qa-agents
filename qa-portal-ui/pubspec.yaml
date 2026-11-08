@@ -1,5 +1,5 @@
 name: am_qa_portal
-description: QA operator portal (Flutter web) — Runs, Profiles, Specs against api-load.
+description: QA operator portal (Flutter web + Windows) — Runs, Profiles, Specs against qa-agent.
 publish_to: "none"
 version: 0.1.0+1
 
@@ -18,13 +18,20 @@ dependencies:
   url_launcher: ^6.3.2
   file_picker: ^8.0.0
   shared_preferences: ^2.3.0
+  archive: ^3.6.1
+  path: ^1.9.0
   am_design_system:
     path: ../../am-modern-ui/am_design_system
+  node_flow: ^0.2.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+
+# Prefer the GrowthBook build that ships generated .g.dart (3.9.14 in pub cache is incomplete).
+dependency_overrides:
+  growthbook_sdk_flutter: 3.9.10
 
 flutter:
   uses-material-design: true

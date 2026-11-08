@@ -4,11 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/config/portal_config.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/json_lists.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../execute/presentation/pages/execute_bar.dart';
+import '../../../../core/update/desktop_updater.dart';
+import '../../data/workspace_store.dart';
+import '../cubit/portal_notifications.dart';
+import '../cubit/workspace_cubit.dart';
+import '../widgets/portal_top_header.dart';
 
 /// QA operator shell — product [GlobalSidebar] + portal-specific destinations.
 class OperatorShell extends StatelessWidget {
@@ -17,9 +23,12 @@ class OperatorShell extends StatelessWidget {
   final Widget child;
 
   static const _nav = <(String route, String title, IconData icon)>[
+    (AppRoutes.services, 'Services', Icons.hub_outlined),
     (AppRoutes.runs, 'Runs', Icons.play_circle_outline),
     (AppRoutes.profiles, 'Profiles', Icons.tune),
     (AppRoutes.specs, 'OpenAPI', Icons.api_outlined),
+    (AppRoutes.datasets, 'Datasets', Icons.inventory_2_outlined),
+    (AppRoutes.flows, 'Flows', Icons.account_tree_outlined),
     (AppRoutes.uiFlows, 'UI flows', Icons.web_asset),
   ];
 
@@ -177,6 +186,24 @@ class OperatorShell extends StatelessWidget {
                 'Theme toggle is on the sidebar.',
                 style: Theme.of(ctx).textTheme.bodySmall,
               ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.desktop_windows_outlined),
+                title: const Text('Get Windows app'),
+                subtitle: const Text(
+                  'Versioned download page — Setup.exe + open web',
+                ),
+                onTap: () async {
+                  final url = windowsDownloadPageUrl(getIt<PortalConfig>());
+                  final uri = Uri.parse(
+                    url.startsWith('http')
+                        ? url
+                        : Uri.base.resolve(url).toString(),
+                  );
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
+              ),
             ],
           ),
         ),
@@ -201,8 +228,14 @@ class OperatorShell extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return BlocProvider(
-      create: (_) => _ShellCubit(getIt<Dio>())..refresh(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => _ShellCubit(getIt<Dio>())..refresh()),
+        BlocProvider(
+          create: (_) => WorkspaceCubit(WorkspaceStore())..load(),
+        ),
+        BlocProvider(create: (_) => PortalNotificationsCubit()),
+      ],
       child: Scaffold(
         body: Row(
           children: [
@@ -238,26 +271,23 @@ class OperatorShell extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Material(
-                    elevation: 0,
-                    color: theme.colorScheme.surface,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        BlocBuilder<_ShellCubit, _ShellState>(
-                          builder: (context, shell) {
-                            return ExecuteBar(
-                              apiOk: shell.apiOk && shell.k6Ok != false,
-                              apiMessage: shell.k6Ok == false
-                                   ? 'k6 missing'
-                                  : shell.message,
-                              onClearCache: () =>
-                                  context.read<_ShellCubit>().clearCache(),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                  BlocBuilder<_ShellCubit, _ShellState>(
+                    builder: (context, shell) {
+                      return PortalTopHeader(
+                        apiOk: shell.apiOk,
+                        apiMessage: shell.apiOk
+                            ? null
+                            : (shell.message ?? 'API unreachable'),
+                        onRefreshHealth: () =>
+                            context.read<_ShellCubit>().refresh(),
+                        onClearCache: () =>
+                            context.read<_ShellCubit>().clearCache(),
+                        onOpenProfile: (ctx) async {
+                          final s = ctx.read<_ShellCubit>().state;
+                          await _showProfile(ctx, s);
+                        },
+                      );
+                    },
                   ),
                   const Divider(height: 1),
                   Expanded(child: child),

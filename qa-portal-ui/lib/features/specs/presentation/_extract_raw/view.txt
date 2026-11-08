@@ -1,0 +1,674 @@
+class _SpecsView extends StatefulWidget {
+  const _SpecsView();
+
+  @override
+  State<_SpecsView> createState() => _SpecsViewState();
+}
+
+class _SpecsViewState extends State<_SpecsView> with SingleTickerProviderStateMixin {
+  late final TabController _tabs;
+  String _serviceQuery = '';
+  String _apiQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 5, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  List<String> _filteredServices(SpecsState state) {
+    final q = _serviceQuery.trim().toLowerCase();
+    if (q.isEmpty) return state.services;
+    return state.services.where((id) {
+      final label = state.labelFor(id).toLowerCase();
+      return id.toLowerCase().contains(q) || label.contains(q);
+    }).toList();
+  }
+
+  List<(int, Map<String, dynamic>)> _filteredApis(SpecsState state) {
+    final q = _apiQuery.trim().toLowerCase();
+    final out = <(int, Map<String, dynamic>)>[];
+    for (var i = 0; i < state.apis.length; i++) {
+      final api = state.apis[i];
+      final id = SpecsCubit.apiId(api, i).toLowerCase();
+      final method = '${api['method'] ?? ''}'.toLowerCase();
+      final path = '${api['path'] ?? api['url'] ?? ''}'.toLowerCase();
+      if (q.isEmpty || id.contains(q) || method.contains(q) || path.contains(q)) {
+        out.add((i, api));
+      }
+    }
+    return out;
+  }
+
+  String _tryBase() {
+    final cfg = getIt<PortalConfig>();
+    return cfg.apiBase.replaceAll(RegExp(r'/$'), '');
+  }
+
+  Future<void> _showDiffDialog(BuildContext context, List<DraftFieldChange> diff) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(diff.isEmpty ? 'Refresh payload ? no changes' : 'Refresh payload ? compare'),
+        content: SizedBox(
+          width: 720,
+          child: diff.isEmpty
+              ? const Text('Draft is unchanged after Ensure/refresh.')
+              : SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final c in diff) ...[
+                        Text(
+                          c.field,
+                          style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(ctx)
+                                      .colorScheme
+                                      .errorContainer
+                                      .withValues(alpha: 0.35),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: SelectableText(
+                                  'Before\n${c.before}',
+                                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                                        fontFamily: 'monospace',
+                                      ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(ctx)
+                                      .colorScheme
+                                      .primaryContainer
+                                      .withValues(alpha: 0.35),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: SelectableText(
+                                  'After\n${c.after}',
+                                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                                        fontFamily: 'monospace',
+                                      ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+                  ),
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              context.read<SpecsCubit>().clearPayloadDiff();
+              Navigator.pop(ctx);
+            },
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<SpecsCubit, SpecsState>(
+          listenWhen: (p, n) => p.message != n.message && n.message != null,
+          listener: (context, state) {
+            final msg = state.message;
+            if (msg == null) return;
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+          },
+        ),
+        BlocListener<SpecsCubit, SpecsState>(
+          listenWhen: (p, n) =>
+              p.message != n.message && n.message != null && n.message!.startsWith('Refresh:'),
+          listener: (context, state) {
+            _showDiffDialog(context, state.lastPayloadDiff);
+          },
+        ),
+      ],
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Theme.of(context).colorScheme.surface,
+              AppColors.primary.withValues(alpha: 0.06),
+              Theme.of(context).colorScheme.surface,
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+          child: BlocBuilder<SpecsCubit, SpecsState>(
+            builder: (context, state) {
+              if (state.loading && state.services.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final cubit = context.read<SpecsCubit>();
+              final services = _filteredServices(state);
+              final apis = _filteredApis(state);
+              final versions = <String>{
+                for (final s in state.payloadSets) '${s['version'] ?? s['id'] ?? ''}',
+              }..remove('');
+              final selectedVer = state.selectedPayloadVersion;
+              final doc = state.openapiDoc ?? const <String, dynamic>{};
+
+              return Column(
+                children: [
+                  if ((state.error != null && state.error!.isNotEmpty) ||
+                      (state.message != null && state.message!.isNotEmpty))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Material(
+                        color: (state.error != null
+                                ? Colors.redAccent
+                                : Colors.amber.shade800)
+                            .withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                state.error != null
+                                    ? Icons.error_outline
+                                    : Icons.info_outline,
+                                size: 18,
+                                color: state.error != null
+                                    ? Colors.redAccent
+                                    : Colors.amber,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  state.error ?? state.message ?? '',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: state.selectedService == null
+                                    ? () => cubit.boot()
+                                    : () => cubit.selectService(
+                                          state.selectedService!,
+                                        ),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  Row(
+                    children: [
+                      Text(
+                        state.selectedService == null
+                            ? 'OpenAPI'
+                            : state.labelFor(state.selectedService!),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (state.targetUrl != null)
+                        Flexible(
+                          child: Text(
+                            '${state.environment} · ${state.targetUrl}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  fontFamily: 'monospace',
+                                  color: AppColors.textSecondaryDark,
+                                ),
+                          ),
+                        ),
+                      if (state.selectedService != null) ...[
+                        const SizedBox(width: 8),
+                        Chip(
+                          visualDensity: VisualDensity.compact,
+                          label: Text(
+                            'APIs ${state.apis.length}'
+                            ' · ops ${state.operationCount ?? state.openapi?['operation_count'] ?? '?'}'
+                            ' · tools ${state.toolsCount ?? state.mcpTools.length}',
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                          backgroundColor: state.syncCountsMatch
+                              ? const Color(0xFF22C55E).withValues(alpha: 0.18)
+                              : Colors.amber.withValues(alpha: 0.2),
+                        ),
+                      ],
+                      const Spacer(),
+                      if (state.loading)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 8),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 200,
+                          child: GlassCard(
+                            padding: EdgeInsets.zero,
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              'Catalog (${services.length})',
+                                              style: Theme.of(context).textTheme.labelLarge,
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: 88,
+                                            child: DropdownButtonFormField<String>(
+                                              key: ValueKey(state.environment),
+                                              initialValue: state.environment,
+                                              isDense: true,
+                                              decoration: const InputDecoration(
+                                                isDense: true,
+                                                border: OutlineInputBorder(),
+                                                contentPadding: EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 6,
+                                                ),
+                                              ),
+                                              items: const [
+                                                DropdownMenuItem(value: 'dev', child: Text('dev')),
+                                                DropdownMenuItem(
+                                                  value: 'preprod',
+                                                  child: Text('preprod'),
+                                                ),
+                                                DropdownMenuItem(value: 'prod', child: Text('prod')),
+                                              ],
+                                              onChanged: (v) {
+                                                if (v != null) cubit.setEnvironment(v);
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      TextField(
+                                        decoration: const InputDecoration(
+                                          hintText: 'Filter services',
+                                          isDense: true,
+                                          border: OutlineInputBorder(),
+                                          prefixIcon: Icon(Icons.search, size: 16),
+                                        ),
+                                        onChanged: (v) => setState(() => _serviceQuery = v),
+                                      ),
+                                      Text(
+                                        'health: ${state.health?['status'] ?? '?'}',
+                                        style: Theme.of(context).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                                Expanded(
+                                  child: ListView.builder(
+                                    itemCount: services.length,
+                                    itemBuilder: (_, i) {
+                                      final id = services[i];
+                                      return ListTile(
+                                        dense: true,
+                                        selected: id == state.selectedService,
+                                        selectedTileColor:
+                                            AppColors.primary.withValues(alpha: 0.14),
+                                        title: Text(state.labelFor(id), maxLines: 1),
+                                        onTap: () => cubit.selectService(id),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 270,
+                          child: GlassCard(
+                            padding: EdgeInsets.zero,
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              'APIs (${apis.length})',
+                                              style: Theme.of(context).textTheme.labelLarge,
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: cubit.selectAllApis,
+                                            child: const Text('All'),
+                                          ),
+                                          TextButton(
+                                            onPressed: cubit.clearApiSelection,
+                                            child: const Text('Clear'),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: TextField(
+                                              decoration: const InputDecoration(
+                                                hintText: 'Filter APIs',
+                                                isDense: true,
+                                                border: OutlineInputBorder(),
+                                                prefixIcon: Icon(Icons.filter_list, size: 16),
+                                              ),
+                                              onChanged: (v) => setState(() => _apiQuery = v),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          SizedBox(
+                                            width: 92,
+                                            child: DropdownButtonFormField<String?>(
+                                              key: ValueKey('ver-$selectedVer'),
+                                              initialValue: selectedVer != null &&
+                                                      versions.contains(selectedVer)
+                                                  ? selectedVer
+                                                  : null,
+                                              isDense: true,
+                                              decoration: const InputDecoration(
+                                                labelText: 'v',
+                                                isDense: true,
+                                                border: OutlineInputBorder(),
+                                                contentPadding: EdgeInsets.symmetric(
+                                                  horizontal: 6,
+                                                  vertical: 4,
+                                                ),
+                                              ),
+                                              items: [
+                                                const DropdownMenuItem(
+                                                  value: null,
+                                                  child: Text('(none)'),
+                                                ),
+                                                for (final v in versions.toList()..sort())
+                                                  DropdownMenuItem(value: v, child: Text('v$v')),
+                                              ],
+                                              onChanged:
+                                                  state.loading ? null : cubit.setPayloadVersion,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            '${state.selectedApiIds.length}/${state.apis.length}',
+                                            style: Theme.of(context).textTheme.bodySmall,
+                                          ),
+                                          const Spacer(),
+                                          TextButton(
+                                            onPressed: state.loading ||
+                                                    state.selectedApiIds.isEmpty
+                                                ? null
+                                                : cubit.testCheckedApis,
+                                            child: const Text('Test ✓'),
+                                          ),
+                                          TextButton(
+                                            onPressed: state.loading ||
+                                                    state.selectedService == null
+                                                ? null
+                                                : cubit.ensurePayloadSet,
+                                            child: const Text('Ensure'),
+                                          ),
+                                          TextButton(
+                                            onPressed: state.loading || selectedVer == null
+                                                ? null
+                                                : () => cubit.activatePayloadVersion(selectedVer),
+                                            child: const Text('Activate'),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                                Expanded(
+                                  child: ListView.separated(
+                                    itemCount: apis.length,
+                                    separatorBuilder: (_, __) => const Divider(height: 1),
+                                    itemBuilder: (_, i) {
+                                      final (index, api) = apis[i];
+                                      final id = SpecsCubit.apiId(api, index);
+                                      final method = '${api['method'] ?? ''}'.toUpperCase();
+                                      final path = '${api['path'] ?? api['url'] ?? ''}';
+                                      final checked = state.selectedApiIds.contains(id);
+                                      return ListTile(
+                                        dense: true,
+                                        selected: id == state.selectedApiId,
+                                        selectedTileColor:
+                                            AppColors.primary.withValues(alpha: 0.1),
+                                        leading: Checkbox(
+                                          value: checked,
+                                          onChanged: (v) => cubit.toggleApiSelection(
+                                            id,
+                                            selected: v == true,
+                                          ),
+                                        ),
+                                        title: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 5,
+                                                vertical: 1,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: _methodBg(method),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                method,
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: _methodFg(method),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                path,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(fontSize: 12),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        trailing: IconButton(
+                                          tooltip: 'Test (load set v + Send)',
+                                          icon: const Icon(Icons.play_arrow, size: 18),
+                                          onPressed: state.loading
+                                              ? null
+                                              : () => cubit.testApiOneClick(api),
+                                        ),
+                                        onTap: () => cubit.pickApi(api),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: GlassCard(
+                            padding: EdgeInsets.zero,
+                            child: Column(
+                              children: [
+                                TabBar(
+                                  controller: _tabs,
+                                  tabs: const [
+                                    Tab(text: 'Test'),
+                                    Tab(text: 'Swagger'),
+                                    Tab(text: 'MCP / AI'),
+                                    Tab(text: 'Use cases'),
+                                    Tab(text: 'Data'),
+                                  ],
+                                ),
+                                Expanded(
+                                  child: TabBarView(
+                                    controller: _tabs,
+                                    children: [
+                                      TestWorkspace(
+                                        draft: state.draft,
+                                        loading: state.loading,
+                                        tryResult: state.tryResult,
+                                        tryStatusCode: state.tryStatusCode,
+                                        tryDurationMs: state.tryDurationMs,
+                                        canRevert: state.canRevert,
+                                        selectedPayloadVersion: selectedVer,
+                                        targetUrl: state.targetUrl,
+                                        paramEnums: state.paramEnums,
+                                        onDraftChanged: cubit.updateDraft,
+                                        onSend: () => cubit.testApiOneClick(),
+                                        onMock: cubit.runTry,
+                                        onFormat: cubit.formatBody,
+                                        onBuild: () => cubit.buildPayload(),
+                                        onEnsure: () => cubit.ensureWorking(),
+                                        onRefreshPayload: cubit.refreshPayload,
+                                        onRevert: cubit.revertDraft,
+                                        onCopyCurl: () {
+                                          Clipboard.setData(
+                                            ClipboardData(text: cubit.copyCurlText()),
+                                          );
+                                          final tgt = state.targetUrl ?? 'catalog target';
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text('curl copied ? $tgt')),
+                                          );
+                                        },
+                                        onCopyResponse: () {
+                                          if (state.tryResult == null) return;
+                                          Clipboard.setData(
+                                            ClipboardData(text: state.tryResult!),
+                                          );
+                                        },
+                                        onSaveSet: () => cubit.saveToCurrentSet(),
+                                        onPickFile: cubit.pickFile,
+                                        onRemoveFile: cubit.removeFile,
+                                      ),
+                                      state.selectedService == null
+                                          ? const Center(child: Text('Select a catalog service'))
+                                          : SwaggerEmbed(
+                                              spec: doc,
+                                              specRevision: state.specRevision,
+                                              service: state.selectedService!,
+                                              environment: state.environment,
+                                              tryBase: _tryBase(),
+                                              token: state.tryToken,
+                                              onRefresh: () => cubit.selectService(
+                                                state.selectedService!,
+                                              ),
+                                              onUseInTest: (draft) {
+                                                cubit.applyPayloadMap(draft);
+                                                _tabs.index = 0;
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text('Applied to Test')),
+                                                );
+                                                setState(() {});
+                                              },
+                                            ),
+                                      _McpPane(state: state),
+                                      _UseCasesPane(state: state),
+                                      _DataPane(state: state),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _methodBg(String m) {
+    switch (m) {
+      case 'GET':
+        return const Color(0xFF22C55E).withValues(alpha: 0.2);
+      case 'POST':
+        return AppColors.primary.withValues(alpha: 0.2);
+      case 'DELETE':
+        return const Color(0xFFEF4444).withValues(alpha: 0.2);
+      default:
+        return AppColors.primary.withValues(alpha: 0.12);
+    }
+  }
+
+  Color _methodFg(String m) {
+    switch (m) {
+      case 'GET':
+        return const Color(0xFF22C55E);
+      case 'DELETE':
+        return const Color(0xFFEF4444);
+      default:
+        return AppColors.primary;
+    }
+  }
+}

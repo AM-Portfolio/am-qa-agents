@@ -31,7 +31,13 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/dist/
 /coverage/
+
+# Windows Setup baked for /download (CI / pack-windows copies here)
+/download/desktop/*.exe
+/download/desktop/*.nupkg
+/download/desktop/*.zip
 
 # Symbolication related
 app.*.symbols
@@ -43,3 +49,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Windows Flutter engine artifacts
+windows/flutter/ephemeral/
+

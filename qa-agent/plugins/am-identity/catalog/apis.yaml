@@ -1,0 +1,57 @@
+flows:
+  - id: FLOW_IDENTITY_LOGIN
+    title: SPT identity login
+    gate: prod_safe
+    group: identity
+    category: auth
+    description: Happy-path identity login with SPT credentials; captures JWT.
+    tags: [login, jwt]
+    created_by: builtin
+    in_pack: true
+    steps:
+      - id: login
+        kind: call_tool
+        service: am-identity
+        path_contains: /auth/login
+        method: post
+        uses_spt_auth_creds: true
+        capture_tokens: true
+
+  - id: FLOW_IDENTITY_LOGIN_BAD_PASSWORD
+    title: Identity login rejects bad password
+    gate: prod_safe
+    group: identity
+    category: negative
+    description: Wrong password should return 4xx (not 2xx).
+    tags: [login, negative]
+    created_by: builtin
+    steps:
+      - id: login_bad
+        kind: call_tool
+        service: am-identity
+        path_contains: /auth/login
+        method: post
+        uses_spt_auth_creds: true
+        # Runner uses username from credential but wrong password override via body_override
+        body_override:
+          password: "__qa_bad_password__"
+        expect_status: [400, 401, 403]
+
+  - id: FLOW_IDENTITY_LOGIN_MISSING_FIELDS
+    title: Identity login rejects missing password
+    gate: prod_safe
+    group: identity
+    category: negative
+    description: Missing password field should return 4xx.
+    tags: [login, validation, negative]
+    created_by: builtin
+    steps:
+      - id: login_missing
+        kind: call_tool
+        service: am-identity
+        path_contains: /auth/login
+        method: post
+        body_override:
+          username: "qa-missing@example.com"
+          password: ""
+        expect_status: [400, 401, 422]

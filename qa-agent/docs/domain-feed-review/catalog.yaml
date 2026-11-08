@@ -1,0 +1,159 @@
+title: Domain feed review catalog
+source: am-specs/catalog/services.yaml
+environments:
+- dev
+- preprod
+- prod
+services:
+- id: am-market-data
+  priority: 1
+  domain: market
+  enabled: true
+  status: active
+  environments:
+    dev: https://am-dev.asrax.in/market
+    preprod: https://am-preprod.asrax.in/market
+    prod: https://am.asrax.in/market
+  openapi:
+    yaml: services/am-market-data/openapi.yaml
+    json: services/am-market-data/openapi.json
+    operations: 104
+  data_gen:
+    template_dir: templates/data-gen/service/am-market-data
+    business_yaml: true
+  spt:
+    repo: am-market
+    path: am-market-data/spt.yaml
+- id: am-news
+  priority: 2
+  domain: market
+  enabled: true
+  status: active
+  environments:
+    dev: https://am-dev.asrax.in/news
+    preprod: https://am-preprod.asrax.in/news
+    prod: https://am.asrax.in/news
+  openapi:
+    yaml: services/am-news/openapi.yaml
+    json: services/am-news/openapi.json
+    operations: 11
+  data_gen:
+    template_dir: templates/data-gen/service/am-news
+    business_yaml: true
+  spt:
+    repo: am-market
+    path: am-news/spt.yaml
+- id: am-parser
+  priority: 3
+  domain: market
+  enabled: true
+  status: active
+  environments:
+    dev: https://am-dev.asrax.in/parser
+    preprod: https://am-preprod.asrax.in/parser
+    prod: https://am.asrax.in/parser
+  openapi:
+    yaml: services/am-parser/openapi.yaml
+    json: services/am-parser/openapi.json
+    operations: 29
+  data_gen:
+    template_dir: templates/data-gen/service/am-parser
+    business_yaml: true
+  spt:
+    repo: am-market
+    path: am-parser/spt.yaml
+- id: am-portfolio
+  priority: 4
+  domain: portfolio
+  enabled: true
+  status: active
+  environments:
+    dev: https://am-dev.asrax.in/portfolio
+    preprod: https://am-preprod.asrax.in/portfolio
+    prod: https://am.asrax.in/portfolio
+  openapi:
+    yaml: services/am-portfolio/openapi.yaml
+    json: services/am-portfolio/openapi.json
+    operations: 66
+  data_gen:
+    template_dir: templates/data-gen/service/am-portfolio
+    business_yaml: true
+  spt:
+    repo: am-portfolio
+    path: spt.yaml
+- id: am-analysis
+  priority: 5
+  domain: portfolio
+  enabled: true
+  status: active
+  environments:
+    dev: https://am-dev.asrax.in/analysis
+    preprod: https://am-preprod.asrax.in/analysis
+    prod: https://am.asrax.in/analysis
+  openapi:
+    yaml: services/am-analysis/openapi.yaml
+    json: services/am-analysis/openapi.json
+    operations: 4
+  data_gen:
+    template_dir: templates/data-gen/service/am-analysis
+    business_yaml: true
+  spt:
+    repo: am-core-services
+    path: services/am-analysis/spt.yaml
+- id: am-trade-management-service
+  priority: 6
+  domain: trade
+  enabled: true
+  status: active
+  environments:
+    dev: https://am-dev.asrax.in/trade
+    preprod: https://am-preprod.asrax.in/trade
+    prod: https://am.asrax.in/trade
+  openapi:
+    yaml: services/am-trade-management-service/openapi.yaml
+    json: services/am-trade-management-service/openapi.json
+    operations: 98
+  data_gen:
+    template_dir: templates/data-gen/service/am-trade-management-service
+    business_yaml: true
+  spt:
+    repo: am-trade-management
+    path: spt/spt.yaml
+- id: am-oms
+  priority: 7
+  domain: trade
+  enabled: true
+  status: active
+  environments:
+    dev: https://am-dev.asrax.in/oms
+    preprod: https://am-preprod.asrax.in/oms
+    prod: https://am.asrax.in/oms
+  openapi:
+    yaml: services/am-oms/openapi.yaml
+    json: services/am-oms/openapi.json
+    operations: 16
+  data_gen:
+    template_dir: templates/data-gen/service/am-oms
+    business_yaml: true
+  spt:
+    repo: am-trade-management
+    path: am-oms/spt.yaml
+- id: am-subscription
+  priority: 8
+  domain: platform
+  enabled: true
+  status: active
+  environments:
+    dev: https://am-dev.asrax.in/subscriptions
+    preprod: https://am-preprod.asrax.in/subscriptions
+    prod: https://am.asrax.in/subscriptions
+  openapi:
+    yaml: services/am-subscription/openapi.yaml
+    json: services/am-subscription/openapi.json
+    operations: 19
+  data_gen:
+    template_dir: templates/data-gen/service/am-subscription
+    business_yaml: true
+  spt:
+    repo: am-platform
+    path: am-subscription/spt.yaml

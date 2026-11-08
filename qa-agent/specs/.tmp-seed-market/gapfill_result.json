@@ -1,0 +1,1 @@
+{"ok":true,"service":"am-market-data","environment":"dev","payload_set_version":1,"passed":0,"failed":1,"failed_api_ids":["actuator.health"],"handoff":{"service":"am-market-data","environment":"dev","payload_set_version":1,"passed":0,"failed_api_ids":["actuator.health"]}}

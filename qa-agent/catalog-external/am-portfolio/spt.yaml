@@ -1,0 +1,16 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-portfolio
+label: am-portfolio
+enabled: true
+runtime: unknown
+description: Domain feed registration from am-specs (am-portfolio)
+source:
+  repo: am-portfolio
+  path: spt.yaml
+targets:
+  dev: https://am-dev.asrax.in/portfolio
+  preprod: https://am-preprod.asrax.in/portfolio
+  prod: https://am.asrax.in/portfolio
+openapi:
+  path: /openapi.json

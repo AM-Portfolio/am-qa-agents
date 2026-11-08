@@ -103,8 +103,9 @@ class Settings(BaseSettings):
         description="Optional LiteLLM embedding model; local hash embedder if unset",
     )
 
-    MONGO_URI: str = Field(default="mongodb://localhost:27017")
-    MONGO_DATABASE: str = Field(default="am_ui_testing")
+    # Local invent resolves dig Mongo via scenario_bank.mongo_resolve (not localhost).
+    MONGO_URI: str = Field(default="")
+    MONGO_DATABASE: str = Field(default="am_qa_agent_dev")
 
     @property
     def llm_routing(self) -> str:

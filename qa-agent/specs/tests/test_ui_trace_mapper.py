@@ -95,6 +95,50 @@ def test_map_suite_results():
     assert len(index) == 2
 
 
+def test_map_step_always_has_request_response_duration():
+    status = {
+        "status": "COMPLETED",
+        "profile": "AUTH_FLOW",
+        "step_timings": [
+            {
+                "index": 1,
+                "name": "thin",
+                "action": "wait",
+                "status": "ok",
+                # duration_ms intentionally omitted
+            }
+        ],
+        "failures": [
+            {
+                "step_index": 0,
+                "name": "thin",
+                "screenshot_url": "/api/v1/test/screenshot/x/fail.png",
+                "error": "later",
+            }
+        ],
+    }
+    # failure list alone should not mark completed step failed unless matched;
+    # still assert contract fields exist.
+    traces, _, _ = map_status_to_traces(
+        {
+            "status": "COMPLETED",
+            "profile": "AUTH_FLOW",
+            "step_timings": [
+                {"index": 1, "name": "thin", "action": "wait", "status": "ok"},
+            ],
+            "failures": [],
+        }
+    )
+    assert traces[0]["request"]["headers"] is not None
+    assert "body" in traces[0]["request"]
+    assert "body" in traces[0]["response"]
+    assert traces[0]["timings"]["duration_ms"] == 0.0
+
+    traces2, _, _ = map_status_to_traces(status)
+    # failure screenshot attached when step missing shot
+    assert traces2[0].get("screenshot_url") == "/api/v1/test/screenshot/x/fail.png"
+
+
 def test_map_empty_status_single_row():
     status = {"status": "COMPLETED", "profile": "AUTH_FLOW_MAIN", "duration_ms": 42}
     traces, index, _ = map_status_to_traces(status)

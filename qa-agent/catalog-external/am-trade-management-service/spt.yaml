@@ -1,0 +1,16 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-trade-management-service
+label: am-trade-management-service
+enabled: true
+runtime: unknown
+description: Domain feed registration from am-specs (am-trade-management-service)
+source:
+  repo: am-trade-management
+  path: spt/spt.yaml
+targets:
+  dev: https://am-dev.asrax.in/trade
+  preprod: https://am-preprod.asrax.in/trade
+  prod: https://am.asrax.in/trade
+openapi:
+  path: /openapi.json

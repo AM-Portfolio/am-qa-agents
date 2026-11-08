@@ -1,0 +1,14 @@
+apiVersion: am.qa.prompts/v1
+types:
+  invent:
+    path: invent/
+    description: Scenario bank invent — skills → diverse scenarios → features
+  select:
+    path: select/
+    description: Select-few ranking (future)
+  judge:
+    path: judge/
+    description: Grounding/judge LLM assist (future)
+  feature:
+    path: feature/
+    description: Feature narrative refine (future)

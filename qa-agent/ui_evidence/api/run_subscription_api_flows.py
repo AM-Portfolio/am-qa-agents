@@ -36,10 +36,12 @@ def run_subscription_api_flows(
     environment: str = "prod",
     refresh: bool = True,
     report_dir: Path | None = None,
+    credential_id: str | None = None,
 ) -> dict[str, Any]:
     from specs.catalog.catalog_loader import _platform_openapi_headers
     from specs.openapi_tools.generator import execute_openapi_tool_sync
     from specs.openapi_tools.registry import call_tool, list_tools, refresh_tools_from_prod
+    from specs.security.credential_store import resolve_login_pair
 
     services = ["am-identity", "am-subscription"]
     refresh_info: dict[str, Any] = {}
@@ -52,9 +54,10 @@ def run_subscription_api_flows(
     for svc in services:
         tools_by_svc[svc] = list(list_tools(service=svc, limit=1000).get("tools") or [])
 
-    spt_user = os.environ.get("SPT_AUTH_USERNAME") or ""
-    spt_password = os.environ.get("SPT_AUTH_PASSWORD") or ""
-    identity_base = _identity_base(tools_by_svc.get("am-identity") or [])
+    spt_user, spt_password, cred_base = resolve_login_pair(
+        credential_id=credential_id, env=environment
+    )
+    identity_base = cred_base or _identity_base(tools_by_svc.get("am-identity") or [])
 
     flow_results: list[dict[str, Any]] = []
     access_token: str | None = None

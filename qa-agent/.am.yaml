@@ -13,7 +13,8 @@ runtime: python
 language: python
 dockerfile: qa-agent/Dockerfile
 context: ..
-image: ghcr.io/am-portfolio/am-qa-agents
+# Nested GHCR path required by Contabo dig image-tags / amctl gitops pin
+image: ghcr.io/am-portfolio/am-qa-agents/am-qa-agents
 components:
   - specs          # SPT / load / catalog  → public /qa
   - ui_evidence    # Playwright UI tests   → public /ui-test (same pod)

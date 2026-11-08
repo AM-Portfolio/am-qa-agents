@@ -17,11 +17,19 @@ htmlcov/
 
 # Runtime (local stores — not Dart feature data/ folders)
 **/data/
+!**/lib/**/data/
+!**/lib/**/data/**
 **/artifacts/
 *.log
 /ui-reports/
 **/vendor/bin/
 *.exe
+
+# Local scratch / deploy transcripts
+qa-agent/logs/
+qa-agent/_tmp_*.py
+qa-agent/_run_*.py
+qa-agent/_seed_*.py
 
 # Locked local leftovers after legacy tree removal (close Python/.venv then delete)
 /qa-backend/
