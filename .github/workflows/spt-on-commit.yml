@@ -74,9 +74,9 @@ on:
 jobs:
   start-temporal:
     name: Start CommitSptWorkflow (${{ inputs.service }} / ${{ inputs.git_ref }})
-    # Prefer self-hosted so the start POST reaches dig without CF 1010.
+    # ubuntu-latest: org has no self-hosted runners; public dig URL works.
     # Job exits after Temporal accept — SPT runs in the qa-agent worker pod.
-    runs-on: [self-hosted, linux, x64, docker]
+    runs-on: ubuntu-latest
     steps:
       - name: POST /v2/workflows/commit-spt
         env:
