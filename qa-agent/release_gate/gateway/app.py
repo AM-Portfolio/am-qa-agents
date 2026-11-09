@@ -431,8 +431,10 @@ async def start_commit_spt(
     """Start CommitSptWorkflow on Temporal (qa-agent worker executes SPT + Cliq/email)."""
     _require_token(authorization)
     tracking_id = f"spt-{uuid.uuid4().hex[:12]}"
+    # Include tracking suffix so retests of the same sha are not REJECT_DUPLICATE.
     workflow_id = (
-        f"commit-spt-{body.service}-{body.branch.replace('/', '-')}-{body.head_sha[:12]}"
+        f"commit-spt-{body.service}-{body.branch.replace('/', '-')}-"
+        f"{body.head_sha[:12]}-{tracking_id[-8:]}"
     )
     ledger = get_ledger()
     ledger.create_run(

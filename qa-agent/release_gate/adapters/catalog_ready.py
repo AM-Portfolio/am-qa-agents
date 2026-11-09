@@ -17,9 +17,22 @@ _UI_ONLY = frozenset(
 
 
 def _specs_base() -> str:
+    # Colocated worker must not hairpin the public CF URL (POST /api/runs/execute → 405).
+    colocated = (os.getenv("QA_AGENT_COLOCATED") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    if colocated:
+        port = os.getenv("APP_PORT") or os.getenv("QA_AGENT_PORT") or "8150"
+        return (
+            os.getenv("QA_AGENT_SPECS_BASE_URL")
+            or os.getenv("UI_TEST_AGENT_BASE_URL")
+            or f"http://127.0.0.1:{port}"
+        ).rstrip("/")
     return (
-        os.getenv("SPT_PUBLIC_BASE_URL")
-        or os.getenv("QA_AGENT_SPECS_BASE_URL")
+        os.getenv("QA_AGENT_SPECS_BASE_URL")
+        or os.getenv("SPT_PUBLIC_BASE_URL")
         or os.getenv("UI_TEST_AGENT_BASE_URL")
         or "http://127.0.0.1:8150"
     ).rstrip("/")

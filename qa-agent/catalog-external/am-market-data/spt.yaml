@@ -9,8 +9,10 @@ source:
   repo: am-market
   path: am-market-data/spt.yaml
 targets:
+  dig: http://am-market-data-dev.am-apps-dev.svc.cluster.local:8080
+  public_dev: https://am-dev.asrax.in/market
   dev: https://am-dev.asrax.in/market
   preprod: https://am-preprod.asrax.in/market
   prod: https://am.asrax.in/market
 openapi:
-  path: /openapi.json
+  path: /v3/api-docs

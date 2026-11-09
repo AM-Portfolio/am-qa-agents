@@ -70,9 +70,9 @@ env:
   DEFAULT_ENVIRONMENT: dev
   ROOT_PATH: /qa
   LOG_LEVEL: INFO
-  # Must exist in Temporal cluster (create qa-agent NS before enabling worker)
-  TEMPORAL_NAMESPACE: qa-agent
-  # Required for ServiceOnboardPrepWorkflow / release Temporal UI visibility
+  # Dig Temporal is registered as namespace "default" (qa-agent NS not created).
+  TEMPORAL_NAMESPACE: default
+  # Required for CommitSptWorkflow / release Temporal UI visibility
   QA_AGENT_WORKER_ENABLED: "1"
   TEMPORAL_TASK_QUEUE: "qa-agent-release-dev-v1"
   FIN_AGENT_BASE_URL: "http://am-fin-agent-dev.am-apps-dev.svc.cluster.local:8100"
@@ -90,6 +90,9 @@ env:
   TEMPORAL_UI_EXTERNAL_URL: "https://temporal.asrax.in"
   AM_MCP_CLIENT_ID: "am-mcp-service"
   SPT_PUBLIC_BASE_URL: "https://am-dev.asrax.in/qa"
+  # Worker/activity Specs calls must stay on loopback (CF hairpin → 405 on POST execute).
+  QA_AGENT_SPECS_BASE_URL: "http://127.0.0.1:8150"
+  QA_AGENT_COLOCATED: "1"
   SPT_UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_URL: "http://127.0.0.1:8150"
   UI_TEST_AGENT_BASE_URL: "http://127.0.0.1:8150"

@@ -12,6 +12,7 @@ def apply_colocated_defaults() -> None:
     os.environ.setdefault("SPT_UI_TEST_AGENT_URL", loopback)
     os.environ.setdefault("UI_TEST_AGENT_URL", loopback)
     os.environ.setdefault("UI_TEST_AGENT_BASE_URL", loopback)
-    # Prefer not hairpinning public /ui-test from inside the pod
+    # Prefer not hairpinning public /ui-test or /qa from inside the pod
     if not os.getenv("QA_AGENT_COLOCATED"):
         os.environ["QA_AGENT_COLOCATED"] = "1"
+    os.environ.setdefault("QA_AGENT_SPECS_BASE_URL", loopback)

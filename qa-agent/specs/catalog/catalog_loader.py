@@ -993,15 +993,18 @@ def _openapi_base_candidates(service: str, environment: str, reg: dict[str, Any]
             bases.append(u)
 
     if _running_in_cluster():
+        # Prefer in-cluster dig target first (public CF often 403 / springdoc SOE).
+        add(targets.get("dig"))
+        add(targets.get(f"cluster_{env}"))
+        add(targets.get("cluster"))
+        add(targets.get(env) if ".svc.cluster.local" in str(targets.get(env) or "") else None)
         add(primary)
     # Only this env's public_* (do not fall back to public_dev for preprod/prod)
     add(targets.get(f"public_{env}"))
     add(targets.get("public"))
     # Never fall back to poc_target_url (defaults to am-analysis). That made
     # market/trade/corp Specs + MCP tools show the analysis OpenAPI.
-    if _running_in_cluster():
-        pass
-    else:
+    if not _running_in_cluster():
         add(primary)
     return bases
 
@@ -1606,11 +1609,33 @@ def apis_for_config(
     selected = api_ids if api_ids is not None else config.get("selected_api_ids")
     if selected:
         want = {str(x) for x in selected if x}
-        apis = [a for a in apis if str(a.get("id")) in want]
-        found = {str(a.get("id")) for a in apis if a.get("id")}
+        # Profiles / data-gen often store OpenAPI operationId (e.g. get_v1_market-data_ipo)
+        # while catalog `id` is dotted (get.v1.market.data.ipo). Accept either.
+        matched: list[dict[str, Any]] = []
+        found: set[str] = set()
+        for a in apis:
+            aid = str(a.get("id") or "")
+            oid = str(a.get("operation_id") or "")
+            hit = (aid and aid in want) or (oid and oid in want)
+            if not hit:
+                continue
+            matched.append(a)
+            if aid and aid in want:
+                found.add(aid)
+            if oid and oid in want:
+                found.add(oid)
+        apis = matched
         missing = sorted(want - found)
-        if missing:
+        if missing and not matched:
             raise ValueError(f"Unknown api_id(s) for service {service}: {', '.join(missing)}")
+        if missing and matched:
+            # Degraded OpenAPI (e.g. springdoc SOE) — keep known APIs, drop stale profile ids.
+            logger.warning(
+                "Dropping unknown api_id(s) for %s (kept %s): %s",
+                service,
+                len(matched),
+                ", ".join(missing[:12]) + ("…" if len(missing) > 12 else ""),
+            )
     return base_url, [resolve_api(a, ctx, env_ctx) for a in apis if a.get("id")]
 
 
