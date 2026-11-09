@@ -1,0 +1,13 @@
+# Paths / substrings rejected for invent grounding (draft if matched).
+path_substrings:
+  - keycloak
+  - "{{keycloak"
+  - /realms/
+  - /protocol/openid-connect
+  - auth-helper
+  - "{{identity_base"
+  - postman-echo
+  - localhost
+regex:
+  - "(?i)keycloak"
+  - "(?i)/realms/[^/]+/protocol"

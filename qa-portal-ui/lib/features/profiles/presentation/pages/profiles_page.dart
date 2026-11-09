@@ -12,6 +12,15 @@ import '../../data/profiles_repository.dart';
 
 const _durationPresets = ['30s', '1m', '5m', '10m'];
 
+/// Load intensity chips → (vus, iterations).
+const _loadPresets = <String, (int, int)>{
+  '1-call': (1, 1),
+  'smoke': (2, 5),
+  'light': (5, 20),
+  'medium': (10, 50),
+  'heavy': (25, 100),
+};
+
 class ProfilesPage extends StatelessWidget {
   const ProfilesPage({super.key});
 
@@ -37,6 +46,8 @@ class ProfilesState extends Equatable {
     this.saving = false,
     this.running = false,
     this.targetHint,
+    this.catalogServices = const [],
+    this.catalogLabels = const {},
   });
 
   final bool loading;
@@ -46,6 +57,8 @@ class ProfilesState extends Equatable {
   final bool saving;
   final bool running;
   final String? targetHint;
+  final List<String> catalogServices;
+  final Map<String, String> catalogLabels;
 
   ProfilesState copyWith({
     bool? loading,
@@ -55,6 +68,8 @@ class ProfilesState extends Equatable {
     bool? saving,
     bool? running,
     String? targetHint,
+    List<String>? catalogServices,
+    Map<String, String>? catalogLabels,
     bool clearSelected = false,
     bool clearTargetHint = false,
   }) {
@@ -66,12 +81,23 @@ class ProfilesState extends Equatable {
       saving: saving ?? this.saving,
       running: running ?? this.running,
       targetHint: clearTargetHint ? null : (targetHint ?? this.targetHint),
+      catalogServices: catalogServices ?? this.catalogServices,
+      catalogLabels: catalogLabels ?? this.catalogLabels,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [loading, items, selected, error, saving, running, targetHint];
+  List<Object?> get props => [
+        loading,
+        items,
+        selected,
+        error,
+        saving,
+        running,
+        targetHint,
+        catalogServices,
+        catalogLabels,
+      ];
 }
 
 class ProfilesCubit extends Cubit<ProfilesState> {
@@ -85,7 +111,54 @@ class ProfilesCubit extends Cubit<ProfilesState> {
     emit(state.copyWith(loading: true, error: null));
     try {
       final items = await _repo.listConfigs();
-      emit(state.copyWith(loading: false, items: items));
+      List<String> catalog = const [];
+      Map<String, String> labels = const {};
+      try {
+        final cat = await _api.get('/api/catalog');
+        final data = asMap(cat.data);
+        final listed = <String>{};
+        final labelMap = <String, String>{};
+        void add(dynamic raw) {
+          if (raw is String) {
+            final id = raw.trim();
+            if (id.isEmpty) return;
+            listed.add(id);
+            labelMap.putIfAbsent(id, () => id);
+            return;
+          }
+          if (raw is! Map) return;
+          final m = Map<String, dynamic>.from(raw);
+          final id =
+              '${m['id'] ?? m['service'] ?? m['name'] ?? m['label'] ?? ''}'
+                  .trim();
+          if (id.isEmpty) return;
+          listed.add(id);
+          final label = '${m['label'] ?? m['name'] ?? m['service'] ?? id}'.trim();
+          labelMap[id] = label.isEmpty ? id : label;
+        }
+
+        final servicesField = data['services'];
+        if (servicesField is List) {
+          for (final s in servicesField) {
+            add(s);
+          }
+        } else if (servicesField is Map) {
+          for (final e in servicesField.entries) {
+            listed.add('${e.key}');
+            labelMap.putIfAbsent('${e.key}', () => '${e.key}');
+          }
+        }
+        catalog = listed.toList()..sort();
+        labels = labelMap;
+      } catch (_) {}
+      emit(
+        state.copyWith(
+          loading: false,
+          items: items,
+          catalogServices: catalog,
+          catalogLabels: labels,
+        ),
+      );
     } catch (e) {
       emit(state.copyWith(loading: false, error: e.toString()));
     }
@@ -94,7 +167,12 @@ class ProfilesCubit extends Cubit<ProfilesState> {
   Future<void> select(String id) async {
     emit(state.copyWith(loading: true, error: null, clearTargetHint: true));
     try {
-      final cfg = await _repo.getConfig(id);
+      final cfg = Map<String, dynamic>.from(await _repo.getConfig(id));
+      final services = _selectedServices(cfg);
+      cfg['services'] = services;
+      if (services.isNotEmpty) {
+        cfg['service'] = services.first;
+      }
       emit(state.copyWith(loading: false, selected: cfg));
     } catch (e) {
       emit(state.copyWith(loading: false, error: e.toString()));
@@ -108,12 +186,14 @@ class ProfilesCubit extends Cubit<ProfilesState> {
         selected: {
           'name': 'new-profile',
           'service': 'am-core-services',
+          'services': <String>['am-core-services'],
           'environment': 'dev',
           'test_type': 'k6',
           'audience': 'developer',
           'vus': 1,
           'iterations': 1,
           'duration': '30s',
+          'load_preset': '1-call',
         },
       ),
     );
@@ -122,6 +202,30 @@ class ProfilesCubit extends Cubit<ProfilesState> {
   void patchSelected(String key, dynamic value) {
     final cur = Map<String, dynamic>.from(state.selected ?? {});
     cur[key] = value;
+    emit(state.copyWith(selected: cur));
+  }
+
+  /// Multi-select services; primary `service` stays first for backend compat.
+  void setServices(List<String> services) {
+    final cleaned = services
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    final cur = Map<String, dynamic>.from(state.selected ?? {});
+    cur['services'] = cleaned;
+    cur['service'] = cleaned.isNotEmpty ? cleaned.first : '';
+    emit(state.copyWith(selected: cur));
+  }
+
+  void applyLoadPreset(String preset) {
+    final pair = _loadPresets[preset];
+    if (pair == null) return;
+    final cur = Map<String, dynamic>.from(state.selected ?? {});
+    cur['load_preset'] = preset;
+    cur['vus'] = pair.$1;
+    cur['iterations'] = pair.$2;
     emit(state.copyWith(selected: cur));
   }
 
@@ -220,6 +324,23 @@ class ProfilesCubit extends Cubit<ProfilesState> {
             .where((e) => e.isNotEmpty)
             .toList();
       }
+      final servicesRaw = body['services'];
+      if (servicesRaw is String) {
+        body['services'] = servicesRaw
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      } else if (servicesRaw is List) {
+        body['services'] = servicesRaw
+            .map((e) => '$e'.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      }
+      final services = body['services'];
+      if (services is List && services.isNotEmpty) {
+        body['service'] = '${services.first}';
+      }
       final id = body['id']?.toString();
       if (id == null || id.isEmpty) {
         await _repo.createConfig(body);
@@ -248,6 +369,15 @@ String _apiIdsText(Map<String, dynamic>? sel) {
     return raw.map((e) => '$e').where((e) => e.isNotEmpty).join(', ');
   }
   return raw?.toString() ?? '';
+}
+
+List<String> _selectedServices(Map<String, dynamic>? sel) {
+  final raw = sel?['services'];
+  if (raw is List) {
+    return raw.map((e) => '$e'.trim()).where((e) => e.isNotEmpty).toList();
+  }
+  final single = '${sel?['service'] ?? ''}'.trim();
+  return single.isEmpty ? <String>[] : <String>[single];
 }
 
 class _ProfilesView extends StatefulWidget {
@@ -495,7 +625,7 @@ class _ProfilesViewState extends State<_ProfilesView> {
                                   const SizedBox(height: 16),
                                   _sectionTitle(context, 'Identity'),
                                   _field(context, 'name', 'Name'),
-                                  _field(context, 'service', 'Service'),
+                                  _servicesMultiSelect(context, state),
                                   _dropdown(
                                     context,
                                     'environment',
@@ -558,9 +688,14 @@ class _ProfilesViewState extends State<_ProfilesView> {
                                     initial: _apiIdsText(state.selected),
                                   ),
                                   const SizedBox(height: 8),
-                                  _sectionTitle(context, 'Load / bench'),
-                                  _field(context, 'vus', 'VUs'),
-                                  _field(context, 'iterations', 'Iterations / calls'),
+                                  _sectionTitle(context, 'Load & frequency'),
+                                  _loadPresetRow(context, state),
+                                  _field(context, 'vus', 'Load (VUs)'),
+                                  _field(
+                                    context,
+                                    'iterations',
+                                    'Frequency (calls / iterations)',
+                                  ),
                                   _durationRow(context, state),
                                   const SizedBox(height: 8),
                                   _sectionTitle(context, 'UI'),
@@ -651,6 +786,111 @@ class _ProfilesViewState extends State<_ProfilesView> {
               fontWeight: FontWeight.w700,
               letterSpacing: 0.2,
             ),
+      ),
+    );
+  }
+
+  Widget _servicesMultiSelect(BuildContext context, ProfilesState state) {
+    final cubit = context.read<ProfilesCubit>();
+    final selected = _selectedServices(state.selected);
+    final options = {
+      ...state.catalogServices,
+      ...selected,
+    }.toList()
+      ..sort();
+    final labels = state.catalogLabels;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: InputDecorator(
+        decoration: const InputDecoration(
+          labelText: 'Services (multi-select)',
+          border: OutlineInputBorder(),
+          isDense: true,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (selected.isNotEmpty)
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final id in selected)
+                    InputChip(
+                      label: Text(labels[id] ?? id),
+                      onDeleted: () {
+                        final next = [...selected]..remove(id);
+                        cubit.setServices(next);
+                      },
+                    ),
+                ],
+              ),
+            const SizedBox(height: 6),
+            DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                hint: Text(
+                  options.isEmpty
+                      ? 'No catalog services yet'
+                      : 'Add service…',
+                ),
+                items: [
+                  for (final id in options)
+                    if (!selected.contains(id))
+                      DropdownMenuItem(
+                        value: id,
+                        child: Text(labels[id] ?? id),
+                      ),
+                ],
+                onChanged: options.isEmpty
+                    ? null
+                    : (id) {
+                        if (id == null) return;
+                        cubit.setServices([...selected, id]);
+                      },
+              ),
+            ),
+            if (selected.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Primary service for target/run: ${selected.first}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _loadPresetRow(BuildContext context, ProfilesState state) {
+    final cubit = context.read<ProfilesCubit>();
+    final current = '${state.selected?['load_preset'] ?? ''}';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Intensity presets',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final e in _loadPresets.entries)
+                FilterChip(
+                  label: Text('${e.key} (${e.value.$1}×${e.value.$2})'),
+                  selected: current == e.key,
+                  onSelected: (_) => cubit.applyLoadPreset(e.key),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

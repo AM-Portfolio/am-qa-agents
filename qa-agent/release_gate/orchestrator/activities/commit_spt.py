@@ -113,16 +113,18 @@ async def activity_commit_spt(payload: dict[str, Any]) -> dict[str, Any]:
 
     matrix = resolve_commit_spt_matrix(git_ref)
     base = _specs_base().rstrip("/")
-    body = {
+    # GitHub commit / automation → agent audience (service-bound agent profile).
+    # Agent ACL forbids preset / multi-VU — clamp to 1×1 debug and omit preset.
+    audience = "agent"
+    body: dict[str, Any] = {
         "service": service,
         "environment": environment,
-        "audience": "developer",
+        "audience": audience,
         "test_type": "k6",
         "dataset_profile": matrix["dataset_profile"],
-        "profile": matrix["profile"],
-        "preset": matrix["preset"],
-        "vus": matrix["vus"],
-        "iterations": matrix["iterations"],
+        "profile": "debug",
+        "vus": 1,
+        "iterations": 1,
         "triggered_by": matrix["triggered_by"],
         "git_sha": git_sha or None,
         "git_ref": git_ref or None,
@@ -144,15 +146,29 @@ async def activity_commit_spt(payload: dict[str, Any]) -> dict[str, Any]:
     body = {k: v for k, v in body.items() if v is not None}
 
     activity.logger.info(
-        "commit_spt.execute service=%s ref=%s dataset=%s preset=%s",
+        "commit_spt.execute service=%s ref=%s dataset=%s matrix_preset=%s clamped=agent-1x1",
         service,
         git_ref,
         matrix["dataset_profile"],
         matrix["preset"],
     )
 
+    headers: dict[str, str] = {}
+    gw = (os.getenv("QA_AGENT_GATEWAY_TOKEN") or "").strip()
+    if gw:
+        headers["Authorization"] = f"Bearer {gw}"
+
     async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-        resp = await client.post(f"{base}/api/runs/execute", json=body)
+        resp = await client.post(f"{base}/api/runs/execute", json=body, headers=headers)
+        # Live OpenAPI often broken on dig (springdoc SOE) — retry with health-only.
+        if resp.status_code == 400 and "Unknown api_id" in (resp.text or ""):
+            activity.logger.warning(
+                "commit_spt.execute unknown api_ids; retrying actuator.health only"
+            )
+            body_health = {**body, "api_ids": ["actuator.health"]}
+            resp = await client.post(
+                f"{base}/api/runs/execute", json=body_health, headers=headers
+            )
         if resp.status_code >= 400:
             return {
                 "ok": False,

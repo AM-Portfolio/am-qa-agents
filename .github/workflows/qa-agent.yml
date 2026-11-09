@@ -73,7 +73,20 @@ jobs:
           path: am-modern-ui
           token: ${{ secrets.GH_TOKEN || secrets.GITHUB_PAT || secrets.AM_GITHUB_PAT || secrets.GITHUB_TOKEN }}
 
+      - name: Detect portal path changes
+        id: paths
+        uses: dorny/paths-filter@v3
+        with:
+          working-directory: am-qa-agents
+          filters: |
+            portal:
+              - 'qa-portal-ui/**'
+            agent_only:
+              - 'qa-agent/**'
+              - 'pyproject.toml'
+
       - name: Setup Flutter
+        if: steps.paths.outputs.portal == 'true'
         uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -107,6 +120,53 @@ jobs:
           test -f build/web/index.html
           echo "built=true" >> "$GITHUB_OUTPUT"
           du -sh build/web
+
+      # Bake Windows Setup into /qa/download when a qa-portal-v* release exists.
+      - name: Fetch Windows Setup for download page
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          DEST="am-qa-agents/qa-portal-ui/download/desktop"
+          mkdir -p "$DEST"
+          TAG="$(gh release list --repo "${GITHUB_REPOSITORY}" --limit 30 \
+            | awk '/^qa-portal-v/{print $1; exit}')"
+          if [ -z "${TAG}" ]; then
+            echo "::notice::No qa-portal-v* GitHub Release yet — download page ships without Setup.exe"
+            exit 0
+          fi
+          echo "Using release $TAG"
+          gh release download "$TAG" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "QAPortal-win-Setup.exe" \
+            --dir "$DEST" \
+            --clobber
+          ls -lh "$DEST/QAPortal-win-Setup.exe"
+          export VER="${TAG#qa-portal-v}"
+          python3 - <<'PY'
+          import json, pathlib, datetime, os
+          ver = os.environ["VER"]
+          root = pathlib.Path("am-qa-agents/qa-portal-ui")
+          today = datetime.date.today().isoformat()
+          notes = "Windows thin installer for QA Portal. Talks to this environment's qa-agent API."
+          specs = [
+              ("download/desktop-release.json", "desktop/QAPortal-win-Setup.exe", "../ui/"),
+              ("desktop-release.json", "download/desktop/QAPortal-win-Setup.exe", "ui/"),
+          ]
+          for rel, setup, web in specs:
+              p = root / rel
+              data = {
+                  "version": ver,
+                  "releasedAt": today,
+                  "windowsSetup": setup,
+                  "windowsSetupName": "QAPortal-win-Setup.exe",
+                  "webPath": web,
+                  "notes": notes,
+              }
+              p.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+              print("wrote", p)
+          PY
 
       - name: Image tag
         id: meta

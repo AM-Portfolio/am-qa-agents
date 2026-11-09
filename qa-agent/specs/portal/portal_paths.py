@@ -66,3 +66,36 @@ def portal_flutter_web_dir() -> Path | None:
 
 def flutter_portal_available() -> bool:
     return portal_flutter_web_dir() is not None
+
+
+def portal_download_dir() -> Path | None:
+    """Directory with download/index.html (Get QA Portal landing page)."""
+    for key in ("SPT_PORTAL_DOWNLOAD_DIR", "QA_PORTAL_DOWNLOAD_DIR"):
+        raw = (os.environ.get(key) or "").strip()
+        if raw:
+            p = Path(raw)
+            if (p / "index.html").is_file():
+                return p.resolve()
+
+    candidates = [
+        portal_ui_root() / "download",
+        Path("/portal-download"),
+        _repo_root_from_app() / "qa-portal-ui" / "download",
+    ]
+    for p in candidates:
+        if (p / "index.html").is_file():
+            return p.resolve()
+    return None
+
+
+def desktop_release_path() -> Path | None:
+    """Manifest next to download page or portal root."""
+    dl = portal_download_dir()
+    if dl is not None:
+        cand = dl / "desktop-release.json"
+        if cand.is_file():
+            return cand
+    root = portal_ui_root() / "desktop-release.json"
+    if root.is_file():
+        return root
+    return None

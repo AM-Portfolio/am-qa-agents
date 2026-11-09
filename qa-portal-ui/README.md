@@ -1,9 +1,11 @@
 # QA Portal UI (Flutter)
 
-Operator portal for **api-load** — Flutter operator UI (design system + feature modules).
+Operator portal for **qa-agent** — Flutter operator UI (design system + feature modules).
 
 - **Look & feel:** [`am_design_system`](../../am-modern-ui/am_design_system)
-- **HTML** (`static/`, `templates/`) remains the fallback when `SPT_PORTAL_FLUTTER=false` (default)
+- **Web:** baked into qa-agent at `/qa/ui` when `SPT_PORTAL_FLUTTER=true`
+- **Windows:** thin Velopack installer — see [`docs/WINDOWS.md`](docs/WINDOWS.md)
+- **HTML** (`static/`, `templates/`) remains the fallback when `SPT_PORTAL_FLUTTER=false`
 
 ## Features
 
@@ -39,11 +41,17 @@ npm run run          # chrome :8151 → API http://localhost:8150
 | Script | What it does |
 |--------|----------------|
 | `npm run get` | `flutter pub get` |
-| `npm run run` / `run:local` | Dev Chrome on `:8151` against local api-load |
-| `npm run run:cluster` | Dev against cluster `/spt-poc` API |
+| `npm run run` / `run:local` | Dev Chrome on `:8151` against local qa-agent |
+| `npm run run:cluster` | Dev against prod `/qa` API |
+| `npm run run:windows` | Flutter Windows → `http://localhost:8150` |
+| `npm run run:windows:preprod` | Flutter Windows → preprod `/qa` |
 | `npm run build` / `build:local` | `build/web` with `--base-href=/ui/` |
-| `npm run build:cluster` | `--base-href=/spt-poc/ui/` |
+| `npm run build:cluster` | `--base-href=/qa/ui/` |
+| `npm run build:windows` | Release Windows exe (preprod API) |
+| `npm run pack:windows` | Velopack thin Setup + feed → `dist/windows/Releases` |
 | `npm run analyze` / `test` / `clean` | Flutter analyze / test / clean |
+
+**Get app (share this):** [docs/WINDOWS.md](docs/WINDOWS.md) · preprod https://am-preprod.asrax.in/qa/download · local `http://localhost:8150/download/`
 
 ### Serve Flutter from api-load
 

@@ -286,12 +286,17 @@ class NotifyClient:
         if os.getenv("QA_AGENT_SKIP_NOTIFY", "").lower() in {"1", "true", "yes"}:
             return {"skipped": True, "title": title, "body": body, "meta": meta or {}}
 
-        webhook = (
-            os.getenv("QA_AGENT_CLIQ_WEBHOOK_URL")
-            or os.getenv("ZOHO_CLIQ_WEBHOOK_URL")
-            or os.getenv("ZOHO_CLIQ_LAB_WEBHOOK_URL")
-            or ""
-        ).strip()
+        try:
+            from specs.security.credential_store import resolve_cliq_webhook
+
+            webhook = resolve_cliq_webhook()
+        except Exception:  # noqa: BLE001
+            webhook = (
+                os.getenv("QA_AGENT_CLIQ_WEBHOOK_URL")
+                or os.getenv("ZOHO_CLIQ_WEBHOOK_URL")
+                or os.getenv("ZOHO_CLIQ_LAB_WEBHOOK_URL")
+                or ""
+            ).strip()
         owns = self._client is None
         http = self._client or httpx.AsyncClient(timeout=30.0)
         try:

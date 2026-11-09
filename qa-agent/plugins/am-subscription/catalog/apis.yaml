@@ -1,0 +1,132 @@
+flows:
+  - id: FLOW_SUBSCRIPTION_LOGIN
+    title: Login with SPT creds (JWT for subscription calls)
+    gate: prod_safe
+    group: subscription
+    category: auth
+    description: Identity login used as auth step for subscription API checks.
+    tags: [login, jwt]
+    created_by: builtin
+    in_pack: true
+    steps:
+      - id: login
+        kind: call_tool
+        service: am-identity
+        path_contains: /auth/login
+        method: post
+        uses_spt_auth_creds: true
+        capture_tokens: true
+
+  - id: FLOW_SUBSCRIPTION
+    title: Subscription plans / me / time-left fields
+    gate: prod_safe
+    group: subscription
+    category: pack
+    description: Health probe, plans list, and current subscription (/me).
+    tags: [plans, me, health]
+    created_by: builtin
+    in_pack: true
+    steps:
+      # Gateway probe: runner tries /subscriptions/health then falls back to /plans
+      - id: sub_health
+        kind: call_tool
+        service: am-subscription
+        path_contains: /health
+        method: get
+        optional_service: true
+      - id: sub_plans
+        kind: call_tool
+        service: am-subscription
+        tool_match: [plan]
+        method: get
+        optional_service: true
+        auth: true
+      - id: sub_me
+        kind: call_tool
+        service: am-subscription
+        tool_match: [subscription, me, current]
+        method: get
+        optional_service: true
+        auth: true
+
+  - id: FLOW_SUBSCRIPTION_HEALTH
+    title: Subscription gateway health (or plans fallback)
+    gate: prod_safe
+    group: subscription
+    category: health
+    description: Probe /subscriptions/health; falls back to /plans on 404.
+    tags: [health]
+    created_by: builtin
+    steps:
+      - id: sub_health
+        kind: call_tool
+        service: am-subscription
+        path_contains: /health
+        method: get
+        optional_service: true
+
+  - id: FLOW_SUBSCRIPTION_PLANS
+    title: Subscription list plans (auth)
+    gate: prod_safe
+    group: subscription
+    category: plans
+    description: Login then GET plans.
+    tags: [plans, auth]
+    created_by: builtin
+    steps:
+      - id: login
+        kind: call_tool
+        service: am-identity
+        path_contains: /auth/login
+        method: post
+        uses_spt_auth_creds: true
+        capture_tokens: true
+      - id: sub_plans
+        kind: call_tool
+        service: am-subscription
+        tool_match: [plan]
+        exact_path: /subscriptions/plans
+        method: get
+        auth: true
+
+  - id: FLOW_SUBSCRIPTION_ME
+    title: Subscription current /me (auth)
+    gate: prod_safe
+    group: subscription
+    category: me
+    description: Login then GET current subscription.
+    tags: [me, auth]
+    created_by: builtin
+    steps:
+      - id: login
+        kind: call_tool
+        service: am-identity
+        path_contains: /auth/login
+        method: post
+        uses_spt_auth_creds: true
+        capture_tokens: true
+      - id: sub_me
+        kind: call_tool
+        service: am-subscription
+        tool_match: [subscription, me, current]
+        exact_path: /subscriptions/me
+        method: get
+        auth: true
+
+  - id: FLOW_SUBSCRIPTION_PLANS_PUBLIC
+    title: Subscription plans without auth
+    gate: prod_safe
+    group: subscription
+    category: plans
+    description: GET plans without Bearer — ok if public, or expect 401.
+    tags: [plans, public]
+    created_by: builtin
+    steps:
+      - id: sub_plans_public
+        kind: call_tool
+        service: am-subscription
+        exact_path: /subscriptions/plans
+        method: get
+        auth: false
+        # Accept either public catalog (2xx) or auth required (401)
+        expect_status: [200, 401]

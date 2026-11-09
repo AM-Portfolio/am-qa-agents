@@ -21,9 +21,16 @@ def test_product_urls():
 
 def test_normalize_env():
     assert env_urls.normalize_env("dev") == "dev"
+    assert env_urls.normalize_env("dig") == "dev"
     assert env_urls.normalize_env("production") == "prod"
     assert env_urls.normalize_env("development") is None
     assert env_urls.normalize_env("local") is None
+
+
+def test_identity_url_for_env():
+    assert env_urls.identity_url_for_env("dev") == "https://am-dev.asrax.in/identity"
+    assert env_urls.identity_url_for_env("dig") == "https://am-dev.asrax.in/identity"
+    assert env_urls.identity_url_for_env("prod") == "https://am.asrax.in/identity"
 
 
 def test_infra_mcp_gateway():

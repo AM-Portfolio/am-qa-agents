@@ -13,6 +13,8 @@ class RunsState extends Equatable {
     this.service = '',
     this.environment = '',
     this.testType = '',
+    this.suite = '',
+    this.apiPack = '',
     this.from = '',
     this.to = '',
     this.q = '',
@@ -29,6 +31,8 @@ class RunsState extends Equatable {
   final String service;
   final String environment;
   final String testType;
+  final String suite;
+  final String apiPack;
   final String from;
   final String to;
   final String q;
@@ -46,6 +50,8 @@ class RunsState extends Equatable {
     String? service,
     String? environment,
     String? testType,
+    String? suite,
+    String? apiPack,
     String? from,
     String? to,
     String? q,
@@ -60,6 +66,8 @@ class RunsState extends Equatable {
       service: service ?? this.service,
       environment: environment ?? this.environment,
       testType: testType ?? this.testType,
+      suite: suite ?? this.suite,
+      apiPack: apiPack ?? this.apiPack,
       from: from ?? this.from,
       to: to ?? this.to,
       q: q ?? this.q,
@@ -77,6 +85,8 @@ class RunsState extends Equatable {
         service,
         environment,
         testType,
+        suite,
+        apiPack,
         from,
         to,
         q,
@@ -93,6 +103,8 @@ class RunsCubit extends Cubit<RunsState> {
   void setService(String v) => emit(state.copyWith(service: v, offset: 0));
   void setEnvironment(String v) => emit(state.copyWith(environment: v, offset: 0));
   void setTestType(String v) => emit(state.copyWith(testType: v, offset: 0));
+  void setSuite(String v) => emit(state.copyWith(suite: v, offset: 0));
+  void setApiPack(String v) => emit(state.copyWith(apiPack: v, offset: 0));
   void setFrom(String v) => emit(state.copyWith(from: v, offset: 0));
   void setTo(String v) => emit(state.copyWith(to: v, offset: 0));
   void setQ(String v) => emit(state.copyWith(q: v, offset: 0));
@@ -118,6 +130,8 @@ class RunsCubit extends Cubit<RunsState> {
         service: state.service.isEmpty ? null : state.service,
         environment: state.environment.isEmpty ? null : state.environment,
         testType: state.testType.isEmpty ? null : state.testType,
+        suite: state.suite.isEmpty ? null : state.suite,
+        apiPack: state.apiPack.isEmpty ? null : state.apiPack,
         from: state.from.isEmpty ? null : state.from,
         to: state.to.isEmpty ? null : state.to,
         q: state.q.isEmpty ? null : state.q,

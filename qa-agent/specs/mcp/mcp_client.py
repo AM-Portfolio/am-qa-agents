@@ -58,8 +58,15 @@ class RemoteMcpClient:
     async def session(self) -> AsyncIterator[Any]:
         with _pypi_mcp_context():
             streamable_http = importlib.import_module("mcp.client.streamable_http")
-            mcp_pkg = importlib.import_module("mcp")
-            ClientSession = mcp_pkg.ClientSession
+            try:
+                mcp_pkg = importlib.import_module("mcp")
+                ClientSession = getattr(mcp_pkg, "ClientSession", None)
+            except Exception:  # noqa: BLE001
+                ClientSession = None
+            if ClientSession is None:
+                ClientSession = importlib.import_module(
+                    "mcp.client.session"
+                ).ClientSession
             headers = {}
             if self.bearer_token:
                 headers["Authorization"] = f"Bearer {self.bearer_token}"

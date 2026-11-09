@@ -13,6 +13,8 @@ from fastapi.staticfiles import StaticFiles
 
 from specs.security.acl import AclMiddleware, Caller, seed_bootstrap_keys
 from specs.api.platform import router as platform_router
+from specs.api.flows_api import router as flows_router
+from specs.api.data_gen_api import router as data_gen_router
 from specs.config import settings
 from specs.load.config_builder import config_from_request, ensure_default_config
 from specs.portal.dashboard import render_portal
@@ -30,18 +32,22 @@ from specs.mcp.control import mount_mcp
 from specs.payloads.payload_store import (
     create_payload_set,
     delete_payload,
+    delete_payload_set,
     ensure_payload_set,
     get_payload,
     get_payload_set,
     list_payload_sets,
     list_payloads,
+    remove_apis_from_payload_set,
     save_from_trace,
     save_payload,
     set_active_payload_set,
     upsert_api_in_payload_set,
 )
 from specs.portal.portal_paths import (
+    desktop_release_path,
     flutter_portal_available,
+    portal_download_dir,
     portal_flutter_web_dir,
     portal_static_dir,
 )
@@ -61,6 +67,7 @@ from specs.persistence.run_store import (
 from specs.schemas import (
     PayloadCreateRequest,
     PayloadSetCreateRequest,
+    PayloadSetRemoveApisRequest,
     PayloadSetUpsertApiRequest,
     RunExecuteRequest,
     SavePayloadRequest,
@@ -87,6 +94,12 @@ async def _startup_db_and_seed() -> None:
         except Exception:
             pass
         seed_bootstrap_keys()
+        try:
+            from specs.security.credential_store import seed_from_spt_env
+
+            seed_from_spt_env()
+        except Exception:
+            pass
         # Orphaned "running" rows from crashed processes / JSON migration
         try:
             from specs.persistence.run_store import list_runs, update_run
@@ -112,6 +125,12 @@ async def _startup_db_and_seed() -> None:
 async def _app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """DB seed + FastMCP streamable HTTP session manager (required for /mcp)."""
     await _startup_db_and_seed()
+    try:
+        from specs.flows.scheduler import start_local_ticker
+
+        start_local_ticker()
+    except Exception:  # noqa: BLE001
+        pass
     async with control_mcp.session_manager.run():
         yield
 
@@ -133,6 +152,8 @@ _STATIC_DIR = portal_static_dir()
 if _STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 app.include_router(platform_router)
+app.include_router(flows_router)
+app.include_router(data_gen_router)
 # Flutter web on another origin (e.g. localhost:8151 → :8150) needs CORS.
 # Cluster traffic is same-origin via Traefik; local allow-list is for portal dev.
 app.add_middleware(
@@ -140,6 +161,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:8151",
         "http://127.0.0.1:8151",
+        "http://localhost:8152",
+        "http://127.0.0.1:8152",
         "http://localhost:8150",
         "http://127.0.0.1:8150",
     ],
@@ -195,11 +218,35 @@ if _FLUTTER_DIR is not None:
         name="flutter_ui",
     )
 
+_DOWNLOAD_DIR = portal_download_dir()
+if _DOWNLOAD_DIR is not None:
+    app.mount(
+        "/download",
+        StaticFiles(directory=str(_DOWNLOAD_DIR), html=True),
+        name="portal_download",
+    )
+
 
 @app.get("/", include_in_schema=False)
 async def root() -> RedirectResponse:
     prefix = settings.root_path.rstrip("/") if settings.root_path else ""
     return RedirectResponse(url=f"{prefix}/ui")
+
+
+@app.get("/download", include_in_schema=False)
+async def download_landing():
+    """Get QA Portal — version + Windows Setup + open web."""
+    if _DOWNLOAD_DIR is not None:
+        prefix = settings.root_path.rstrip("/") if settings.root_path else ""
+        return RedirectResponse(url=f"{prefix}/download/")
+    return HTMLResponse(
+        "<!doctype html><html><head><meta charset=utf-8><title>Download unavailable</title></head>"
+        "<body style='font-family:system-ui;margin:2rem'>"
+        "<h1>Download page missing</h1>"
+        "<p><code>qa-portal-ui/download/index.html</code> is not in this image.</p>"
+        "</body></html>",
+        status_code=503,
+    )
 
 
 @app.get("/ui", include_in_schema=False)
@@ -227,13 +274,41 @@ async def dashboard_ui():
 @app.get("/api/portal/mode", include_in_schema=False)
 async def portal_mode() -> dict[str, Any]:
     available = flutter_portal_available()
+    dl = portal_download_dir()
+    setup = None
+    if dl is not None:
+        cand = dl / "desktop" / "QAPortal-win-Setup.exe"
+        if cand.is_file():
+            setup = str(cand)
     return {
         "flutter_enabled": bool(settings.spt_portal_flutter),
         "flutter_available": available,
         "flutter_dir": str(portal_flutter_web_dir() or ""),
         "legacy_fallback": bool(not settings.spt_portal_flutter),
+        "download_available": dl is not None,
+        "download_dir": str(dl or ""),
+        "windows_setup_available": setup is not None,
         "ok": bool(available) if settings.spt_portal_flutter else True,
     }
+
+
+@app.get("/api/portal/desktop-release", include_in_schema=False)
+async def portal_desktop_release() -> dict[str, Any]:
+    path = desktop_release_path()
+    if path is None:
+        raise HTTPException(status_code=404, detail="desktop-release.json not found")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=500, detail=f"invalid desktop-release.json: {exc}") from exc
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=500, detail="desktop-release.json must be an object")
+    dl = portal_download_dir()
+    setup_ok = False
+    if dl is not None:
+        setup_ok = (dl / "desktop" / "QAPortal-win-Setup.exe").is_file()
+    data = {**data, "windowsSetupAvailable": setup_ok}
+    return data
 
 
 @app.get("/api/runs")
@@ -246,6 +321,8 @@ async def api_list_runs(
     run_id: str | None = None,
     test_type: str | None = None,
     triggered_by: str | None = None,
+    suite: str | None = None,
+    api_pack: str | None = None,
     q: str | None = None,
     started_from: str | None = Query(None, alias="from"),
     started_to: str | None = Query(None, alias="to"),
@@ -263,6 +340,8 @@ async def api_list_runs(
         run_id=run_id,
         test_type=test_type,
         triggered_by=triggered_by,
+        suite=suite,
+        api_pack=api_pack,
         q=q,
         started_from=started_from,
         started_to=started_to,
@@ -308,6 +387,12 @@ async def api_get_run(run_id: str) -> dict:
         finished_at=row.get("finished_at"),
         run_id=run_id,
     )
+    try:
+        from specs.observability.run_correlation import attach_obs_to_row
+
+        attach_obs_to_row(row)
+    except Exception:  # noqa: BLE001
+        pass
     if row.get("api_pass_count") is None or row.get("api_fail_count") is None:
         counts = api_outcome_counts(row.get("api_summary"))
         row.setdefault("api_pass_count", counts["api_pass_count"])
@@ -418,6 +503,28 @@ async def api_run_traces(
         run_id, api_id=api_id, failed_only=failed_only, limit=limit, offset=offset
     )
     return {"run_id": run_id, "traces": traces, "count": len(traces), "total": total}
+
+
+@app.get("/api/runs/{run_id}/obs-logs")
+async def api_run_obs_logs(
+    run_id: str,
+    limit: int = Query(100, le=500),
+) -> dict:
+    """Platform logs (Grafana/Loki) keyed by run trace_id / correlation_id."""
+    row = get_run(run_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Run not found")
+    from specs.observability.obs_logs import fetch_obs_logs
+
+    out = await fetch_obs_logs(
+        trace_id=row.get("trace_id"),
+        correlation_id=row.get("correlation_id"),
+        started_at=row.get("started_at"),
+        finished_at=row.get("finished_at"),
+        limit=limit,
+    )
+    out["run_id"] = run_id
+    return out
 
 
 @app.get("/api/runs/{run_id}/traces/{index}")
@@ -531,6 +638,32 @@ async def api_get_payload_set(service: str, version: int) -> dict:
     return row
 
 
+@app.get("/api/payload-sets/{service}/{version}/export.zip")
+async def api_export_payload_set_zip(service: str, version: int):
+    """Download payload set as deflated zip (payload.json) — smaller than raw JSON."""
+    from fastapi.responses import Response as ZipResponse
+
+    from specs.payloads.zip_codec import pack_zip
+
+    row = get_payload_set(service, version)
+    if not row:
+        raise HTTPException(status_code=404, detail="Payload set not found")
+    blob = pack_zip(
+        {
+            "format": "am-specs-dataset",
+            "service": service,
+            "payload_set": row,
+            "label": row.get("label"),
+        }
+    )
+    fname = f"{service}-payload-v{version}.zip"
+    return ZipResponse(
+        content=blob,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
+
+
 @app.post("/api/payload-sets")
 async def api_create_payload_set(body: PayloadSetCreateRequest) -> dict:
     return create_payload_set(
@@ -538,6 +671,7 @@ async def api_create_payload_set(body: PayloadSetCreateRequest) -> dict:
         label=body.label,
         clone_from=body.clone_from,
         make_active=body.make_active,
+        empty=bool(getattr(body, "empty", False)),
     )
 
 
@@ -571,6 +705,28 @@ async def api_upsert_payload_set_api(
             name=body.name,
             bump_set=body.bump_set,
         )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/api/payload-sets/{service}/{version}/apis")
+async def api_remove_payload_set_apis(
+    service: str,
+    version: int,
+    body: PayloadSetRemoveApisRequest,
+) -> dict:
+    if not body.api_ids:
+        raise HTTPException(status_code=400, detail="api_ids required")
+    try:
+        return remove_apis_from_payload_set(service, version, list(body.api_ids))
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/api/payload-sets/{service}/{version}")
+async def api_delete_payload_set(service: str, version: int) -> dict:
+    try:
+        return delete_payload_set(service, version)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

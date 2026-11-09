@@ -1,0 +1,16 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-news
+label: am-news
+enabled: true
+runtime: unknown
+description: Domain feed registration from am-specs (am-news)
+source:
+  repo: am-market
+  path: am-news/spt.yaml
+targets:
+  dev: https://am-dev.asrax.in/news
+  preprod: https://am-preprod.asrax.in/news
+  prod: https://am.asrax.in/news
+openapi:
+  path: /openapi.json

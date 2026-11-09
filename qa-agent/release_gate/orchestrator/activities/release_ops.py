@@ -469,35 +469,10 @@ def _persist_ui_suite_to_specs(payload: dict[str, Any], ui: dict[str, Any]) -> l
 
 
 def _run_subscription_api_pack(env: str) -> dict[str, Any]:
-    """Scoped subscription API flows + OpenAPI sweep (no full auth)."""
-    from ui_evidence.api.run_all_auth_user_apis import run_all_auth_user_apis
-    from ui_evidence.api.run_subscription_api_flows import run_subscription_api_flows
+    """Backward-compatible alias → plugin-driven pack runner."""
+    from ui_evidence.plugins.pack_runner import run_api_pack
 
-    flows = run_subscription_api_flows(environment=env, refresh=True)
-    sweep = run_all_auth_user_apis(
-        environment=env, services=["am-subscription"], refresh=True
-    )
-    return {
-        "api_pack": "subscription",
-        "decision": (
-            "GO"
-            if flows.get("decision") == "GO" and sweep.get("decision") == "GO"
-            else "NO_GO"
-        ),
-        "api_flows": {
-            "decision": flows.get("decision"),
-            "counts": flows.get("counts"),
-            "report_html": flows.get("report_html"),
-            "report_json": flows.get("report_json"),
-        },
-        "api_sweep": {
-            "decision": sweep.get("decision"),
-            "counts": sweep.get("counts"),
-            "report_html": sweep.get("report_html"),
-            "report_json": sweep.get("report_json"),
-            "issues": sweep.get("issues"),
-        },
-    }
+    return run_api_pack("subscription", env)
 
 
 @activity.defn(name="activity_release_ops_ui_suite")
@@ -508,22 +483,49 @@ async def activity_release_ops_ui_suite(payload: dict[str, Any]) -> dict[str, An
     pack = Path(str(payload["pack_path"]))
     skip = bool(payload.get("skip_ui"))
     suite = str(payload.get("suite") or "prod_ui_full")
-    api_pack = str(
-        payload.get("api_pack")
-        or ("subscription" if suite == "subscription_module" else "")
-    )
-    url = str(payload.get("target_url") or "https://am.asrax.in")
-    login_mode = str(payload.get("login_mode") or "credentials")
-    env = str(payload.get("env") or "prod")
-
     import sys
 
     qa_agent = Path(__file__).resolve().parents[3]
     sys.path.insert(0, str(qa_agent))
     sys.path.insert(0, str(qa_agent / "ui_evidence"))
 
+    try:
+        from ui_evidence.plugins.loader import resolve_api_pack_default
+        from ui_evidence.plugins.pack_runner import run_api_pack
+    except Exception:  # noqa: BLE001
+        resolve_api_pack_default = None  # type: ignore[assignment]
+        run_api_pack = None  # type: ignore[assignment]
+
+    api_pack = str(
+        payload.get("api_pack")
+        or (
+            resolve_api_pack_default(suite)
+            if resolve_api_pack_default
+            else ("subscription" if suite == "subscription_module" else "")
+        )
+        or ""
+    )
+    url = str(payload.get("target_url") or "https://am.asrax.in")
+    login_mode = str(payload.get("login_mode") or "credentials")
+    env = str(payload.get("env") or "prod")
+
     api_result: dict[str, Any] | None = None
-    if api_pack == "subscription":
+    if api_pack and run_api_pack is not None:
+        try:
+            api_result = await asyncio.to_thread(run_api_pack, api_pack, env)
+            activity.logger.info(
+                "release_ops.api_pack %s decision=%s",
+                api_pack,
+                (api_result or {}).get("decision"),
+            )
+        except Exception as exc:  # noqa: BLE001
+            activity.logger.warning("release_ops.api_pack failed err=%s", exc)
+            api_result = {
+                "api_pack": api_pack,
+                "decision": "NO_GO",
+                "error": str(exc),
+            }
+    elif api_pack == "subscription":
         try:
             api_result = await asyncio.to_thread(_run_subscription_api_pack, env)
             activity.logger.info(

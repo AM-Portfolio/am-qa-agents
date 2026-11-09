@@ -1,0 +1,26 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-qa-agents
+label: am-qa-agents
+enabled: true
+runtime: python
+owners: [qa-agents]
+description: QA agents hub HTTP surface (portal / Specs / Control) — gitops service id
+createdBy: qa-agents
+updatedBy: qa-agents
+createdAt: "2026-10-08"
+updatedAt: "2026-10-08"
+tags: [qa, python, fastapi]
+source:
+  repo: am-qa-agents
+  path: qa-agent/spt.yaml
+  team: qa-agents
+traces:
+  - name: openapi
+    ref: /openapi.json
+targets:
+  dev: "https://am-dev.asrax.in/qa"
+  preprod: "https://am-preprod.asrax.in/qa"
+  prod: "https://am.asrax.in/qa"
+openapi:
+  path: /openapi.json

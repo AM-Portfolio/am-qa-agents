@@ -5,7 +5,7 @@
 | Path | Role |
 |------|------|
 | [`qa-agent/`](qa-agent/) | **One backend** — `specs` + `ui_evidence` + `release_gate` |
-| [`qa-portal-ui/`](qa-portal-ui/) | Flutter operator portal (baked into image optionally) |
+| [`qa-portal-ui/`](qa-portal-ui/) | Flutter operator portal (web + Windows thin installer; baked into image optionally) |
 | [`docs/`](docs/) | Shared documentation |
 
 See [`docs/UNIFIED_LAYOUT.md`](docs/UNIFIED_LAYOUT.md), [`docs/CONTRACTS.md`](docs/CONTRACTS.md), [`qa-agent/helm/README.md`](qa-agent/helm/README.md).
@@ -36,6 +36,11 @@ Or use root wrappers:
 | `npm run ui:start:dev` | Flutter → VPS `am-dev` SPT (`/spt-poc`) |
 | `npm run vps:forward` | Port-forward Temporal `:7233` + Influx `:8086` via `VPS/VPS/kubeconfig.vps` |
 | `npm run ui:get` / `ui:analyze` / `ui:build` | Portal deps / analyze / build |
+| `npm run ui:start:windows` | Flutter Windows portal → localhost:8150 |
+| `npm run ui:pack:windows` | Velopack thin Setup → `qa-portal-ui/dist/windows/Releases` |
+
+Windows install / updates: [`qa-portal-ui/docs/WINDOWS.md`](qa-portal-ui/docs/WINDOWS.md).  
+**Share with teammates:** https://am-preprod.asrax.in/qa/download (version + Setup + open web).
 | `npm run release:ops:drive` | Daily Drive pack (no UI/soak/Cliq) — see [`docs/qa-agent/RELEASE_REPORT.md`](docs/qa-agent/RELEASE_REPORT.md) |
 
 n8n trigger (sibling repo **`am-n8n-workflows`**, add `f:\am-repos\am-repos\am-n8n-workflows` to the Cursor workspace): workflow **qa-release-ops** — Execute in n8n or POST `/webhook/qa-release-ops`.

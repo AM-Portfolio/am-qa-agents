@@ -226,5 +226,22 @@ def upsert_payload(record: dict) -> dict:
     return save_payload(record)
 
 
+def service_overview(
+    service_key: str,
+    *,
+    environment: str | None = None,
+    runs_limit: int = 25,
+    live_openapi: bool = False,
+) -> dict[str, Any]:
+    from specs.services.service_overview import build_service_overview
+
+    return build_service_overview(
+        service_key,
+        environment=environment,
+        runs_limit=runs_limit,
+        live_openapi=live_openapi,
+    )
+
+
 async def platform_health() -> dict:
     return await load_ops.platform_health()

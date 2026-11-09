@@ -1,0 +1,16 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-parser
+label: am-parser
+enabled: true
+runtime: unknown
+description: Domain feed registration from am-specs (am-parser)
+source:
+  repo: am-market
+  path: am-parser/spt.yaml
+targets:
+  dev: https://am-dev.asrax.in/parser
+  preprod: https://am-preprod.asrax.in/parser
+  prod: https://am.asrax.in/parser
+openapi:
+  path: /openapi.json

@@ -55,6 +55,36 @@ class UiCatalogStoreTests(unittest.TestCase):
         self.assertTrue(builtin["resettable"])
         self.assertFalse(builtin["deletable"])
 
+    def test_upsert_flow_graph_write_through_steps(self) -> None:
+        from specs.ui_bridge.ui_catalog_store import merge_catalog, upsert_flow
+
+        upsert_flow(
+            {
+                "id": "GRAPH_ALIAS",
+                "label": "Graph alias",
+                "runs_as": "AUTH_FLOW_MAIN",
+                "graph": {
+                    "nodes": [
+                        {"id": "__manual_trigger__", "kind": "manual_trigger", "label": "Start"},
+                        {"id": "step_1", "kind": "ui_step", "label": "Open app", "x": 100, "y": 120},
+                        {"id": "verify_1", "kind": "verification", "label": "See shell"},
+                    ],
+                    "edges": [
+                        {"id": "e1", "from": "__manual_trigger__", "to": "step_1", "trigger": True},
+                        {"id": "e2", "from": "step_1", "to": "verify_1"},
+                    ],
+                },
+            },
+            create=True,
+        )
+        base = build_ui_flow_catalog(agent_online=False)
+        merged = merge_catalog(base)
+        custom = next(f for f in merged["flows"] if f["id"] == "GRAPH_ALIAS")
+        self.assertEqual(custom["steps"], ["Open app"])
+        self.assertEqual(custom["verifications"], ["See shell"])
+        self.assertIsInstance(custom.get("graph"), dict)
+        self.assertEqual(len(custom["graph"]["nodes"]), 3)
+
     def test_resolve_custom_flow_and_suite(self) -> None:
         from specs.ui_bridge.ui_catalog_store import resolve_ui_run, upsert_flow, upsert_suite
 

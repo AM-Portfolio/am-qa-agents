@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: am-market-invent-seed
+  namespace: am-agents-dev
+data:
+  invent_job.py: |
+    PLACEHOLDER
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: am-market-invent-seed
+  namespace: am-agents-dev
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: am-backend-sa
+      imagePullSecrets:
+        - name: ghcr-creds
+        - name: github-registry-secret
+        - name: regcred
+      containers:
+        - name: invent
+          image: ghcr.io/am-portfolio/am-qa-agents/am-qa-agents:local-40c9647-1791498123
+          imagePullPolicy: IfNotPresent
+          command: ["python", "/invent/invent_job.py"]
+          env:
+            - name: APP_ENV
+              value: "dev"
+            - name: DEFAULT_ENVIRONMENT
+              value: "dev"
+            - name: QA_AGENT_ENV
+              value: "dev"
+            - name: PYTHONPATH
+              value: "/app/qa-agent:/app/qa-agent/release_gate"
+            - name: LITELLM_BASE_URL
+              value: "http://litellm.am-ai.svc.cluster.local:4000"
+            - name: LLM_ROUTING
+              value: "gateway"
+            - name: SPRING_DATA_MONGODB_HOST
+              value: "mongo.asrax.in"
+            - name: SPRING_DATA_MONGODB_PORT
+              value: "27017"
+          envFrom:
+            - secretRef:
+                name: am-qa-agents-dev-synced-secrets
+          volumeMounts:
+            - name: invent
+              mountPath: /invent
+            - name: vault-secrets-volume
+              mountPath: /mnt/secrets-store
+              readOnly: true
+      volumes:
+        - name: invent
+          configMap:
+            name: am-market-invent-seed
+        - name: vault-secrets-volume
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: am-qa-agents-dev-vault-secrets

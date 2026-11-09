@@ -1,355 +1,355 @@
-<mxfile host="app.diagrams.net" agent="am-architecture-drawio">
-  <diagram id="context" name="Context">
-    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="ctx_title" value="Pre-Release Gate — Context" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
-          <mxGeometry x="40" y="20" width="1080" height="36" as="geometry" />
-        </mxCell>
-        <mxCell id="ctx_purpose" value="Purpose: actors, AM product boundary, and external vendors this feature evidence + deploy on." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
-          <mxGeometry x="40" y="64" width="720" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="ctx_actor" value="Release operator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="60" y="220" width="140" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="ctx_sys" value="Asrax Release Ops&#10;(qa-agent + Temporal)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1168BD;fontColor=#FFFFFF;strokeColor=#0B4F8A;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="320" y="200" width="220" height="110" as="geometry" />
-        </mxCell>
-        <mxCell id="ctx_ext" value="GitHub Actions&#10;Grafana · Contabo Argo&#10;Playwright Trace" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
-          <mxGeometry x="660" y="200" width="200" height="110" as="geometry" />
-        </mxCell>
-        <mxCell id="ctx_e1" value="dispatches / watches" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="ctx_actor" target="ctx_sys">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ctx_e2" value="evidence + deploy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="ctx_sys" target="ctx_ext">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ctx_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="40" y="760" width="1080" height="36" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram id="business" name="BusinessFlow">
-    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="bf_title" value="Pre-Release Gate — BusinessFlow" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
-          <mxGeometry x="40" y="16" width="1520" height="36" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_purpose" value="Purpose: dispatch → Temporal phases → evidence. Reject if pods unhealthy or suites fail. Match P0–P3 plan." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
-          <mxGeometry x="40" y="58" width="900" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="lane_user" value="User" style="swimlane;fontStyle=1;startSize=32;horizontal=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontColor=#08427B;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="40" y="90" width="280" height="620" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_u1" value="Starts ui-test-gate&#10;deploy_mode=none|tag|branch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="lane_user">
-          <mxGeometry x="20" y="50" width="240" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_u2" value="Approves Contabo / confirms release" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="lane_user">
-          <mxGeometry x="20" y="220" width="240" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_u3" value="Sees GO on Cliq + Scorecard&#10;+ Trace Viewer links" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="lane_user">
-          <mxGeometry x="20" y="390" width="240" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_u4" value="Sees NO_GO / fail-closed&#10;(unhealthy pods / suite fail)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;fontColor=#333333;strokeColor=#B85450;" vertex="1" parent="lane_user">
-          <mxGeometry x="20" y="530" width="240" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="lane_ui" value="UI" style="swimlane;fontStyle=1;startSize=32;horizontal=1;fillColor=#BBDEFB;strokeColor=#1168BD;fontColor=#08427B;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="340" y="90" width="300" height="620" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_ui1" value="GitHub Actions&#10;ui-test-gate.yml" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1168BD;fontColor=#FFFFFF;strokeColor=#0B4F8A;" vertex="1" parent="lane_ui">
-          <mxGeometry x="20" y="50" width="260" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_ui2" value="POST /qa/v2/releases/ops/start" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="lane_ui">
-          <mxGeometry x="20" y="220" width="260" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_ui3" value="Check-runs + step summary&#10;phase progress" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="lane_ui">
-          <mxGeometry x="20" y="390" width="260" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_ui4" value="Fail-closed: SPA HTML health&#10;or missing gateway token" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" vertex="1" parent="lane_ui">
-          <mxGeometry x="20" y="530" width="260" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="lane_svc" value="Service" style="swimlane;fontStyle=1;startSize=32;horizontal=1;fillColor=#90CAF9;strokeColor=#438DD5;fontColor=#0B4F8A;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="660" y="90" width="300" height="620" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_s1" value="qa-agent gateway validates + writes store" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="lane_svc">
-          <mxGeometry x="20" y="220" width="260" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_s2" value="qa-agent gateway persist + emit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="lane_svc">
-          <mxGeometry x="20" y="390" width="260" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_s3" value="qa-agent gateway reject, no persist" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" vertex="1" parent="lane_svc">
-          <mxGeometry x="20" y="530" width="260" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="lane_ext" value="External" style="swimlane;fontStyle=1;startSize=32;horizontal=1;dashed=1;fillColor=#F5F5F5;strokeColor=#666666;fontColor=#333333;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="980" y="90" width="300" height="620" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_e1" value="Optional vendor / Kafka consumer" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" vertex="1" parent="lane_ext">
-          <mxGeometry x="20" y="390" width="260" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_edge1" value="opens" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="bf_u1" target="bf_ui1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_edge2" value="submits" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="bf_u2" target="bf_ui2">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_edge3" value="POST /qa/v2/releases/ops/start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="bf_ui2" target="bf_s1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_edge4" value="success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="bf_s2" target="bf_ui3">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_edge5" value="topic.feature.events" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="bf_s2" target="bf_e1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_edge6" value="reject" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" edge="1" parent="1" source="bf_s3" target="bf_ui4">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_edge7" value="shows error" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" edge="1" parent="1" source="bf_ui4" target="bf_u4">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="bf_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="40" y="940" width="1520" height="36" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram id="containers" name="Containers">
-    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="c_title" value="Pre-Release Gate — Containers" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
-          <mxGeometry x="40" y="16" width="1320" height="36" as="geometry" />
-        </mxCell>
-        <mxCell id="c_purpose" value="Purpose: C4 nested AM boundary. Stores are own shapes. Every edge labeled method+path or Kafka topic." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
-          <mxGeometry x="40" y="58" width="900" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="c_boundary" value="AM product" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#1168BD;strokeWidth=2;verticalAlign=top;align=left;spacingLeft=10;spacingTop=6;fontColor=#1168BD;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="40" y="100" width="920" height="420" as="geometry" />
-        </mxCell>
-        <mxCell id="c_ui" value="modern-ui" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" vertex="1" parent="c_boundary">
-          <mxGeometry x="40" y="160" width="160" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="c_lead" value="qa-agent gateway" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" vertex="1" parent="c_boundary">
-          <mxGeometry x="320" y="160" width="180" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="c_other" value="OtherService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" vertex="1" parent="c_boundary">
-          <mxGeometry x="640" y="160" width="180" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="c_store" value="Lead store" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;" vertex="1" parent="c_boundary">
-          <mxGeometry x="340" y="300" width="140" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="c_ext" value="External / vendor" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="1020" y="260" width="180" height="90" as="geometry" />
-        </mxCell>
-        <mxCell id="c_e1" value="POST /qa/v2/releases/ops/start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="c_ui" target="c_lead">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="c_e2" value="read/write" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="c_lead" target="c_store">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="c_e3" value="topic.feature.events" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="c_lead" target="c_other">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="c_e4" value="vendor API" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="c_other" target="c_ext">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="c_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="40" y="840" width="1320" height="36" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram id="sequence" name="Sequence">
-    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="seq_title" value="Pre-Release Gate — Sequence" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
-          <mxGeometry x="40" y="16" width="1320" height="36" as="geometry" />
-        </mxCell>
-        <mxCell id="seq_purpose" value="Purpose: UML lifelines. Numbered Create then Happy then Reject. No stacked arrows on the same pair." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
-          <mxGeometry x="40" y="58" width="900" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="life_actor" value="Person" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;size=40;" vertex="1" parent="1">
-          <mxGeometry x="80" y="100" width="100" height="620" as="geometry" />
-        </mxCell>
-        <mxCell id="life_ui" value="modern-ui" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;size=40;" vertex="1" parent="1">
-          <mxGeometry x="280" y="100" width="120" height="620" as="geometry" />
-        </mxCell>
-        <mxCell id="life_lead" value="qa-agent gateway" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;size=40;" vertex="1" parent="1">
-          <mxGeometry x="520" y="100" width="140" height="620" as="geometry" />
-        </mxCell>
-        <mxCell id="life_store" value="Store" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;size=40;" vertex="1" parent="1">
-          <mxGeometry x="780" y="100" width="120" height="620" as="geometry" />
-        </mxCell>
-        <mxCell id="life_ext" value="External" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#F5F5F5;fontColor=#333333;strokeColor=#666666;dashed=1;size=40;" vertex="1" parent="1">
-          <mxGeometry x="1020" y="100" width="120" height="620" as="geometry" />
-        </mxCell>
-        <mxCell id="seq_m1" value="1 Create / open" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=1;exitY=0.18;entryX=0;entryY=0.18;" edge="1" parent="1" source="life_actor" target="life_ui">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="seq_m2" value="2 POST /qa/v2/releases/ops/start" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=1;exitY=0.32;entryX=0;entryY=0.32;" edge="1" parent="1" source="life_ui" target="life_lead">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="seq_m3" value="3 persist" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=1;exitY=0.44;entryX=0;entryY=0.44;" edge="1" parent="1" source="life_lead" target="life_store">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="seq_m4" value="4 topic.feature.events" style="html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;exitX=1;exitY=0.56;entryX=0;entryY=0.56;" edge="1" parent="1" source="life_lead" target="life_ext">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="seq_m5" value="5 200 body" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=0;exitY=0.68;entryX=1;entryY=0.68;" edge="1" parent="1" source="life_lead" target="life_ui">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="seq_m6" value="6 Reject 4xx, no write" style="html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;exitX=1;exitY=0.84;entryX=0;entryY=0.84;" edge="1" parent="1" source="life_ui" target="life_lead">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="seq_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="40" y="840" width="1320" height="36" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram id="data" name="DataIdentity">
-    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="di_title" value="Pre-Release Gate — DataIdentity" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
-          <mxGeometry x="40" y="16" width="1080" height="36" as="geometry" />
-        </mxCell>
-        <mxCell id="di_purpose" value="Purpose: who owns ids, ledger fields, sync id vs name, event payload keys." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
-          <mxGeometry x="40" y="58" width="720" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="di_lead" value="qa-agent gateway store&#10;ownerId=…&#10;resourceId=…&#10;ledgerField=…" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;align=left;spacingLeft=8;" vertex="1" parent="1">
-          <mxGeometry x="80" y="140" width="240" height="150" as="geometry" />
-        </mxCell>
-        <mxCell id="di_other" value="OtherService store&#10;id=…&#10;name=…&#10;kind=…" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;align=left;spacingLeft=8;" vertex="1" parent="1">
-          <mxGeometry x="700" y="140" width="240" height="150" as="geometry" />
-        </mxCell>
-        <mxCell id="di_ev" value="Event payload&#10;id=…&#10;ownerId=…&#10;kind=…" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;align=left;spacingLeft=8;" vertex="1" parent="1">
-          <mxGeometry x="390" y="360" width="240" height="120" as="geometry" />
-        </mxCell>
-        <mxCell id="di_e1" value="maps" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="di_lead" target="di_ev">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="di_e2" value="maps" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="di_ev" target="di_other">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="di_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="40" y="760" width="1080" height="36" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram id="security" name="SecurityTrust">
-    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="st_title" value="Pre-Release Gate — SecurityTrust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
-          <mxGeometry x="40" y="16" width="1080" height="36" as="geometry" />
-        </mxCell>
-        <mxCell id="st_purpose" value="Purpose: authn/authz, owner checks, internal secrets (names only), book isolation." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
-          <mxGeometry x="40" y="58" width="720" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="st_idp" value="IdP / Keycloak" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="60" y="140" width="160" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="st_api" value="Public APIs&#10;owner-scoped" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
-          <mxGeometry x="340" y="140" width="180" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="st_int" value="Internal /sync&#10;header name only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" vertex="1" parent="1">
-          <mxGeometry x="640" y="140" width="200" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="st_iso" value="Isolation boundary&#10;(e.g. PAPER vs BROKER)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1168BD;fontColor=#FFFFFF;strokeColor=#0B4F8A;" vertex="1" parent="1">
-          <mxGeometry x="340" y="320" width="220" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="st_e1" value="Bearer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="st_idp" target="st_api">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="st_e2" value="trust / secret header" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" edge="1" parent="1" source="st_api" target="st_int">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="st_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="40" y="760" width="1080" height="36" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram id="failures" name="Failures">
-    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="fail_title" value="Pre-Release Gate — Failures" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
-          <mxGeometry x="40" y="16" width="1320" height="36" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_purpose" value="Purpose: each row is Trigger → system → user-sees. Not disconnected cards." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
-          <mxGeometry x="40" y="58" width="900" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_h1" value="Trigger" style="text;html=1;fontStyle=1;fontColor=#B85450;align=center;" vertex="1" parent="1">
-          <mxGeometry x="60" y="100" width="280" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_h2" value="System" style="text;html=1;fontStyle=1;fontColor=#0B4F8A;align=center;" vertex="1" parent="1">
-          <mxGeometry x="460" y="100" width="280" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_h3" value="User sees" style="text;html=1;fontStyle=1;fontColor=#08427B;align=center;" vertex="1" parent="1">
-          <mxGeometry x="860" y="100" width="280" height="24" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_t1" value="Trigger: dep miss / validation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;spacingLeft=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="140" width="280" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_s1" value="qa-agent gateway 400, no write" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
-          <mxGeometry x="460" y="140" width="280" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_u1" value="Toast / banner; cash unchanged" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="1">
-          <mxGeometry x="860" y="140" width="280" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_e1a" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_t1" target="fail_s1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_e1b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_s1" target="fail_u1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_t2" value="Trigger: async lag" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;spacingLeft=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="280" width="280" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_s2" value="Trade saved; consumer pending" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
-          <mxGeometry x="460" y="280" width="280" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_u2" value="Holdings may lag; retry/refresh" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="1">
-          <mxGeometry x="860" y="280" width="280" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_e2a" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;" edge="1" parent="1" source="fail_t2" target="fail_s2">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_e2b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;" edge="1" parent="1" source="fail_s2" target="fail_u2">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_t3" value="Trigger: kind / isolation mismatch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;spacingLeft=8;" vertex="1" parent="1">
-          <mxGeometry x="60" y="420" width="280" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_s3" value="Reject or skip write" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
-          <mxGeometry x="460" y="420" width="280" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_u3" value="Wrong book untouched" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="1">
-          <mxGeometry x="860" y="420" width="280" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_e3a" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_t3" target="fail_s3">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_e3b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_s3" target="fail_u3">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="fail_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="40" y="840" width="1320" height="36" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
+<mxfile host="65bd71144e">
+    <diagram id="context" name="Context">
+        <mxGraphModel dx="880" dy="769" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="ctx_title" value="Pre-Release Gate — Context" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="20" width="1080" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="ctx_purpose" value="Purpose: actors, AM product boundary, and external vendors this feature evidence + deploy on." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="64" width="720" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="ctx_actor" value="Release operator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="220" width="140" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ctx_sys" value="Asrax Release Ops&#10;(qa-agent + Temporal)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1168BD;fontColor=#FFFFFF;strokeColor=#0B4F8A;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="320" y="200" width="220" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="ctx_ext" value="GitHub Actions&#10;Grafana · Contabo Argo&#10;Playwright Trace" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;fontColor=#333333;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="200" width="200" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="ctx_e1" value="dispatches / watches" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" parent="1" source="ctx_actor" target="ctx_sys" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ctx_e2" value="evidence + deploy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" parent="1" source="ctx_sys" target="ctx_ext" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ctx_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="760" width="1080" height="36" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="business" name="BusinessFlow">
+        <mxGraphModel dx="880" dy="769" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="bf_title" value="Pre-Release Gate — BusinessFlow" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="16" width="1520" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_purpose" value="Purpose: dispatch → Temporal phases → evidence. Reject if pods unhealthy or suites fail. Match P0–P3 plan." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="58" width="900" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane_user" value="User" style="swimlane;fontStyle=1;startSize=32;horizontal=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontColor=#08427B;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="90" width="280" height="620" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_u1" value="Starts ui-test-gate&#10;deploy_mode=none|tag|branch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" parent="lane_user" vertex="1">
+                    <mxGeometry x="20" y="50" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_u2" value="Approves Contabo / confirms release" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" parent="lane_user" vertex="1">
+                    <mxGeometry x="20" y="220" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_u3" value="Sees GO on Cliq + Scorecard&#10;+ Trace Viewer links" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" parent="lane_user" vertex="1">
+                    <mxGeometry x="20" y="390" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_u4" value="Sees NO_GO / fail-closed&#10;(unhealthy pods / suite fail)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;fontColor=#333333;strokeColor=#B85450;" parent="lane_user" vertex="1">
+                    <mxGeometry x="20" y="530" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane_ui" value="UI" style="swimlane;fontStyle=1;startSize=32;horizontal=1;fillColor=#BBDEFB;strokeColor=#1168BD;fontColor=#08427B;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="90" width="300" height="620" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_ui1" value="GitHub Actions&#10;ui-test-gate.yml" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1168BD;fontColor=#FFFFFF;strokeColor=#0B4F8A;" parent="lane_ui" vertex="1">
+                    <mxGeometry x="20" y="50" width="260" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_ui2" value="POST /qa/v2/releases/ops/start" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" parent="lane_ui" vertex="1">
+                    <mxGeometry x="20" y="220" width="260" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_ui3" value="Check-runs + step summary&#10;phase progress" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" parent="lane_ui" vertex="1">
+                    <mxGeometry x="20" y="390" width="260" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_ui4" value="Fail-closed: SPA HTML health&#10;or missing gateway token" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" parent="lane_ui" vertex="1">
+                    <mxGeometry x="20" y="530" width="260" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane_svc" value="Service" style="swimlane;fontStyle=1;startSize=32;horizontal=1;fillColor=#90CAF9;strokeColor=#438DD5;fontColor=#0B4F8A;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="90" width="300" height="620" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_s1" value="qa-agent gateway validates + writes store" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" parent="lane_svc" vertex="1">
+                    <mxGeometry x="20" y="220" width="260" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_s2" value="qa-agent gateway persist + emit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" parent="lane_svc" vertex="1">
+                    <mxGeometry x="20" y="390" width="260" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_s3" value="qa-agent gateway reject, no persist" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" parent="lane_svc" vertex="1">
+                    <mxGeometry x="20" y="530" width="260" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane_ext" value="External" style="swimlane;fontStyle=1;startSize=32;horizontal=1;dashed=1;fillColor=#F5F5F5;strokeColor=#666666;fontColor=#333333;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="90" width="300" height="620" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_e1" value="Optional vendor / Kafka consumer" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" parent="lane_ext" vertex="1">
+                    <mxGeometry x="20" y="390" width="260" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_edge1" value="opens" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" parent="1" source="bf_u1" target="bf_ui1" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_edge2" value="submits" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" parent="1" source="bf_u2" target="bf_ui2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_edge3" value="POST /qa/v2/releases/ops/start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" parent="1" source="bf_ui2" target="bf_s1" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_edge4" value="success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" parent="1" source="bf_s2" target="bf_ui3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_edge5" value="topic.feature.events" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" parent="1" source="bf_s2" target="bf_e1" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_edge6" value="reject" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" parent="1" source="bf_s3" target="bf_ui4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_edge7" value="shows error" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" parent="1" source="bf_ui4" target="bf_u4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="bf_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="940" width="1520" height="36" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="containers" name="Containers">
+        <mxGraphModel dx="880" dy="769" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="c_title" value="Pre-Release Gate — Containers" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="16" width="1320" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_purpose" value="Purpose: C4 nested AM boundary. Stores are own shapes. Every edge labeled method+path or Kafka topic." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="58" width="900" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_boundary" value="AM product" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#1168BD;strokeWidth=2;verticalAlign=top;align=left;spacingLeft=10;spacingTop=6;fontColor=#1168BD;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="100" width="920" height="420" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_ui" value="modern-ui" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" parent="c_boundary" vertex="1">
+                    <mxGeometry x="40" y="160" width="160" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_lead" value="qa-agent gateway" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" parent="c_boundary" vertex="1">
+                    <mxGeometry x="320" y="160" width="180" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_other" value="OtherService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;fontStyle=1;" parent="c_boundary" vertex="1">
+                    <mxGeometry x="640" y="160" width="180" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_store" value="Lead store" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;" parent="c_boundary" vertex="1">
+                    <mxGeometry x="340" y="300" width="140" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_ext" value="External / vendor" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" parent="1" vertex="1">
+                    <mxGeometry x="1020" y="260" width="180" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_e1" value="POST /qa/v2/releases/ops/start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" parent="1" source="c_ui" target="c_lead" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_e2" value="read/write" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" parent="1" source="c_lead" target="c_store" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_e3" value="topic.feature.events" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" parent="1" source="c_lead" target="c_other" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_e4" value="vendor API" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" parent="1" source="c_other" target="c_ext" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="840" width="1320" height="36" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="sequence" name="Sequence">
+        <mxGraphModel dx="880" dy="769" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="seq_title" value="Pre-Release Gate — Sequence" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="16" width="1320" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_purpose" value="Purpose: UML lifelines. Numbered Create then Happy then Reject. No stacked arrows on the same pair." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="58" width="900" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="life_actor" value="Person" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;size=40;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="100" width="100" height="620" as="geometry"/>
+                </mxCell>
+                <mxCell id="life_ui" value="modern-ui" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;size=40;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="100" width="120" height="620" as="geometry"/>
+                </mxCell>
+                <mxCell id="life_lead" value="qa-agent gateway" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;size=40;" parent="1" vertex="1">
+                    <mxGeometry x="520" y="100" width="140" height="620" as="geometry"/>
+                </mxCell>
+                <mxCell id="life_store" value="Store" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;size=40;" parent="1" vertex="1">
+                    <mxGeometry x="780" y="100" width="120" height="620" as="geometry"/>
+                </mxCell>
+                <mxCell id="life_ext" value="External" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#F5F5F5;fontColor=#333333;strokeColor=#666666;dashed=1;size=40;" parent="1" vertex="1">
+                    <mxGeometry x="1020" y="100" width="120" height="620" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_m1" value="1 Create / open" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=1;exitY=0.18;entryX=0;entryY=0.18;" parent="1" source="life_actor" target="life_ui" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_m2" value="2 POST /qa/v2/releases/ops/start" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=1;exitY=0.32;entryX=0;entryY=0.32;" parent="1" source="life_ui" target="life_lead" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_m3" value="3 persist" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=1;exitY=0.44;entryX=0;entryY=0.44;" parent="1" source="life_lead" target="life_store" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_m4" value="4 topic.feature.events" style="html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;exitX=1;exitY=0.56;entryX=0;entryY=0.56;" parent="1" source="life_lead" target="life_ext" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_m5" value="5 200 body" style="html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;exitX=0;exitY=0.68;entryX=1;entryY=0.68;" parent="1" source="life_lead" target="life_ui" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_m6" value="6 Reject 4xx, no write" style="html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;exitX=1;exitY=0.84;entryX=0;entryY=0.84;" parent="1" source="life_ui" target="life_lead" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="840" width="1320" height="36" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="data" name="DataIdentity">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="di_title" value="Pre-Release Gate — DataIdentity" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="16" width="1080" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="di_purpose" value="Purpose: who owns ids, ledger fields, sync id vs name, event payload keys." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="58" width="720" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="di_lead" value="qa-agent gateway store&#10;ownerId=…&#10;resourceId=…&#10;ledgerField=…" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;align=left;spacingLeft=8;" vertex="1" parent="1">
+                    <mxGeometry x="80" y="140" width="240" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="di_other" value="OtherService store&#10;id=…&#10;name=…&#10;kind=…" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#2E7D32;fontColor=#FFFFFF;strokeColor=#1B5E20;align=left;spacingLeft=8;" vertex="1" parent="1">
+                    <mxGeometry x="700" y="140" width="240" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="di_ev" value="Event payload&#10;id=…&#10;ownerId=…&#10;kind=…" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;align=left;spacingLeft=8;" vertex="1" parent="1">
+                    <mxGeometry x="390" y="360" width="240" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="di_e1" value="maps" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="di_lead" target="di_ev">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="di_e2" value="maps" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#B45F06;" edge="1" parent="1" source="di_ev" target="di_other">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="di_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="760" width="1080" height="36" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="security" name="SecurityTrust">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="st_title" value="Pre-Release Gate — SecurityTrust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="16" width="1080" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="st_purpose" value="Purpose: authn/authz, owner checks, internal secrets (names only), book isolation." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="58" width="720" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="st_idp" value="IdP / Keycloak" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;fillColor=#F5F5F5;strokeColor=#666666;" vertex="1" parent="1">
+                    <mxGeometry x="60" y="140" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="st_api" value="Public APIs&#10;owner-scoped" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
+                    <mxGeometry x="340" y="140" width="180" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="st_int" value="Internal /sync&#10;header name only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" vertex="1" parent="1">
+                    <mxGeometry x="640" y="140" width="200" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="st_iso" value="Isolation boundary&#10;(e.g. PAPER vs BROKER)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1168BD;fontColor=#FFFFFF;strokeColor=#0B4F8A;" vertex="1" parent="1">
+                    <mxGeometry x="340" y="320" width="220" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="st_e1" value="Bearer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82B366;strokeWidth=2;fontColor=#2E7D32;" edge="1" parent="1" source="st_idp" target="st_api">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="st_e2" value="trust / secret header" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" edge="1" parent="1" source="st_api" target="st_int">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="st_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="760" width="1080" height="36" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="failures" name="Failures">
+        <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="fail_title" value="Pre-Release Gate — Failures" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;fontColor=#FFFFFF;fontStyle=1;align=left;spacingLeft=12;fontSize=14;strokeColor=#1A1A2E;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="16" width="1320" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_purpose" value="Purpose: each row is Trigger → system → user-sees. Not disconnected cards." style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="58" width="900" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_h1" value="Trigger" style="text;html=1;fontStyle=1;fontColor=#B85450;align=center;" vertex="1" parent="1">
+                    <mxGeometry x="60" y="100" width="280" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_h2" value="System" style="text;html=1;fontStyle=1;fontColor=#0B4F8A;align=center;" vertex="1" parent="1">
+                    <mxGeometry x="460" y="100" width="280" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_h3" value="User sees" style="text;html=1;fontStyle=1;fontColor=#08427B;align=center;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="100" width="280" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_t1" value="Trigger: dep miss / validation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;spacingLeft=8;" vertex="1" parent="1">
+                    <mxGeometry x="60" y="140" width="280" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_s1" value="qa-agent gateway 400, no write" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
+                    <mxGeometry x="460" y="140" width="280" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_u1" value="Toast / banner; cash unchanged" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="140" width="280" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_e1a" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_t1" target="fail_s1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_e1b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_s1" target="fail_u1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_t2" value="Trigger: async lag" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;spacingLeft=8;" vertex="1" parent="1">
+                    <mxGeometry x="60" y="280" width="280" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_s2" value="Trade saved; consumer pending" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
+                    <mxGeometry x="460" y="280" width="280" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_u2" value="Holdings may lag; retry/refresh" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="280" width="280" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_e2a" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;" edge="1" parent="1" source="fail_t2" target="fail_s2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_e2b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#D79B00;strokeWidth=2;" edge="1" parent="1" source="fail_s2" target="fail_u2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_t3" value="Trigger: kind / isolation mismatch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;spacingLeft=8;" vertex="1" parent="1">
+                    <mxGeometry x="60" y="420" width="280" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_s3" value="Reject or skip write" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#FFFFFF;strokeColor=#2E6DA4;" vertex="1" parent="1">
+                    <mxGeometry x="460" y="420" width="280" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_u3" value="Wrong book untouched" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;fontColor=#FFFFFF;strokeColor=#08427B;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="420" width="280" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_e3a" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_t3" target="fail_s3">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_e3b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#B85450;strokeWidth=2;" edge="1" parent="1" source="fail_s3" target="fail_u3">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="fail_legend" value="Legend: navy person · #1168BD AM system · light-blue container · green store · dashed gray external · solid green happy · gold dashed Kafka/async · red reject/trust" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="840" width="1320" height="36" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
 </mxfile>

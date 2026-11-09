@@ -1,0 +1,37 @@
+{
+  "service": "am-market-data",
+  "active_version": 1,
+  "sets": [
+    {
+      "version": 1,
+      "label": "data-gen-prod",
+      "api_count": 22,
+      "api_ids": [
+        "get_v1_fundamentals_symbol",
+        "get_v1_fundamentals_symbol_peers",
+        "get_v1_indices_available",
+        "get_v1_market-calendar_holidays",
+        "get_v1_market-calendar_status",
+        "get_v1_market-data_ipo",
+        "get_v1_market-data_ipo_counts",
+        "get_v1_market-data_ipo_id",
+        "get_v1_market-data_live-ltp",
+        "get_v1_market-data_mutual-fund_schemeCode",
+        "get_v1_market-data_mutual-fund_schemeCode_history",
+        "get_v1_market-data_quotes",
+        "get_v1_securities_search",
+        "get_v1_watchlists",
+        "get_v1_watchlists_watchlistId_items",
+        "post_v1_indices_batch",
+        "post_v1_instruments_search",
+        "post_v1_market-data_ohlc",
+        "post_v1_market-data_quotes",
+        "post_v1_securities_search",
+        "post_v1_watchlists",
+        "post_v1_watchlists_watchlistId_items"
+      ],
+      "created_at": "2026-10-08T22:11:15.209804+00:00",
+      "updated_at": "2026-10-08T22:11:15.534785+00:00"
+    }
+  ]
+}

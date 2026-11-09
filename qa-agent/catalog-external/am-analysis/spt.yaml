@@ -1,0 +1,16 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-analysis
+label: am-analysis
+enabled: true
+runtime: unknown
+description: Domain feed registration from am-specs (am-analysis)
+source:
+  repo: am-core-services
+  path: services/am-analysis/spt.yaml
+targets:
+  dev: https://am-dev.asrax.in/analysis
+  preprod: https://am-preprod.asrax.in/analysis
+  prod: https://am.asrax.in/analysis
+openapi:
+  path: /openapi.json

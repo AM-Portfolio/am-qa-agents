@@ -1,0 +1,50 @@
+[
+  {
+    "id": "am-market-data",
+    "seed": 200,
+    "ops": 104,
+    "ensure": 200
+  },
+  {
+    "id": "am-news",
+    "seed": 200,
+    "ops": 11,
+    "ensure": 200
+  },
+  {
+    "id": "am-parser",
+    "seed": 200,
+    "ops": 29,
+    "ensure": 200
+  },
+  {
+    "id": "am-portfolio",
+    "seed": 200,
+    "ops": 53,
+    "ensure": 200
+  },
+  {
+    "id": "am-analysis",
+    "seed": 200,
+    "ops": 4,
+    "ensure": 200
+  },
+  {
+    "id": "am-trade-management-service",
+    "seed": 200,
+    "ops": 98,
+    "ensure": 200
+  },
+  {
+    "id": "am-oms",
+    "seed": 200,
+    "ops": 16,
+    "ensure": 200
+  },
+  {
+    "id": "am-subscription",
+    "seed": 200,
+    "ops": 19,
+    "ensure": 200
+  }
+]
