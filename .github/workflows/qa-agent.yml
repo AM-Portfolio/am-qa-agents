@@ -103,6 +103,8 @@ jobs:
             --base-href=/qa/ui/ \
             --dart-define=API_BASE=/qa \
             --dart-define=ROOT_PATH=/qa \
+            --dart-define=KEYCLOAK_ISSUER=https://auth.asrax.in/realms/am-qa-agents-dev \
+            --dart-define=KEYCLOAK_CLIENT_ID=am-qa-portal-client \
             --no-wasm-dry-run
           test -f build/web/index.html
           echo "built=true" >> "$GITHUB_OUTPUT"

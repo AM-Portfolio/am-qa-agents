@@ -12,7 +12,7 @@ class PortalConfig {
   final String rootPath;
 
   factory PortalConfig.fromEnvironment() {
-    const api = String.fromEnvironment('API_BASE', defaultValue: '');
+    const api = String.fromEnvironment('API_BASE', defaultValue: 'http://localhost:8130');
     const root = String.fromEnvironment('ROOT_PATH', defaultValue: '');
     if (api.isNotEmpty) {
       return PortalConfig(apiBase: api.replaceAll(RegExp(r'/$'), ''), rootPath: root);

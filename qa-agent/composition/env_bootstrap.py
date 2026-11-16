@@ -48,11 +48,25 @@ def load_env(*, override: bool = False) -> Path | None:
                 except UnicodeDecodeError:
                     # Local .env with non-UTF8 bytes — skip rather than crash
                     continue
+        # Also load .env.local (lower priority than existing env; override=False)
+        local_candidates = [
+            _qa_agent_root() / ".env.local",
+            _repo_root() / ".env.local",
+            Path.cwd() / ".env.local",
+        ]
+        for lpath in local_candidates:
+            if lpath.is_file():
+                try:
+                    load_dotenv(lpath, override=False)
+                except UnicodeDecodeError:
+                    pass
+                break
     else:
         loaded = next((p for p in candidates if p.is_file()), None)
 
     _apply_aliases()
     return loaded
+
 
 
 def _apply_aliases() -> None:
