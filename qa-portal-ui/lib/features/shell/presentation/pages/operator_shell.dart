@@ -132,7 +132,6 @@ class OperatorShell extends StatelessWidget {
               label: const Text('Sign In as Operator'),
               onPressed: () {
                 Navigator.pop(ctx);
-                final currentPath = GoRouterState.of(context).uri.path;
                 getIt<QaAuthService>().redirectToCentralLogin();
               },
             ),
@@ -295,7 +294,6 @@ class OperatorShell extends StatelessWidget {
                                       style: TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                     onPressed: () {
-                                      final currentPath = GoRouterState.of(context).uri.toString();
                                       getIt<QaAuthService>().redirectToCentralLogin();
                                     },
                                   ),
