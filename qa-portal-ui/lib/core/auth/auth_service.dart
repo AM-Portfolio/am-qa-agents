@@ -183,9 +183,10 @@ class QaAuthService {
     String? state,
     String? handoff,
   }) async {
-    final callbackEndpoint = '${config.apiBase}/api/v1/auth/central-session';
+    // Paths are relative to Dio baseUrl (apiBase). Do NOT prefix apiBase again —
+    // Dio concatenates baseUrl + path, so `/qa` + `/qa/api/...` becomes `/qa/qa/...`.
     final response = await dio.post<Map<String, dynamic>>(
-      callbackEndpoint,
+      '/api/v1/auth/central-session',
       data: {
         if (handoff != null && handoff.isNotEmpty) 'handoff': handoff,
         if (token.isNotEmpty) 'access_token': token,
@@ -261,11 +262,10 @@ class QaAuthService {
       throw StateError('Invalid or expired QA sign-in session. Please retry.');
     }
     final returnPath = prefs.getString(_returnPathKey) ?? '/ui-flows';
-    final callbackEndpoint = '${config.apiBase}/api/v1/auth/callback';
     final defaultRedirectUri = _callbackUri;
 
     final response = await dio.post<Map<String, dynamic>>(
-      callbackEndpoint,
+      '/api/v1/auth/callback',
       data: {
         'code': code,
         'state': returnPath,
