@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from ui_evidence.config import settings
+from ui_evidence.api.auth_callback import router as auth_callback_router
 from ui_evidence.api.design_baselines import router as design_baselines_router
 from ui_evidence.api.test_runner import router as test_runner_router
 
@@ -62,7 +63,15 @@ setup_plane_a(app, application="am-ui-test-agent")
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:8151",
+        "http://localhost:9000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8151",
+        "http://127.0.0.1:9000",
+        "http://127.0.0.1:8100",
+    ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,6 +79,8 @@ app.add_middleware(
 
 app.include_router(test_runner_router, prefix="/api/v1/test")
 app.include_router(design_baselines_router, prefix="/api/v1/design")
+app.include_router(auth_callback_router, prefix="/api/v1/auth")
+app.include_router(auth_callback_router, prefix="/qa/auth")
 
 @app.get("/health")
 async def health():

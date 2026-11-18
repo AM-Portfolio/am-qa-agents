@@ -98,7 +98,8 @@ async def _startup_db_and_seed() -> None:
                     {
                         "status": "failed",
                         "passed": False,
-                        "error": row.get("error") or "stale running state cleared on startup",
+                        "error": row.get("error")
+                        or "stale running state cleared on startup",
                         "finished_at": datetime.now(timezone.utc).isoformat(),
                         "live": {"phase": "error", "message": "cleared on startup"},
                     },
@@ -178,7 +179,9 @@ class _FlutterNoCacheMiddleware:
                     for k, v in message.get("headers", [])
                     if k.lower() not in (b"cache-control", b"expires", b"pragma")
                 ]
-                headers.append((b"cache-control", b"no-cache, no-store, must-revalidate"))
+                headers.append(
+                    (b"cache-control", b"no-cache, no-store, must-revalidate")
+                )
                 headers.append((b"pragma", b"no-cache"))
                 message = {**message, "headers": headers}
             await send(message)
@@ -186,8 +189,78 @@ class _FlutterNoCacheMiddleware:
         await self.app(scope, receive, send_wrapper if no_cache else send)
 
 
+class _FlutterSpaFallbackMiddleware:
+    """Serve index.html for Flutter deep links (/ui/callback, /ui/login, …).
+
+    Starlette StaticFiles(html=True) only indexes directories; OIDC callbacks
+    otherwise fall through as JSON {"detail":"Not Found"}.
+    """
+
+    _ASSET_SUFFIXES = (
+        ".js",
+        ".css",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".webp",
+        ".svg",
+        ".ico",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".map",
+        ".json",
+        ".txt",
+        ".wasm",
+    )
+
+    def __init__(self, app: Any, flutter_dir: Any) -> None:
+        self.app = app
+        self.index_path = Path(flutter_dir) / "index.html"
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http" or not self.index_path.is_file():
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path") or ""
+        under_ui = path == "/ui" or path.startswith("/ui/")
+        if not under_ui or path.endswith(self._ASSET_SUFFIXES):
+            await self.app(scope, receive, send)
+            return
+
+        status_holder: dict[str, int | None] = {"code": None}
+        start_message: dict[str, Any] | None = None
+        body_messages: list[dict[str, Any]] = []
+
+        async def send_wrapper(message: Any) -> None:
+            nonlocal start_message
+            if message["type"] == "http.response.start":
+                status_holder["code"] = int(message.get("status") or 0)
+                if status_holder["code"] == 404:
+                    start_message = message
+                    return
+                await send(message)
+                return
+            if status_holder["code"] == 404:
+                body_messages.append(message)
+                if message.get("more_body"):
+                    return
+                from starlette.responses import FileResponse
+
+                response = FileResponse(self.index_path)
+                await response(scope, receive, send)
+                return
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
+
+
 _FLUTTER_DIR = portal_flutter_web_dir() if settings.spt_portal_flutter else None
 if _FLUTTER_DIR is not None:
+    # Outer → inner: no-cache wraps SPA fallback wraps StaticFiles.
+    app.add_middleware(_FlutterSpaFallbackMiddleware, flutter_dir=_FLUTTER_DIR)
     app.add_middleware(_FlutterNoCacheMiddleware)
     app.mount(
         "/ui",
@@ -234,6 +307,269 @@ async def portal_mode() -> dict[str, Any]:
         "legacy_fallback": bool(not settings.spt_portal_flutter),
         "ok": bool(available) if settings.spt_portal_flutter else True,
     }
+
+
+# ---------------------------------------------------------------------------
+# QA Portal OIDC authorization-code exchange (public client + PKCE)
+# ---------------------------------------------------------------------------
+import os as _os
+
+
+@app.post("/api/v1/auth/callback")
+async def qa_portal_auth_callback(request: Request) -> dict:
+    """Exchange a one-time Keycloak code using its browser PKCE verifier."""
+    import httpx as _httpx
+    from specs.security.identity_client import jwt_claims as _jwt_claims
+
+    body = await request.json()
+    code: str = body.get("code", "")
+    code_verifier: str = body.get("code_verifier", "")
+    raw_state: str = body.get("state", "/ui-flows")
+    state = (
+        raw_state
+        if isinstance(raw_state, str)
+        and raw_state.startswith("/")
+        and not raw_state.startswith("//")
+        else "/ui-flows"
+    )
+
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing authorization code")
+    if not isinstance(code_verifier, str) or not 43 <= len(code_verifier) <= 128:
+        raise HTTPException(status_code=400, detail="Invalid PKCE verifier")
+
+    keycloak_url = _os.environ.get("KEYCLOAK_URL", "https://auth.asrax.in")
+    realm = _os.environ.get("KEYCLOAK_REALM", "am-qa-agents-dev")
+    client_id = _os.environ.get("KEYCLOAK_QA_CLIENT_ID", "am-qa-portal-client")
+    configured_redirect = _os.environ.get(
+        "KEYCLOAK_QA_REDIRECT_URI", "https://am-dev.asrax.in/qa/ui/callback"
+    )
+    # Must match the redirect_uri used in the browser authorize request.
+    allowed_redirects = {
+        configured_redirect,
+        "http://localhost:8151/callback",
+        "http://127.0.0.1:8151/callback",
+        "https://am-dev.asrax.in/qa/ui/callback",
+    }
+    requested_redirect = body.get("redirect_uri")
+    redirect_uri = (
+        requested_redirect
+        if isinstance(requested_redirect, str)
+        and requested_redirect in allowed_redirects
+        else configured_redirect
+    )
+
+    token_url = (
+        f"{keycloak_url.rstrip('/')}/realms/{realm}/protocol/openid-connect/token"
+    )
+
+    try:
+        async with _httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                token_url,
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": redirect_uri,
+                    "client_id": client_id,
+                    "code_verifier": code_verifier,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            if resp.status_code >= 400:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Keycloak authorization-code exchange failed",
+                )
+            token_data: dict = resp.json()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502, detail=f"Identity provider unreachable: {exc}"
+        ) from exc
+
+    access_token: str = token_data.get("access_token", "")
+    claims = _jwt_claims(access_token) if access_token else {}
+
+    from ui_evidence.api.portal_access import (
+        QA_PORTAL_ACCESS_ROLES,
+        authorize_portal_access,
+        parse_email_allowlist,
+    )
+
+    raw_roles = list(claims.get("realm_access", {}).get("roles", []) or []) + [
+        r
+        for res in claims.get("resource_access", {}).values()
+        for r in res.get("roles", [])
+    ]
+    try:
+        roles = authorize_portal_access(
+            email=claims.get("email"),
+            token_roles=raw_roles,
+            required_roles=QA_PORTAL_ACCESS_ROLES,
+            email_allowlist=parse_email_allowlist(
+                _os.environ.get(
+                    "QA_PORTAL_ALLOWED_EMAILS",
+                    "",
+                )
+            ),
+            session_roles_on_allowlist=["access-qa-portal", "qa_operator"],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+    email_val = claims.get("email")
+    user = {
+        "username": claims.get("preferred_username")
+        or claims.get("name")
+        or (email_val.split("@")[0] if email_val else claims.get("sub", "qa-operator")),
+        "email": email_val,
+        "roles": roles,
+    }
+
+    return {
+        "access_token": access_token,
+        "token_type": token_data.get("token_type", "Bearer"),
+        "expires_in": token_data.get("expires_in", 3600),
+        "state": state,
+        "user": user,
+    }
+
+
+# One-time AM→QA handoff codes (Modern UI mints, portal redeems). In-process only.
+_CENTRAL_HANDOFFS: dict[str, tuple[str, float]] = {}
+
+
+def _purge_expired_handoffs(now: float) -> None:
+    expired = [k for k, (_, exp) in _CENTRAL_HANDOFFS.items() if exp <= now]
+    for key in expired:
+        _CENTRAL_HANDOFFS.pop(key, None)
+
+
+def _build_central_session(access_token: str, state: str) -> dict:
+    import time as _time
+
+    from specs.security.identity_client import jwt_claims as _jwt_claims
+    from ui_evidence.api.portal_access import (
+        QA_PORTAL_ACCESS_ROLES,
+        authorize_portal_access,
+        parse_email_allowlist,
+    )
+
+    claims = _jwt_claims(access_token)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid AM access token")
+
+    trusted_issuers = {
+        _os.environ.get(
+            "KEYCLOAK_CENTRAL_ISSUER",
+            "https://auth.asrax.in/realms/am-dev-realm",
+        ),
+        _os.environ.get(
+            "KEYCLOAK_ISSUER",
+            "https://auth.asrax.in/realms/am-qa-agents-dev",
+        ),
+        "https://auth.asrax.in/realms/am-dev-realm",
+        "https://auth.asrax.in/realms/am-qa-agents-dev",
+    }
+    if claims.get("iss") not in trusted_issuers:
+        raise HTTPException(status_code=401, detail="Untrusted token issuer")
+
+    exp = claims.get("exp")
+    if isinstance(exp, (int, float)) and exp < _time.time():
+        raise HTTPException(status_code=401, detail="AM access token expired")
+
+    raw_roles = list(claims.get("realm_access", {}).get("roles", []) or []) + [
+        r
+        for res in claims.get("resource_access", {}).values()
+        for r in res.get("roles", [])
+    ]
+    try:
+        roles = authorize_portal_access(
+            email=claims.get("email"),
+            token_roles=raw_roles,
+            required_roles=QA_PORTAL_ACCESS_ROLES,
+            email_allowlist=parse_email_allowlist(
+                _os.environ.get("QA_PORTAL_ALLOWED_EMAILS", "")
+            ),
+            session_roles_on_allowlist=["access-qa-portal", "qa_operator"],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+    email_val = claims.get("email")
+    user = {
+        "username": claims.get("preferred_username")
+        or claims.get("name")
+        or (email_val.split("@")[0] if email_val else claims.get("sub", "qa-operator")),
+        "email": email_val,
+        "roles": roles,
+    }
+    return {
+        "access_token": access_token,
+        "token_type": "Bearer",
+        "expires_in": max(0, int(exp - _time.time()))
+        if isinstance(exp, (int, float))
+        else 3600,
+        "state": state,
+        "user": user,
+    }
+
+
+@app.post("/api/v1/auth/central-handoff-mint")
+async def qa_portal_central_handoff_mint(request: Request) -> dict:
+    """Mint a short-lived one-time code for cross-origin AM→QA handoff."""
+    import secrets as _secrets
+    import time as _time
+
+    body = await request.json()
+    access_token = body.get("access_token") or body.get("token") or ""
+    if not isinstance(access_token, str) or not access_token.strip():
+        raise HTTPException(status_code=400, detail="Missing AM access token")
+    access_token = access_token.strip()
+    # Validate now so the portal redeem cannot fail on a bad token later.
+    _build_central_session(access_token, "/ui-flows")
+
+    now = _time.time()
+    _purge_expired_handoffs(now)
+    code = _secrets.token_urlsafe(24)
+    _CENTRAL_HANDOFFS[code] = (access_token, now + 120.0)
+    return {"handoff": code, "expires_in": 120}
+
+
+@app.post("/api/v1/auth/central-session")
+async def qa_portal_central_session(request: Request) -> dict:
+    """Accept an AM Central token (or one-time handoff code) and open a QA session."""
+    import time as _time
+
+    body = await request.json()
+    raw_state: str = body.get("state", "/ui-flows")
+    state = (
+        raw_state
+        if isinstance(raw_state, str)
+        and raw_state.startswith("/")
+        and not raw_state.startswith("//")
+        else "/ui-flows"
+    )
+
+    handoff = body.get("handoff")
+    access_token = body.get("access_token") or body.get("token") or ""
+    if isinstance(handoff, str) and handoff.strip():
+        now = _time.time()
+        _purge_expired_handoffs(now)
+        entry = _CENTRAL_HANDOFFS.pop(handoff.strip(), None)
+        if entry is None:
+            raise HTTPException(
+                status_code=401, detail="Invalid or expired AM handoff code"
+            )
+        access_token, _ = entry
+    elif isinstance(access_token, str) and access_token.strip():
+        access_token = access_token.strip()
+    else:
+        raise HTTPException(status_code=400, detail="Missing AM access token")
+
+    return _build_central_session(access_token, state)
 
 
 @app.get("/api/runs")
@@ -318,7 +654,9 @@ async def api_get_run(run_id: str) -> dict:
 
 
 @app.post("/api/runs/{run_id}/progress")
-async def api_run_progress(run_id: str, body: dict[str, Any] = Body(default_factory=dict)) -> dict:
+async def api_run_progress(
+    run_id: str, body: dict[str, Any] = Body(default_factory=dict)
+) -> dict:
     """Lightweight callback from k6 for live UI progress (file-backed, reload-safe)."""
     body = body or {}
     result = increment_run_progress(
@@ -346,7 +684,9 @@ def _sample_lock(run_id: str) -> asyncio.Lock:
 
 
 @app.post("/api/runs/{run_id}/sample")
-async def api_run_sample(run_id: str, body: dict[str, Any] = Body(default_factory=dict)) -> dict:
+async def api_run_sample(
+    run_id: str, body: dict[str, Any] = Body(default_factory=dict)
+) -> dict:
     """Receive one request/response sample from a k6 VU (per-call traces for inspector)."""
     row = get_run(run_id)
     if not row:
@@ -366,7 +706,12 @@ async def api_run_sample(run_id: str, body: dict[str, Any] = Body(default_factor
             except Exception:
                 traces = []
         if len(traces) >= settings.trace_max_calls:
-            return {"ok": True, "api_id": str(body.get("api_id")), "count": len(traces), "truncated": True}
+            return {
+                "ok": True,
+                "api_id": str(body.get("api_id")),
+                "count": len(traces),
+                "truncated": True,
+            }
         aid = str(body.get("api_id"))
         sample = dict(body)
         # Server assigns monotonic call_index (k6 VUs have separate JS heaps)
@@ -380,7 +725,9 @@ async def api_run_sample(run_id: str, body: dict[str, Any] = Body(default_factor
                 api_row["status"] = (sample.get("response") or {}).get("status")
                 api_row["trace_available"] = True
                 if sample.get("timings"):
-                    api_row["duration_ms"] = (sample.get("timings") or {}).get("duration_ms")
+                    api_row["duration_ms"] = (sample.get("timings") or {}).get(
+                        "duration_ms"
+                    )
                 break
         if api_summary:
             update_run(run_id, {"api_summary": api_summary})
@@ -399,7 +746,9 @@ async def api_run_apis(
     if not row:
         raise HTTPException(status_code=404, detail="Run not found")
     apis = get_run_api_index(run_id) or row.get("api_summary") or []
-    filtered, total = filter_api_index(apis, failed_only=failed_only, q=q, limit=limit, offset=offset)
+    filtered, total = filter_api_index(
+        apis, failed_only=failed_only, q=q, limit=limit, offset=offset
+    )
     return {"run_id": run_id, "apis": filtered, "count": len(filtered), "total": total}
 
 
@@ -443,7 +792,9 @@ async def api_run_api_trace(run_id: str, api_id: str) -> dict:
 
 
 @app.post("/api/runs/{run_id}/apis/{api_id}/save-payload")
-async def api_save_payload_from_run(run_id: str, api_id: str, body: SavePayloadRequest | None = None) -> dict:
+async def api_save_payload_from_run(
+    run_id: str, api_id: str, body: SavePayloadRequest | None = None
+) -> dict:
     row = get_run(run_id)
     if not row:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -576,10 +927,18 @@ async def api_upsert_payload_set_api(
 
 
 @app.delete("/api/payloads/{service}/{api_id}/{name}/{version}")
-async def api_delete_payload(service: str, api_id: str, name: str, version: int) -> dict:
+async def api_delete_payload(
+    service: str, api_id: str, name: str, version: int
+) -> dict:
     if not delete_payload(service, api_id, name, version):
         raise HTTPException(status_code=404, detail="Payload not found")
-    return {"deleted": True, "service": service, "api_id": api_id, "name": name, "version": version}
+    return {
+        "deleted": True,
+        "service": service,
+        "api_id": api_id,
+        "name": name,
+        "version": version,
+    }
 
 
 @app.post("/api/runs/execute")
@@ -630,7 +989,10 @@ def _list_profiles_payload(
     configs = list_configs(service=service, environment=environment, audience=audience)
     if not configs:
         configs = [ensure_default_config()]
-        configs = list_configs(service=service, environment=environment, audience=audience) or configs
+        configs = (
+            list_configs(service=service, environment=environment, audience=audience)
+            or configs
+        )
     return {"configs": configs, "profiles": configs, "count": len(configs)}
 
 
@@ -726,7 +1088,10 @@ async def api_update_config(config_id: str, body: TestConfigUpdate) -> dict:
                 **payloads_patch["bench_run"],
             }
         merged["payloads"] = {**existing_payloads, **payloads_patch}
-        if "payload_set_version" in payloads_patch and payloads_patch["payload_set_version"] is not None:
+        if (
+            "payload_set_version" in payloads_patch
+            and payloads_patch["payload_set_version"] is not None
+        ):
             merged["payload_set_version"] = payloads_patch["payload_set_version"]
     if "payload_set_version" in patch:
         merged["payload_set_version"] = patch["payload_set_version"]
@@ -763,7 +1128,11 @@ async def api_save_config_from_run(run_id: str, name: str | None = None) -> dict
             "run_profile": run.get("run_profile") or snap.get("run_profile") or "load",
             "audience": snap.get("audience") or "developer",
             "payload_set_version": snap.get("payload_set_version")
-            or (payloads.get("payload_set_version") if isinstance(payloads, dict) else None),
+            or (
+                payloads.get("payload_set_version")
+                if isinstance(payloads, dict)
+                else None
+            ),
             "openapi_version": run.get("openapi_version"),
             "target_url": run.get("target_url"),
             "payloads": payloads,
@@ -771,6 +1140,7 @@ async def api_save_config_from_run(run_id: str, name: str | None = None) -> dict
         }
     )
     return cfg
+
 
 @app.get("/api/runs/{run_id}/export")
 async def api_export_run(run_id: str) -> dict:
@@ -886,7 +1256,10 @@ async def api_run_ui_report(run_id: str) -> dict:
         return {"run_id": run_id, "ui_report": row["ui_report"]}
     path = Path(settings.data_dir) / "artifacts" / run_id / "ui-report.json"
     if path.is_file():
-        return {"run_id": run_id, "ui_report": json.loads(path.read_text(encoding="utf-8"))}
+        return {
+            "run_id": run_id,
+            "ui_report": json.loads(path.read_text(encoding="utf-8")),
+        }
     raise HTTPException(status_code=404, detail="UI report not found for this run")
 
 
@@ -899,7 +1272,9 @@ async def api_run_artifacts(run_id: str) -> dict:
     from specs.persistence.artifact_store import artifact_dir, portal_artifact_url
 
     art_dir = artifact_dir(run_id)
-    known = {str(a.get("name")): a for a in (row.get("artifacts") or []) if a.get("name")}
+    known = {
+        str(a.get("name")): a for a in (row.get("artifacts") or []) if a.get("name")
+    }
     on_disk: dict[str, Path] = {}
     if art_dir.is_dir():
         for path in art_dir.iterdir():
@@ -918,8 +1293,13 @@ async def api_run_artifacts(run_id: str) -> dict:
         meta = known.get(name) or {}
         path = on_disk.get(name)
         size = path.stat().st_size if path is not None else meta.get("size")
-        available = path is not None or bool(meta.get("minio_key")) or (
-            name in ("ui-report.html", "ui-report.json") and bool(row.get("ui_report"))
+        available = (
+            path is not None
+            or bool(meta.get("minio_key"))
+            or (
+                name in ("ui-report.html", "ui-report.json")
+                and bool(row.get("ui_report"))
+            )
         )
         files.append(
             {
@@ -983,15 +1363,21 @@ async def api_run_artifact_file(run_id: str, name: str):
         return FileResponse(path, media_type=media, filename=safe)
 
     # MinIO fallback (when credentials + key were recorded at persist time)
-    known = {str(a.get("name")): a for a in (row.get("artifacts") or []) if a.get("name")}
+    known = {
+        str(a.get("name")): a for a in (row.get("artifacts") or []) if a.get("name")
+    }
     meta = known.get(safe) or {}
     minio_key = meta.get("minio_key")
     if minio_key:
         blob = await download_from_minio(str(minio_key))
         if blob:
-            return Response(content=blob, media_type=media, headers={
-                "Content-Disposition": f'inline; filename="{safe}"',
-            })
+            return Response(
+                content=blob,
+                media_type=media,
+                headers={
+                    "Content-Disposition": f'inline; filename="{safe}"',
+                },
+            )
 
     # Durable JSON / HTML from run metadata (survives ephemeral DATA_DIR)
     if safe == "ui-report.json" and row.get("ui_report"):
@@ -1008,18 +1394,24 @@ async def api_run_artifact_file(run_id: str, name: str):
             # Disk wiped — fall back to api_summary rows stored in Postgres
             traces = [
                 {
-                    "kind": "ui_step" if str(a.get("method") or "").upper() in ("STEP", "FLOW", "UI") else "http",
+                    "kind": "ui_step"
+                    if str(a.get("method") or "").upper() in ("STEP", "FLOW", "UI")
+                    else "http",
                     "call_index": i + 1,
                     "api_id": a.get("api_id") or a.get("id"),
                     "name": a.get("name") or a.get("api_id"),
-                    "checks_passed": a.get("checks_passed") if a.get("checks_passed") is not None else a.get("passed"),
+                    "checks_passed": a.get("checks_passed")
+                    if a.get("checks_passed") is not None
+                    else a.get("passed"),
                     "timings": {"duration_ms": a.get("avg_ms") or a.get("duration_ms")},
                 }
                 for i, a in enumerate(row["api_summary"])
             ]
         html_body = render_ui_report_html(
             run_id,
-            ui_report=row.get("ui_report") if isinstance(row.get("ui_report"), dict) else None,
+            ui_report=row.get("ui_report")
+            if isinstance(row.get("ui_report"), dict)
+            else None,
             status=str(row.get("status") or ""),
             service=str(row.get("service") or ""),
             traces=traces,

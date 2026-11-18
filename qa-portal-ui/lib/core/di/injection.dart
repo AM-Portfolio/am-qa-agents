@@ -2,6 +2,7 @@ import 'package:am_design_system/am_design_system.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
+import '../auth/auth_service.dart';
 import '../config/portal_config.dart';
 import '../network/api_client.dart';
 import '../../features/runs/data/runs_repository.dart';
@@ -38,6 +39,12 @@ Future<void> configureDependencies() async {
         ),
       );
     });
+  }
+
+  if (!getIt.isRegistered<QaAuthService>()) {
+    final auth = QaAuthService(config: getIt<PortalConfig>(), dio: getIt<Dio>());
+    await auth.init();
+    getIt.registerSingleton<QaAuthService>(auth);
   }
 
   if (!getIt.isRegistered<ApiClient>()) {

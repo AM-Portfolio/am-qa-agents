@@ -10,7 +10,7 @@ from specs import env_urls
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=(".env", ".env.local"), extra="ignore")
 
     app_name: str = "am-spt-poc"
     app_port: int = 8150
@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     )
     log_level: str = "INFO"
     root_path: str = ""
+    qa_portal_allowed_emails: str = Field(default="", validation_alias=AliasChoices("QA_PORTAL_ALLOWED_EMAILS", "qa_portal_allowed_emails"))
 
     # Empty → filled from APP_ENV / DEFAULT_ENVIRONMENT (public HTTPS). Override only when needed.
     poc_target_url: str = ""

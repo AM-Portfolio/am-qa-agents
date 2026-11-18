@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/auth/auth_service.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/json_lists.dart';
 import '../../../../core/router/app_router.dart';
@@ -77,8 +78,10 @@ class OperatorShell extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
+      await getIt<QaAuthService>().logout();
       await context.read<_ShellCubit>().logout();
       if (context.mounted) {
+        context.go(AppRoutes.login);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Successfully signed out of QA Portal session'),
@@ -127,14 +130,9 @@ class OperatorShell extends StatelessWidget {
             FilledButton.icon(
               icon: const Icon(Icons.login_rounded),
               label: const Text('Sign In as Operator'),
-              onPressed: () async {
+              onPressed: () {
                 Navigator.pop(ctx);
-                await context.read<_ShellCubit>().login();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Operator session restored')),
-                  );
-                }
+                getIt<QaAuthService>().redirectToCentralLogin();
               },
             ),
           ],
@@ -256,6 +254,54 @@ class OperatorShell extends StatelessWidget {
                             );
                           },
                         ),
+                        BlocBuilder<_ShellCubit, _ShellState>(
+                          builder: (context, shell) {
+                            final auth = getIt<QaAuthService>();
+                            final isAuth = auth.isAuthenticated && auth.currentUser != null;
+                            if (isAuth) return const SizedBox.shrink();
+
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF1E293B),
+                                border: Border(
+                                  top: BorderSide(color: Color(0xFF334155)),
+                                  bottom: BorderSide(color: Color(0xFF334155)),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.shield_outlined, color: Color(0xFF38BDF8), size: 20),
+                                  const SizedBox(width: 12),
+                                  const Expanded(
+                                    child: Text(
+                                      'You are browsing as Guest. Sign in with AM Central to access full QA operator controls.',
+                                      style: TextStyle(
+                                        color: Color(0xFFCBD5E1),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                  FilledButton.icon(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: const Color(0xFF38BDF8),
+                                      foregroundColor: const Color(0xFF0F172A),
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    ),
+                                    icon: const Icon(Icons.login_rounded, size: 16),
+                                    label: const Text(
+                                      'Sign In with AM Central',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    onPressed: () {
+                                      getIt<QaAuthService>().redirectToCentralLogin();
+                                    },
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -320,8 +366,11 @@ class _ShellCubit extends Cubit<_ShellState> {
 
   Future<void> refresh() async {
     try {
+      final auth = getIt<QaAuthService>();
+      final isAuth = auth.isAuthenticated && auth.currentUser != null;
+
       final prefs = await SharedPreferences.getInstance();
-      final isSignedOut = prefs.getBool(_signedOutKey) ?? false;
+      final isSignedOut = !isAuth && (prefs.getBool(_signedOutKey) ?? false);
       if (isSignedOut) {
         emit(
           state.copyWith(
@@ -334,9 +383,22 @@ class _ShellCubit extends Cubit<_ShellState> {
         return;
       }
 
-      final res = await _dio.get<dynamic>('/api/platform/health');
-      final data = asMap(res.data);
-      final op = data['operator'];
+      Map<String, dynamic>? op;
+      if (isAuth) {
+        op = {
+          'display_name': auth.currentUser!.username,
+          'email': auth.currentUser!.email ?? auth.currentUser!.username,
+          'roles': auth.currentUser!.roles,
+        };
+      }
+
+      Map<String, dynamic> data = {};
+      try {
+        final res = await _dio.get<dynamic>('/api/platform/health');
+        data = asMap(res.data);
+        op ??= data['operator'] is Map ? Map<String, dynamic>.from(data['operator'] as Map) : null;
+      } catch (_) {}
+
       emit(
         _ShellState(
           apiOk: true,
@@ -346,9 +408,9 @@ class _ShellCubit extends Cubit<_ShellState> {
               (data['minio'] is Map
                   ? (data['minio'] as Map)['console_url']?.toString()
                   : null),
-          operator: op is Map ? Map<String, dynamic>.from(op) : null,
+          operator: op,
           message: data['k6_binary'] == true ? null : 'k6 binary missing on agent',
-          isLoggedOut: false,
+          isLoggedOut: !isAuth && op == null,
         ),
       );
     } catch (e) {

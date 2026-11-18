@@ -34,6 +34,19 @@ jobs:
           channel: stable
           cache: true
 
+      # am_design_system / am_common generated sources are gitignored.
+      - name: Generate am-modern-ui freezed/json code
+        shell: bash
+        run: |
+          set -euo pipefail
+          for pkg in am_common am_design_system; do
+            (
+              cd "am-modern-ui/$pkg"
+              flutter pub get
+              dart run build_runner build --delete-conflicting-outputs
+            )
+          done
+
       - name: Pub get
         working-directory: am-qa-agents/qa-portal-ui
         run: flutter pub get
@@ -44,7 +57,14 @@ jobs:
 
       - name: Build web
         working-directory: am-qa-agents/qa-portal-ui
-        run: flutter build web --release --base-href=/qa/ui/
+        run: |
+          flutter build web --release \
+            --base-href=/qa/ui/ \
+            --dart-define=API_BASE=/qa \
+            --dart-define=ROOT_PATH=/qa \
+            --dart-define=KEYCLOAK_ISSUER=https://auth.asrax.in/realms/am-qa-agents-dev \
+            --dart-define=KEYCLOAK_CLIENT_ID=am-qa-portal-client \
+            --no-wasm-dry-run
 
       - name: Upload web artifact
         uses: actions/upload-artifact@v4

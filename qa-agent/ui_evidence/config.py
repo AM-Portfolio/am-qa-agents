@@ -13,7 +13,7 @@ from ui_evidence import env_urls
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=os.getenv("ENV_FILE_PATH", ".env"),
+        env_file=(os.getenv("ENV_FILE_PATH", ".env"), ".env.local"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -39,8 +39,23 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int = Field(default=2048)
     LLM_TIMEOUT_SECONDS: float = Field(default=120.0)
 
+    KEYCLOAK_URL: str = Field(default="https://auth.asrax.in")
+    KEYCLOAK_REALM: str = Field(default="am-qa-agents-dev")
+    KEYCLOAK_ISSUER: str = Field(
+        default="https://auth.asrax.in/realms/am-qa-agents-dev"
+    )
+    KEYCLOAK_CENTRAL_ISSUER: str = Field(
+        default="https://auth.asrax.in/realms/am-dev-realm"
+    )
+    KEYCLOAK_QA_CLIENT_ID: str = Field(default="am-qa-portal-client")
+    KEYCLOAK_QA_REDIRECT_URI: str = Field(default="http://localhost:8151/callback")
+    CENTRAL_LOGIN_URL: str = Field(default="https://am-dev.asrax.in/login")
+    # Comma-separated emails allowed for Central Login direct-code path.
+    # Must match users who hold Keycloak role access-qa-portal. Empty = deny all direct codes.
+    QA_PORTAL_ALLOWED_EMAILS: str = Field(default="")
+
     KEYCLOAK_TOKEN_URL: str = Field(
-        default="http://auth.munish.org/auth/realms/am-preprod-realm/protocol/openid-connect/token"
+        default="https://auth.asrax.in/realms/am-dev-realm/protocol/openid-connect/token"
     )
     AM_MCP_CLIENT_ID: str = Field(default="am-mcp-service")
     AM_MCP_CLIENT_SECRET: Optional[str] = Field(default=None)
@@ -119,18 +134,23 @@ class Settings(BaseSettings):
         if self.llm_routing not in ("gateway", "direct"):
             raise ValueError("LLM_ROUTING must be 'gateway' or 'direct'")
         if self.llm_routing == "direct" and self.APP_ENV.lower() == "production":
-            raise ValueError("LLM_ROUTING=direct is not allowed when APP_ENV=production")
+            raise ValueError(
+                "LLM_ROUTING=direct is not allowed when APP_ENV=production"
+            )
         if self.llm_routing == "direct" and not self.LITELLM_MASTER_KEY:
             raise ValueError("LITELLM_MASTER_KEY is required when LLM_ROUTING=direct")
 
         # Cluster APP_ENV: fill product + infra URLs when still local/unset.
         canonical = env_urls.normalize_env(self.APP_ENV)
         if canonical:
-            if env_urls.is_local_url(self.MODERN_UI_MAIN_URL) or not self.MODERN_UI_MAIN_URL.strip():
-                self.MODERN_UI_MAIN_URL = env_urls.modern_ui_url(canonical)
-            if env_urls.is_local_url(self.MCP_GATEWAY_BASE_URL) or env_urls.is_cluster_dns(
-                self.MCP_GATEWAY_BASE_URL
+            if (
+                env_urls.is_local_url(self.MODERN_UI_MAIN_URL)
+                or not self.MODERN_UI_MAIN_URL.strip()
             ):
+                self.MODERN_UI_MAIN_URL = env_urls.modern_ui_url(canonical)
+            if env_urls.is_local_url(
+                self.MCP_GATEWAY_BASE_URL
+            ) or env_urls.is_cluster_dns(self.MCP_GATEWAY_BASE_URL):
                 self.MCP_GATEWAY_BASE_URL = env_urls.infra_mcp_gateway(canonical)
             if self.QDRANT_HOST in ("", "localhost", "127.0.0.1"):
                 self.QDRANT_HOST = env_urls.infra_qdrant_host(canonical)
