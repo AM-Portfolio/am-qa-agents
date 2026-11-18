@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/portal_config.dart';
+import 'handoff_token.dart';
 
 class QaUser {
   final String username;
@@ -56,6 +57,12 @@ class QaAuthService {
   static const _clientId = String.fromEnvironment(
     'KEYCLOAK_CLIENT_ID',
     defaultValue: 'am-qa-portal-client',
+  );
+
+  /// Modern UI login URL. Empty = same-origin `/login` (am-dev ingress).
+  static const _centralLoginUrl = String.fromEnvironment(
+    'CENTRAL_LOGIN_URL',
+    defaultValue: '',
   );
 
   final PortalConfig config;
@@ -125,18 +132,95 @@ class QaAuthService {
   }
 
   void redirectToCentralLogin() {
-    // Modern UI performs its own login, then allowlists this same-origin
-    // portal path as the post-login destination. The QA portal starts its
-    // realm-brokered OIDC flow after the handoff.
-    final loginUri = Uri.base.resolve('/login').replace(
-      queryParameters: {'redirect': '/qa/ui/', 'qa_sso': '1'},
-    );
+    // Modern UI authenticates the operator, then returns to /qa/ui/?qa_sso=1
+    // with the AM access token stashed for central-session (no second Keycloak).
+    final query = <String, String>{
+      'redirect': '/qa/ui/',
+      'qa_sso': '1',
+    };
+    final Uri loginUri;
+    if (_centralLoginUrl.isNotEmpty) {
+      final base = Uri.parse(_centralLoginUrl);
+      loginUri = base.replace(
+        path: (base.path.isEmpty || base.path == '/') ? '/login' : base.path,
+        queryParameters: {...base.queryParameters, ...query},
+      );
+    } else {
+      loginUri = Uri(
+        scheme: Uri.base.scheme,
+        host: Uri.base.host,
+        port: Uri.base.hasPort ? Uri.base.port : null,
+        path: '/login',
+        queryParameters: query,
+      );
+    }
     launchUrl(loginUri, webOnlyWindowName: '_self');
+  }
+
+  /// Complete SSO after Modern UI handoff using a one-time code or AM token.
+  Future<String> acceptCentralHandoff({String? state}) async {
+    final handoff = readCentralHandoffCode();
+    final token = readCentralHandoffToken();
+    if ((handoff == null || handoff.isEmpty) &&
+        (token == null || token.isEmpty)) {
+      throw StateError(
+        'Missing AM session after Central Login. Sign in again from the QA portal.',
+      );
+    }
+    try {
+      return await acceptCentralToken(
+        token ?? '',
+        state: state,
+        handoff: handoff,
+      );
+    } finally {
+      clearCentralHandoffToken();
+    }
+  }
+
+  Future<String> acceptCentralToken(
+    String token, {
+    String? state,
+    String? handoff,
+  }) async {
+    final callbackEndpoint = '${config.apiBase}/api/v1/auth/central-session';
+    final response = await dio.post<Map<String, dynamic>>(
+      callbackEndpoint,
+      data: {
+        if (handoff != null && handoff.isNotEmpty) 'handoff': handoff,
+        if (token.isNotEmpty) 'access_token': token,
+        'state': (state != null && state.startsWith('/')) ? state : '/ui-flows',
+      },
+    );
+
+    final data = response.data ?? {};
+    final accessToken = (data['access_token'] as String?) ?? '';
+    final returnState = (data['state'] as String?) ?? '/ui-flows';
+    if (accessToken.isEmpty) {
+      throw StateError('Central session response missing access_token');
+    }
+
+    _accessToken = accessToken;
+    dio.options.headers['Authorization'] = 'Bearer $accessToken';
+
+    final userData = data['user'] as Map<String, dynamic>?;
+    if (userData != null) {
+      _currentUser = QaUser.fromJson(userData);
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, accessToken);
+    if (_currentUser != null) {
+      await prefs.setString(_userKey, jsonEncode(_currentUser!.toJson()));
+    }
+    await prefs.remove('qa_portal_signed_out');
+    return returnState.startsWith('/') ? returnState : '/ui-flows';
   }
 
   String get _callbackUri {
     final rootPath = config.rootPath.replaceAll(RegExp(r'/$'), '');
-    final callbackPath = rootPath.isEmpty ? '/callback' : '$rootPath/ui/callback';
+    final callbackPath =
+        rootPath.isEmpty ? '/callback' : '$rootPath/ui/callback';
     return Uri.base.origin + callbackPath;
   }
 

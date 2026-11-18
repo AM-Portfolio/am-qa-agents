@@ -271,8 +271,22 @@ async def qa_portal_auth_callback(request: Request) -> dict:
     keycloak_url = _os.environ.get("KEYCLOAK_URL", "https://auth.asrax.in")
     realm = _os.environ.get("KEYCLOAK_REALM", "am-qa-agents-dev")
     client_id = _os.environ.get("KEYCLOAK_QA_CLIENT_ID", "am-qa-portal-client")
-    redirect_uri = _os.environ.get(
+    configured_redirect = _os.environ.get(
         "KEYCLOAK_QA_REDIRECT_URI", "https://am-dev.asrax.in/qa/ui/callback"
+    )
+    # Must match the redirect_uri used in the browser authorize request.
+    allowed_redirects = {
+        configured_redirect,
+        "http://localhost:8151/callback",
+        "http://127.0.0.1:8151/callback",
+        "https://am-dev.asrax.in/qa/ui/callback",
+    }
+    requested_redirect = body.get("redirect_uri")
+    redirect_uri = (
+        requested_redirect
+        if isinstance(requested_redirect, str)
+        and requested_redirect in allowed_redirects
+        else configured_redirect
     )
 
     token_url = (
@@ -351,6 +365,141 @@ async def qa_portal_auth_callback(request: Request) -> dict:
         "state": state,
         "user": user,
     }
+
+
+# One-time AM→QA handoff codes (Modern UI mints, portal redeems). In-process only.
+_CENTRAL_HANDOFFS: dict[str, tuple[str, float]] = {}
+
+
+def _purge_expired_handoffs(now: float) -> None:
+    expired = [k for k, (_, exp) in _CENTRAL_HANDOFFS.items() if exp <= now]
+    for key in expired:
+        _CENTRAL_HANDOFFS.pop(key, None)
+
+
+def _build_central_session(access_token: str, state: str) -> dict:
+    import time as _time
+
+    from specs.security.identity_client import jwt_claims as _jwt_claims
+    from ui_evidence.api.portal_access import (
+        QA_PORTAL_ACCESS_ROLES,
+        authorize_portal_access,
+        parse_email_allowlist,
+    )
+
+    claims = _jwt_claims(access_token)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid AM access token")
+
+    trusted_issuers = {
+        _os.environ.get(
+            "KEYCLOAK_CENTRAL_ISSUER",
+            "https://auth.asrax.in/realms/am-dev-realm",
+        ),
+        _os.environ.get(
+            "KEYCLOAK_ISSUER",
+            "https://auth.asrax.in/realms/am-qa-agents-dev",
+        ),
+        "https://auth.asrax.in/realms/am-dev-realm",
+        "https://auth.asrax.in/realms/am-qa-agents-dev",
+    }
+    if claims.get("iss") not in trusted_issuers:
+        raise HTTPException(status_code=401, detail="Untrusted token issuer")
+
+    exp = claims.get("exp")
+    if isinstance(exp, (int, float)) and exp < _time.time():
+        raise HTTPException(status_code=401, detail="AM access token expired")
+
+    raw_roles = list(claims.get("realm_access", {}).get("roles", []) or []) + [
+        r
+        for res in claims.get("resource_access", {}).values()
+        for r in res.get("roles", [])
+    ]
+    try:
+        roles = authorize_portal_access(
+            email=claims.get("email"),
+            token_roles=raw_roles,
+            required_roles=QA_PORTAL_ACCESS_ROLES,
+            email_allowlist=parse_email_allowlist(
+                _os.environ.get("QA_PORTAL_ALLOWED_EMAILS", "")
+            ),
+            session_roles_on_allowlist=["access-qa-portal", "qa_operator"],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+    email_val = claims.get("email")
+    user = {
+        "username": claims.get("preferred_username")
+        or claims.get("name")
+        or (email_val.split("@")[0] if email_val else claims.get("sub", "qa-operator")),
+        "email": email_val,
+        "roles": roles,
+    }
+    return {
+        "access_token": access_token,
+        "token_type": "Bearer",
+        "expires_in": max(0, int(exp - _time.time()))
+        if isinstance(exp, (int, float))
+        else 3600,
+        "state": state,
+        "user": user,
+    }
+
+
+@app.post("/api/v1/auth/central-handoff-mint")
+async def qa_portal_central_handoff_mint(request: Request) -> dict:
+    """Mint a short-lived one-time code for cross-origin AM→QA handoff."""
+    import secrets as _secrets
+    import time as _time
+
+    body = await request.json()
+    access_token = body.get("access_token") or body.get("token") or ""
+    if not isinstance(access_token, str) or not access_token.strip():
+        raise HTTPException(status_code=400, detail="Missing AM access token")
+    access_token = access_token.strip()
+    # Validate now so the portal redeem cannot fail on a bad token later.
+    _build_central_session(access_token, "/ui-flows")
+
+    now = _time.time()
+    _purge_expired_handoffs(now)
+    code = _secrets.token_urlsafe(24)
+    _CENTRAL_HANDOFFS[code] = (access_token, now + 120.0)
+    return {"handoff": code, "expires_in": 120}
+
+
+@app.post("/api/v1/auth/central-session")
+async def qa_portal_central_session(request: Request) -> dict:
+    """Accept an AM Central token (or one-time handoff code) and open a QA session."""
+    import time as _time
+
+    body = await request.json()
+    raw_state: str = body.get("state", "/ui-flows")
+    state = (
+        raw_state
+        if isinstance(raw_state, str)
+        and raw_state.startswith("/")
+        and not raw_state.startswith("//")
+        else "/ui-flows"
+    )
+
+    handoff = body.get("handoff")
+    access_token = body.get("access_token") or body.get("token") or ""
+    if isinstance(handoff, str) and handoff.strip():
+        now = _time.time()
+        _purge_expired_handoffs(now)
+        entry = _CENTRAL_HANDOFFS.pop(handoff.strip(), None)
+        if entry is None:
+            raise HTTPException(
+                status_code=401, detail="Invalid or expired AM handoff code"
+            )
+        access_token, _ = entry
+    elif isinstance(access_token, str) and access_token.strip():
+        access_token = access_token.strip()
+    else:
+        raise HTTPException(status_code=400, detail="Missing AM access token")
+
+    return _build_central_session(access_token, state)
 
 
 @app.get("/api/runs")

@@ -41,15 +41,18 @@ class Settings(BaseSettings):
 
     KEYCLOAK_URL: str = Field(default="https://auth.asrax.in")
     KEYCLOAK_REALM: str = Field(default="am-qa-agents-dev")
-    KEYCLOAK_ISSUER: str = Field(default="https://auth.asrax.in/realms/am-qa-agents-dev")
+    KEYCLOAK_ISSUER: str = Field(
+        default="https://auth.asrax.in/realms/am-qa-agents-dev"
+    )
+    KEYCLOAK_CENTRAL_ISSUER: str = Field(
+        default="https://auth.asrax.in/realms/am-dev-realm"
+    )
     KEYCLOAK_QA_CLIENT_ID: str = Field(default="am-qa-portal-client")
     KEYCLOAK_QA_REDIRECT_URI: str = Field(default="http://localhost:8151/callback")
     CENTRAL_LOGIN_URL: str = Field(default="https://am-dev.asrax.in/login")
     # Comma-separated emails allowed for Central Login direct-code path.
     # Must match users who hold Keycloak role access-qa-portal. Empty = deny all direct codes.
-    QA_PORTAL_ALLOWED_EMAILS: str = Field(
-        default=""
-    )
+    QA_PORTAL_ALLOWED_EMAILS: str = Field(default="")
 
     KEYCLOAK_TOKEN_URL: str = Field(
         default="https://auth.asrax.in/realms/am-dev-realm/protocol/openid-connect/token"

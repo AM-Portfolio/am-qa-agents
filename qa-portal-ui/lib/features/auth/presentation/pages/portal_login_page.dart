@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/auth/auth_service.dart';
+import '../../../../core/auth/handoff_token.dart';
 import '../../../../core/router/app_router.dart';
 
 /// Dedicated QA Portal Login Page that delegates authentication to AM Central.
@@ -16,6 +18,7 @@ class PortalLoginPage extends StatefulWidget {
 
 class _PortalLoginPageState extends State<PortalLoginPage> {
   bool _isLoading = false;
+  String? _handoffError;
 
   @override
   void initState() {
@@ -31,17 +34,57 @@ class _PortalLoginPageState extends State<PortalLoginPage> {
           context.go(AppRoutes.uiFlows);
         }
       });
-    } else if (Uri.base.queryParameters['qa_sso'] == '1') {
+    } else if (Uri.base.queryParameters['qa_sso'] == '1' ||
+        readCentralHandoffCode() != null ||
+        readCentralHandoffToken() != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(_handleKeycloakSignIn());
+        if (mounted) unawaited(_handleCentralHandoff());
       });
     }
   }
 
   void _handleSignIn() {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _handoffError = null;
+    });
     final auth = GetIt.instance<QaAuthService>();
     auth.redirectToCentralLogin();
+  }
+
+  Future<void> _handleCentralHandoff() async {
+    setState(() {
+      _isLoading = true;
+      _handoffError = null;
+    });
+    final auth = GetIt.instance<QaAuthService>();
+    try {
+      final next = await auth.acceptCentralHandoff(state: AppRoutes.uiFlows);
+      if (!mounted) return;
+      context.go(next.startsWith('/') ? next : AppRoutes.uiFlows);
+    } catch (e) {
+      if (!mounted) return;
+      String message =
+          'AM Apps signed you in, but the QA session handoff failed. Sign in again.';
+      if (e is DioException) {
+        final detail = e.response?.data;
+        if (detail is Map && detail['detail'] != null) {
+          message = detail['detail'].toString();
+        }
+      } else {
+        final raw = e.toString();
+        if (raw.contains('Missing AM session')) {
+          message =
+              'AM Apps did not pass a session to the QA portal. Restart AM Apps with QA_API_BASE and try again.';
+        } else if (raw.isNotEmpty) {
+          message = raw.replaceFirst('Exception: ', '');
+        }
+      }
+      setState(() {
+        _isLoading = false;
+        _handoffError = message;
+      });
+    }
   }
 
   Future<void> _handleKeycloakSignIn() async {
@@ -108,16 +151,21 @@ class _PortalLoginPageState extends State<PortalLoginPage> {
                     // Brand Pill
                     Center(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF38BDF8).withValues(alpha: 0.12),
+                          color:
+                              const Color(0xFF38BDF8).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.3)),
+                          border: Border.all(
+                              color: const Color(0xFF38BDF8)
+                                  .withValues(alpha: 0.3)),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.shield_outlined, size: 14, color: Color(0xFF38BDF8)),
+                            Icon(Icons.shield_outlined,
+                                size: 14, color: Color(0xFF38BDF8)),
                             SizedBox(width: 6),
                             Text(
                               'AM CENTRAL IDENTITY',
@@ -165,19 +213,47 @@ class _PortalLoginPageState extends State<PortalLoginPage> {
                       ),
                       child: Column(
                         children: [
-                          _buildFeatureRow(Icons.auto_awesome, 'End-to-end automated UI flow execution'),
+                          _buildFeatureRow(Icons.auto_awesome,
+                              'End-to-end automated UI flow execution'),
                           const SizedBox(height: 10),
-                          _buildFeatureRow(Icons.api, 'Live OpenAPI validation & regression runs'),
+                          _buildFeatureRow(Icons.api,
+                              'Live OpenAPI validation & regression runs'),
                           const SizedBox(height: 10),
-                          _buildFeatureRow(Icons.lock_outline, 'Secure role-gated operator permissions'),
+                          _buildFeatureRow(Icons.lock_outline,
+                              'Secure role-gated operator permissions'),
                         ],
                       ),
                     ),
                     const SizedBox(height: 32),
 
-                    // Sign In Options
+                    if (_handoffError != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color:
+                              const Color(0xFFEF4444).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color:
+                                const Color(0xFFEF4444).withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Text(
+                          _handoffError!,
+                          style: const TextStyle(
+                            color: Color(0xFFFCA5A5),
+                            fontSize: 12.5,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Primary: AM Central. Keycloak is a fallback only.
                     ElevatedButton(
-                      onPressed: _isLoading ? null : _handleKeycloakSignIn,
+                      onPressed: _isLoading ? null : _handleSignIn,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF38BDF8),
                         foregroundColor: const Color(0xFF0F172A),
@@ -193,16 +269,17 @@ class _PortalLoginPageState extends State<PortalLoginPage> {
                               height: 22,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0F172A)),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF0F172A)),
                               ),
                             )
                           : const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.security_rounded, size: 20),
+                                Icon(Icons.login_rounded, size: 20),
                                 SizedBox(width: 10),
                                 Text(
-                                  'Sign In with Keycloak (OIDC)',
+                                  'Sign In with AM Central',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
@@ -212,36 +289,22 @@ class _PortalLoginPageState extends State<PortalLoginPage> {
                             ),
                     ),
                     const SizedBox(height: 12),
-                    OutlinedButton(
-                      onPressed: _isLoading ? null : _handleSignIn,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF94A3B8),
-                        side: const BorderSide(color: Color(0xFF334155)),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    TextButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () => unawaited(_handleKeycloakSignIn()),
+                      child: const Text(
+                        'Use Keycloak directly',
+                        style: TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 12.5,
                         ),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.login_rounded, size: 18),
-                          SizedBox(width: 10),
-                          Text(
-                            'Sign In with AM Central',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                     const SizedBox(height: 20),
 
-                    // Footnote
                     const Text(
-                      'Delegates authentication to the centralized AM modern login service with secure token exchange.',
+                      'Sign in on AM Apps. After authentication you return here with your operator session — no second Keycloak step.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xFF64748B),

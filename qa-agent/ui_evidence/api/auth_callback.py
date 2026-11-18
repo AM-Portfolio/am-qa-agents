@@ -153,13 +153,114 @@ async def get_auth_config() -> dict[str, Any]:
     }
 
 
+class CentralSessionRequest(BaseModel):
+    access_token: Optional[str] = None
+    token: Optional[str] = None
+    state: Optional[str] = None
+
+
+@router.post("/central-session", response_model=CallbackResponse)
+async def central_session(
+    request: CentralSessionRequest,
+    response: Response,
+) -> CallbackResponse:
+    """Open a QA portal session from an AM Central (Modern UI) access token."""
+    import time
+
+    access_token = (request.access_token or request.token or "").strip()
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing AM access token",
+        )
+
+    safe_state = "/"
+    if (
+        request.state
+        and request.state.startswith("/")
+        and not request.state.startswith("//")
+    ):
+        safe_state = request.state
+
+    claims = _decode_jwt_payload(access_token)
+    if not claims:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid AM access token",
+        )
+
+    trusted = {
+        settings.KEYCLOAK_ISSUER,
+        settings.KEYCLOAK_CENTRAL_ISSUER,
+        "https://auth.asrax.in/realms/am-dev-realm",
+        "https://auth.asrax.in/realms/am-qa-agents-dev",
+    }
+    if claims.get("iss") not in trusted:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Untrusted token issuer",
+        )
+
+    exp = claims.get("exp")
+    if isinstance(exp, (int, float)) and exp < time.time():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="AM access token expired",
+        )
+
+    roles = _authorize_qa_user(
+        claims.get("email"),
+        list(claims.get("realm_access", {}).get("roles", []) or []),
+    )
+    user_info = {
+        "sub": claims.get("sub"),
+        "username": claims.get("preferred_username")
+        or claims.get("email")
+        or "qa_user",
+        "email": claims.get("email"),
+        "name": claims.get("name"),
+        "roles": roles,
+    }
+    expires_in = (
+        max(0, int(exp - time.time())) if isinstance(exp, (int, float)) else 3600
+    )
+    response.set_cookie(
+        key="qa_session",
+        value=access_token,
+        httponly=True,
+        secure=settings.KEYCLOAK_QA_REDIRECT_URI.startswith("https://"),
+        samesite="lax",
+        path="/",
+        max_age=expires_in,
+    )
+    return CallbackResponse(
+        success=True,
+        access_token=access_token,
+        token_type="Bearer",
+        expires_in=expires_in,
+        state=safe_state,
+        user=user_info,
+    )
+
+
 @router.post("/callback", response_model=CallbackResponse)
 async def auth_callback(
     request: CallbackRequest,
     response: Response,
 ) -> CallbackResponse:
     """Exchange authorization code from Keycloak for an access token."""
-    redirect_uri = settings.KEYCLOAK_QA_REDIRECT_URI
+    configured_redirect = settings.KEYCLOAK_QA_REDIRECT_URI
+    allowed_redirects = {
+        configured_redirect,
+        "http://localhost:8151/callback",
+        "http://127.0.0.1:8151/callback",
+        "https://am-dev.asrax.in/qa/ui/callback",
+    }
+    redirect_uri = (
+        request.redirect_uri
+        if request.redirect_uri and request.redirect_uri in allowed_redirects
+        else configured_redirect
+    )
 
     # Validate state parameter for safe redirection (prevent open redirect attacks)
     safe_state = "/"
@@ -229,6 +330,7 @@ async def auth_callback_get():
         status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
         detail="Complete QA sign-in through the portal callback with PKCE.",
     )
+
 
 @router.get("/me")
 async def get_current_user(
