@@ -189,8 +189,78 @@ class _FlutterNoCacheMiddleware:
         await self.app(scope, receive, send_wrapper if no_cache else send)
 
 
+class _FlutterSpaFallbackMiddleware:
+    """Serve index.html for Flutter deep links (/ui/callback, /ui/login, …).
+
+    Starlette StaticFiles(html=True) only indexes directories; OIDC callbacks
+    otherwise fall through as JSON {"detail":"Not Found"}.
+    """
+
+    _ASSET_SUFFIXES = (
+        ".js",
+        ".css",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".webp",
+        ".svg",
+        ".ico",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".map",
+        ".json",
+        ".txt",
+        ".wasm",
+    )
+
+    def __init__(self, app: Any, flutter_dir: Any) -> None:
+        self.app = app
+        self.index_path = Path(flutter_dir) / "index.html"
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http" or not self.index_path.is_file():
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path") or ""
+        under_ui = path == "/ui" or path.startswith("/ui/")
+        if not under_ui or path.endswith(self._ASSET_SUFFIXES):
+            await self.app(scope, receive, send)
+            return
+
+        status_holder: dict[str, int | None] = {"code": None}
+        start_message: dict[str, Any] | None = None
+        body_messages: list[dict[str, Any]] = []
+
+        async def send_wrapper(message: Any) -> None:
+            nonlocal start_message
+            if message["type"] == "http.response.start":
+                status_holder["code"] = int(message.get("status") or 0)
+                if status_holder["code"] == 404:
+                    start_message = message
+                    return
+                await send(message)
+                return
+            if status_holder["code"] == 404:
+                body_messages.append(message)
+                if message.get("more_body"):
+                    return
+                from starlette.responses import FileResponse
+
+                response = FileResponse(self.index_path)
+                await response(scope, receive, send)
+                return
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
+
+
 _FLUTTER_DIR = portal_flutter_web_dir() if settings.spt_portal_flutter else None
 if _FLUTTER_DIR is not None:
+    # Outer → inner: no-cache wraps SPA fallback wraps StaticFiles.
+    app.add_middleware(_FlutterSpaFallbackMiddleware, flutter_dir=_FLUTTER_DIR)
     app.add_middleware(_FlutterNoCacheMiddleware)
     app.mount(
         "/ui",
